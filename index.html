@@ -42,47 +42,50 @@
 
   /* ---------- TOP BAR ---------- */
   header{
-    height:52px;flex:0 0 52px;
-    display:flex;align-items:center;gap:18px;
-    padding:0 14px;
+    min-height:46px;flex:0 0 auto;
+    display:flex;align-items:center;flex-wrap:wrap;gap:7px 10px;
+    padding:6px 10px;
     background:linear-gradient(180deg,var(--panel),var(--panel-2));
     border-bottom:1px solid var(--hair);
     z-index:10;
   }
-  .brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:.5px;font-size:14px}
-  .brand .dot{width:9px;height:9px;border-radius:2px;background:var(--btc);box-shadow:0 0 10px var(--btc)}
+  .brand{display:flex;align-items:center;gap:7px;font-weight:700;letter-spacing:.4px;font-size:12px;white-space:nowrap}
+  .brand .dot{width:8px;height:8px;border-radius:2px;background:var(--btc);box-shadow:0 0 9px var(--btc)}
   .brand small{color:var(--muted);font-weight:500;letter-spacing:.3px}
 
-  .tfs{display:flex;gap:2px;background:var(--panel-2);border:1px solid var(--hair);border-radius:8px;padding:3px}
-  .tf{
-    font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:500;
-    color:var(--muted);background:transparent;border:none;border-radius:5px;
-    padding:5px 9px;cursor:pointer;transition:.12s;
-  }
-  .tf:hover{color:var(--txt)}
-  .tf.active{background:var(--btc);color:#1a1205;font-weight:600}
-  .tf:focus-visible{outline:2px solid var(--draw);outline-offset:1px}
-
-  .ticker{display:flex;align-items:baseline;gap:12px;margin-left:2px}
-  .ticker .sym{color:var(--muted);font-size:12px;font-weight:600;letter-spacing:.4px}
-  .ticker .px{font-size:20px;font-weight:600}
-  .ticker .chg{font-size:12.5px;font-weight:500;padding:2px 7px;border-radius:5px}
+  .ticker{display:flex;align-items:baseline;gap:8px;white-space:nowrap}
+  .ticker .sym{color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.3px}
+  .ticker .px{font-size:16px;font-weight:600}
+  .ticker .chg{font-size:11px;font-weight:500;padding:2px 6px;border-radius:5px}
   .chg.up{color:var(--bull);background:rgba(38,166,154,.12)}
   .chg.down{color:var(--bear);background:rgba(239,83,80,.12)}
   @keyframes tick{0%{background:rgba(255,255,255,.08)}100%{background:transparent}}
   .flash{animation:tick .35s ease-out}
 
-  .spacer{flex:1}
-  .status{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:11.5px;font-weight:500}
+  .spacer{flex:1;min-width:8px}
+  .ctrls{display:flex;align-items:center;flex-wrap:nowrap;gap:7px;margin-left:auto}
+
+  /* selects compactos do header (período + corretora) */
+  .hsel{
+    background:var(--panel-2);color:var(--txt);border:1px solid var(--hair);
+    border-radius:8px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;font-weight:500;
+    padding:6px 7px;cursor:pointer;
+  }
+  .hsel:hover{border-color:var(--hair-2)}
+  #tfSel{color:var(--btc);font-weight:600}
+
+  .icon-btn{
+    display:flex;align-items:center;justify-content:center;
+    width:32px;height:30px;border-radius:8px;
+    background:var(--panel-2);color:var(--muted);border:1px solid var(--hair);cursor:pointer;transition:.12s;
+  }
+  .icon-btn:hover{color:var(--txt);border-color:var(--hair-2)}
+  .icon-btn svg{stroke:currentColor;fill:none}
+
+  .status{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:11px;font-weight:500}
   .status .led{width:8px;height:8px;border-radius:50%;background:var(--muted-2);transition:.3s}
   .status .led.live{background:var(--bull);box-shadow:0 0 8px var(--bull)}
   .status .led.err{background:var(--bear);box-shadow:0 0 8px var(--bear)}
-
-  .src-sel{
-    background:var(--panel-2);color:var(--muted);border:1px solid var(--hair);
-    border-radius:7px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;
-    padding:5px 8px;cursor:pointer;
-  }
 
   /* ---------- BODY ROW ---------- */
   .row{flex:1;display:flex;min-height:0}
@@ -90,10 +93,10 @@
   /* ---------- MENU DE INDICADORES (header, estilo TradingView) ---------- */
   .ind-menu-wrap{position:relative}
   .ind-btn{
-    display:flex;align-items:center;gap:6px;
+    display:flex;align-items:center;gap:5px;
     background:var(--panel-2);color:var(--txt);border:1px solid var(--hair);
-    border-radius:8px;font-family:"Space Grotesk",sans-serif;font-size:12.5px;font-weight:500;
-    padding:6px 11px;cursor:pointer;transition:.12s;
+    border-radius:8px;font-family:"Space Grotesk",sans-serif;font-size:11.5px;font-weight:500;
+    padding:6px 9px;cursor:pointer;transition:.12s;white-space:nowrap;
   }
   .ind-btn:hover{border-color:var(--hair-2);color:#fff}
   .ind-btn.active{border-color:var(--btc);color:var(--btc)}
@@ -161,36 +164,27 @@
   @media (prefers-reduced-motion: reduce){ .flash{animation:none} }
 
   /* ---------- RESPONSIVO (tablet / celular) ---------- */
-  @media (max-width:820px){
-    header{height:auto;flex:0 0 auto;flex-wrap:wrap;gap:10px;padding:8px 10px}
-    .brand{font-size:12.5px}
-    .ticker .px{font-size:17px}
-    .status span:last-child{display:none}      /* mantém só o LED no aperto */
-    .ind-panel{transform:scale(.92);transform-origin:top left}
+  @media (max-width:760px){
+    header{gap:8px}
+    .status #statusTxt{display:none}      /* mantém só o LED no aperto */
+    .ind-menu{min-width:min(300px,92vw);left:auto;right:0}
   }
   @media (max-width:560px){
-    header{gap:8px}
-    .brand small{display:none}
-    .tf{padding:5px 7px}
-    .ticker{margin-left:0}
-    .ind-btn{padding:6px 9px;font-size:12px}
-    .ind-menu{min-width:min(300px,92vw);left:auto;right:0}
+    .brand-full{display:none}             /* fica só "IB" */
+    .ind-btn .lbl{display:none}           /* botão de indicadores vira só ícone */
+    .ind-btn{padding:6px 8px}
+    .ctrls{gap:6px}
+    .ticker .px{font-size:15px}
+    .ticker .sym{display:none}            /* preço + % bastam no aperto */
+    /* menu vira uma folha fixa que cabe na largura (não vaza pela esquerda) */
+    .ind-menu{position:fixed;top:52px;left:8px;right:8px;min-width:0}
   }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="brand"><span class="dot"></span>IB TERMINAL <small>· btc</small></div>
-
-  <div class="tfs" id="tfs">
-    <button class="tf" data-tf="1m">1m</button>
-    <button class="tf" data-tf="5m">5m</button>
-    <button class="tf" data-tf="15m">15m</button>
-    <button class="tf active" data-tf="1h">1h</button>
-    <button class="tf" data-tf="4h">4h</button>
-    <button class="tf" data-tf="1d">1D</button>
-  </div>
+  <div class="brand"><span class="dot"></span>IB<span class="brand-full">&nbsp;TERMINAL</span></div>
 
   <div class="ticker">
     <span class="sym">BTC/USDT</span>
@@ -198,44 +192,59 @@
     <span class="chg mono" id="chg">—</span>
   </div>
 
-  <div class="ind-menu-wrap">
-    <button class="ind-btn" id="indBtn" title="Indicadores">
-      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 17c3 0 3-10 6-10s3 10 6 10 3-6 6-6"/></svg>
-      Indicadores
-    </button>
-    <div class="ind-menu" id="indMenu" hidden>
-      <div class="ind-menu-title">Indicadores</div>
-
-      <div class="ind-row">
-        <label class="sw"><input type="checkbox" id="emaOn" checked><span></span></label>
-        <span class="ind-name"><span class="dotc" style="background:var(--btc)"></span>EMA</span>
-        <span class="ind-params">período <input type="number" id="emaLen" value="21" min="2" max="400"></span>
-      </div>
-
-      <div class="ind-row">
-        <label class="sw"><input type="checkbox" id="obOn"><span></span></label>
-        <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,var(--bull),var(--bear))"></span>Order Blocks</span>
-        <span class="ind-params">
-          len <input type="number" id="obLen" value="5" min="1" max="20" title="Comprimento do pivô">
-          qtd <input type="number" id="obCount" value="5" min="1" max="20" title="Quantos OB por lado">
-          <select id="obMiti" title="Mitigação">
-            <option value="Close">Close</option>
-            <option value="Wick">Wick</option>
-            <option value="Avg">Avg</option>
-          </select>
-        </span>
-      </div>
-    </div>
-  </div>
-
   <div class="spacer"></div>
 
-  <select class="src-sel" id="src" title="Fonte de dados">
-    <option value="binance">Binance</option>
-    <option value="bybit">Bybit</option>
-  </select>
+  <div class="ctrls">
+    <select class="hsel" id="tfSel" title="Período">
+      <option value="1m">1m</option>
+      <option value="5m">5m</option>
+      <option value="15m">15m</option>
+      <option value="1h" selected>1h</option>
+      <option value="4h">4h</option>
+      <option value="1d">1D</option>
+    </select>
 
-  <div class="status"><span class="led" id="led"></span><span id="statusTxt">conectando…</span></div>
+    <div class="ind-menu-wrap">
+      <button class="ind-btn" id="indBtn" title="Indicadores">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 17c3 0 3-10 6-10s3 10 6 10 3-6 6-6"/></svg>
+        <span class="lbl">Indicadores</span>
+      </button>
+      <div class="ind-menu" id="indMenu" hidden>
+        <div class="ind-menu-title">Indicadores</div>
+
+        <div class="ind-row">
+          <label class="sw"><input type="checkbox" id="emaOn" checked><span></span></label>
+          <span class="ind-name"><span class="dotc" style="background:var(--btc)"></span>EMA</span>
+          <span class="ind-params">período <input type="number" id="emaLen" value="21" min="2" max="400"></span>
+        </div>
+
+        <div class="ind-row">
+          <label class="sw"><input type="checkbox" id="obOn"><span></span></label>
+          <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,var(--bull),var(--bear))"></span>Order Blocks</span>
+          <span class="ind-params">
+            len <input type="number" id="obLen" value="5" min="1" max="20" title="Comprimento do pivô">
+            qtd <input type="number" id="obCount" value="5" min="1" max="20" title="Quantos OB por lado">
+            <select id="obMiti" title="Mitigação">
+              <option value="Close">Close</option>
+              <option value="Wick">Wick</option>
+              <option value="Avg">Avg</option>
+            </select>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <select class="hsel" id="src" title="Fonte de dados">
+      <option value="binance">Binance</option>
+      <option value="bybit">Bybit</option>
+    </select>
+
+    <button class="icon-btn" id="fsBtn" title="Tela cheia" aria-label="Tela cheia">
+      <svg viewBox="0 0 24 24" width="16" height="16" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+    </button>
+
+    <span class="status"><span class="led" id="led"></span><span id="statusTxt">conectando…</span></span>
+  </div>
 </header>
 
 <div class="row">
@@ -887,11 +896,23 @@ document.addEventListener('click', e=>{
   if(!indMenu.hidden && !indMenu.contains(e.target) && !indBtn.contains(e.target)) toggleIndMenu(false);
 });
 
-$('#tfs').addEventListener('click', e=>{
-  const b=e.target.closest('.tf'); if(!b) return;
-  document.querySelectorAll('.tf').forEach(x=>x.classList.remove('active'));
-  b.classList.add('active'); S.tf=b.dataset.tf; store.save(); loadData();
-});
+$('#tfSel').addEventListener('change', e=>{ S.tf=e.target.value; store.save(); loadData(); });
+
+// ---- tela cheia (entra/sai; o botão vira "voltar" quando em tela cheia) ----
+const fsBtn=$('#fsBtn');
+const ICON_EXPAND='<svg viewBox="0 0 24 24" width="16" height="16" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
+const ICON_COMPRESS='<svg viewBox="0 0 24 24" width="16" height="16" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3M16 3v3a2 2 0 0 0 2 2h3M8 21v-3a2 2 0 0 0-2-2H3M16 21v-3a2 2 0 0 1 2-2h3"/></svg>';
+function inFS(){ return document.fullscreenElement || document.webkitFullscreenElement; }
+function toggleFS(){
+  try{
+    if(inFS()){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
+    else{ const el=document.documentElement; (el.requestFullscreen||el.webkitRequestFullscreen).call(el); }
+  }catch(_){}
+}
+function syncFSIcon(){ fsBtn.innerHTML = inFS()?ICON_COMPRESS:ICON_EXPAND; fsBtn.title = inFS()?'Sair da tela cheia':'Tela cheia'; }
+fsBtn.addEventListener('click', toggleFS);
+document.addEventListener('fullscreenchange', syncFSIcon);
+document.addEventListener('webkitfullscreenchange', syncFSIcon);
 
 $('#src').addEventListener('change', e=>{ S.source=e.target.value; store.save(); loadData(); });
 $('#emaOn').addEventListener('change', renderEMA);
@@ -932,7 +953,8 @@ new ResizeObserver(resizeOverlay).observe(stage);
    ========================================================================= */
 (function init(){
   const saved=store.load();
-  if(saved.tf){ S.tf=saved.tf; document.querySelectorAll('.tf').forEach(x=>x.classList.toggle('active',x.dataset.tf===S.tf)); }
+  if(saved.tf){ S.tf=saved.tf; }
+  $('#tfSel').value = S.tf;
   if(saved.source){ S.source=saved.source; $('#src').value=S.source; }
   if(Array.isArray(saved.drawings)) S.drawings=saved.drawings;
   if(saved.ob){ Object.assign(OB.cfg, saved.ob);
