@@ -417,6 +417,28 @@ const SOURCES = {
       };
       return sock;
     }
+  },
+  /* Gate.io — usada para AÇÕES TOKENIZADAS (xStocks: MSTRX_USDT, CRCLX_USDT...) */
+  gate:{
+    tfMap:{'1m':'1m','5m':'5m','15m':'15m','1h':'1h','4h':'4h','1d':'1d','1w':'7d','1M':'30d'},
+    async rest(tf, symbol){
+      const url = `https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=${symbol}&interval=${this.tfMap[tf]}&limit=1000`;
+      const r = await fetch(url); if(!r.ok) throw new Error('http '+r.status);
+      const d = await r.json();  // [t, volQuote, close, high, low, open, volBase, fechado]
+      return d.map(k=>({time:+k[0], open:+k[5], high:+k[3], low:+k[4], close:+k[2], volume:+k[6]}));
+    },
+    ws(tf, onCandle, symbol){
+      const sock = new WebSocket('wss://api.gateio.ws/ws/v4/');
+      sock.onopen = ()=> sock.send(JSON.stringify({time:Math.floor(Date.now()/1000), channel:'spot.candlesticks', event:'subscribe', payload:[this.tfMap[tf], symbol]}));
+      sock.onmessage = e=>{
+        const m = JSON.parse(e.data);
+        if(m.event==='update' && m.result && m.result.t){
+          const r = m.result;
+          onCandle({time:+r.t, open:+r.o, high:+r.h, low:+r.l, close:+r.c, volume:+(r.a||r.v||0)}, r.w);
+        }
+      };
+      return sock;
+    }
   }
 };
 
@@ -1115,14 +1137,28 @@ new ResizeObserver(resizeOverlay).observe(stage);
    Cada painel é um mini-chart independente (candles+volume) com seu próprio
    ativo, período e WebSocket. A tela única (modo "1") mantém o arsenal completo.
    ========================================================================= */
+// [rótulo, símbolo, grupo, provedor?]  — provedor ausente = usa a fonte cripto atual (Binance/Bybit)
 const ASSETS = [
-  ['BTC','BTCUSDT'],['ETH','ETHUSDT'],['SOL','SOLUSDT'],['BNB','BNBUSDT'],
-  ['XRP','XRPUSDT'],['DOGE','DOGEUSDT'],['ADA','ADAUSDT'],['AVAX','AVAXUSDT'],
-  ['LINK','LINKUSDT'],['TRX','TRXUSDT'],['DOT','DOTUSDT'],['LTC','LTCUSDT'],
-  ['BCH','BCHUSDT'],['NEAR','NEARUSDT'],['SUI','SUIUSDT'],['ATOM','ATOMUSDT'],
-  ['UNI','UNIUSDT'],['APT','APTUSDT']
+  ['BTC','BTCUSDT','Cripto'],['ETH','ETHUSDT','Cripto'],['SOL','SOLUSDT','Cripto'],['BNB','BNBUSDT','Cripto'],
+  ['XRP','XRPUSDT','Cripto'],['DOGE','DOGEUSDT','Cripto'],['ADA','ADAUSDT','Cripto'],['AVAX','AVAXUSDT','Cripto'],
+  ['LINK','LINKUSDT','Cripto'],['TRX','TRXUSDT','Cripto'],['DOT','DOTUSDT','Cripto'],['LTC','LTCUSDT','Cripto'],
+  ['BCH','BCHUSDT','Cripto'],['NEAR','NEARUSDT','Cripto'],['SUI','SUIUSDT','Cripto'],['ATOM','ATOMUSDT','Cripto'],
+  ['UNI','UNIUSDT','Cripto'],['APT','APTUSDT','Cripto'],
+  // ações tokenizadas (xStocks) via Gate.io — keyless, mesmo pipeline de candles/WS
+  ['MSTRx','MSTRX_USDT','Ações tokenizadas','gate'],['CRCLx','CRCLX_USDT','Ações tokenizadas','gate'],
+  ['TSLAx','TSLAX_USDT','Ações tokenizadas','gate'],['NVDAx','NVDAX_USDT','Ações tokenizadas','gate'],
+  ['AAPLx','AAPLX_USDT','Ações tokenizadas','gate'],['COINx','COINX_USDT','Ações tokenizadas','gate']
 ];
 const PANE_TFS = ['15m','1h','4h','1d','1w'];
+// provedor de um símbolo: xStocks -> gate; cripto -> a fonte selecionada
+function providerFor(sym){ const a=ASSETS.find(x=>x[1]===sym); return (a&&a[3]) || S.source; }
+function assetSelectHTML(cur){
+  const groups={};
+  for(const [l,s,g] of ASSETS){ (groups[g]=groups[g]||[]).push([l,s]); }
+  return Object.entries(groups).map(([g,items])=>
+    '<optgroup label="'+g+'">'+items.map(([l,s])=>`<option value="${s}"${s===cur?' selected':''}>${l}</option>`).join('')+'</optgroup>'
+  ).join('');
+}
 
 function pauseSingle(){ if(S.ws){ try{S.ws.close();}catch(e){} S.ws=null; } }
 function resumeSingle(){ loadData(); }
@@ -1131,7 +1167,7 @@ function makePane(symbol, tf){
   const el = document.createElement('div'); el.className='pane';
   el.innerHTML =
     '<div class="pane-head">'+
-      '<select class="pane-asset">'+ASSETS.map(([l,s])=>`<option value="${s}"${s===symbol?' selected':''}>${l}</option>`).join('')+'</select>'+
+      '<select class="pane-asset">'+assetSelectHTML(symbol)+'</select>'+
       '<span class="pane-px mono">—</span><span class="pane-chg mono"></span>'+
       '<select class="pane-tf">'+PANE_TFS.map(t=>`<option value="${t}"${t===tf?' selected':''}>${t.toUpperCase()}</option>`).join('')+'</select>'+
     '</div><div class="pane-chart"></div>';
@@ -1162,7 +1198,7 @@ function makePane(symbol, tf){
     if(ws){ try{ws.close();}catch(e){} ws=null; }
     pxEl.textContent='…';
     try{
-      arr = await SOURCES[S.source].rest(state.tf, state.symbol);
+      arr = await SOURCES[providerFor(state.symbol)].rest(state.tf, state.symbol);
       cs.setData(arr); vs.setData(arr.map(c=>({time:c.time, value:c.volume, color:volColor(c)})));
       chart.timeScale().fitContent();
       setPx(arr[arr.length-1], arr[arr.length-2]);
@@ -1171,7 +1207,7 @@ function makePane(symbol, tf){
   }
   function openWS(){
     try{
-      const sock = SOURCES[S.source].ws(state.tf, (c)=>{
+      const sock = SOURCES[providerFor(state.symbol)].ws(state.tf, (c)=>{
         const last=arr[arr.length-1];
         if(last && c.time===last.time) arr[arr.length-1]=c;
         else if(!last || c.time>last.time) arr.push(c); else return;
