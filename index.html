@@ -133,6 +133,12 @@
     width:42px;background:var(--panel-2);border:1px solid var(--hair);color:var(--txt);
     border-radius:4px;font-family:inherit;font-size:11px;padding:2px 4px;
   }
+  .ind-chip select{
+    background:var(--panel-2);border:1px solid var(--hair);color:var(--txt);
+    border-radius:4px;font-family:inherit;font-size:11px;padding:2px 3px;cursor:pointer;
+  }
+  .ind-chip .ob-cfg{display:flex;gap:5px;align-items:center}
+  .ind-chip .ob-cfg span{opacity:.6;font-size:10.5px}
   .ind-chip .swatch{width:9px;height:9px;border-radius:2px}
 
   /* error banner */
@@ -219,6 +225,18 @@
         <label><input type="checkbox" id="emaOn" checked><span class="swatch" style="background:var(--btc)"></span>EMA</label>
         <input type="number" id="emaLen" value="21" min="2" max="400" title="Período">
       </div>
+      <div class="ind-chip">
+        <label><input type="checkbox" id="obOn"><span class="swatch" style="background:linear-gradient(90deg,var(--bull),var(--bear))"></span>Order Blocks</label>
+        <span class="ob-cfg">
+          <span>len</span><input type="number" id="obLen" value="5" min="1" max="20" title="Comprimento do pivô (pivot length)">
+          <span>qtd</span><input type="number" id="obCount" value="5" min="1" max="20" title="Quantos OB mostrar por lado">
+          <select id="obMiti" title="Método de mitigação (quando o OB é considerado rompido)">
+            <option value="Close">Close</option>
+            <option value="Wick">Wick</option>
+            <option value="Avg">Avg</option>
+          </select>
+        </span>
+      </div>
     </div>
 
     <div class="banner" id="banner">
@@ -258,7 +276,7 @@ const S = {
 
 /* ---------- persistência (localStorage com proteção) ---------- */
 const store = {
-  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, drawings:S.drawings})); }catch(e){} },
+  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined)})); }catch(e){} },
   load(){ try{ return JSON.parse(localStorage.getItem('ib_term')||'{}'); }catch(e){ return {}; } }
 };
 
@@ -381,6 +399,7 @@ async function loadData(){
     candleSeries.setData(candles);
     volSeries.setData(candles.map(c=>({time:c.time, value:c.volume, color:c.close>=c.open?'#26a69a55':'#ef535055'})));
     renderEMA();
+    OB.compute();
     chart.timeScale().fitContent();
     updateTicker(candles[candles.length-1], candles[candles.length-2]);
     openSocket();
@@ -419,6 +438,9 @@ function onLiveCandle(c, closed){
     emaSeries.update({time:c.time, value:c.close*k + S.emaPrev*(1-k)});
     if(closed) S.emaPrev = c.close*k + S.emaPrev*(1-k);
   } else if(closed){ renderEMA(); }
+
+  // Order Blocks só recalculam quando o candle fecha (mitigação = barra confirmada)
+  if(closed) OB.compute();
 
   updateTicker(c, arr[arr.length-2]);
   setStatus('live','ao vivo');
@@ -507,8 +529,182 @@ function drawChannel(d, preview){
   if(!preview){ dot(x1,y1); dot(x2,y2); if(p3){const y3=yOf(p3.price); if(y3!=null)dot(xOf(p3.time),y3);} }
 }
 
+/* =========================================================================
+   ORDER BLOCKS VOLUMÉTRICOS — porte do Pine "FAIXA DE ORDERBLOCK v2"
+   Tipo (c) do briefing: calcula pivôs de volume sobre S.candles e desenha
+   zonas (caixas) no canvas de overlay, com direção/força/status ao vivo.
+
+   Matemática espelha o Pine:
+     • dir  = high[len]>highest(len) ? -1 : low[len]<lowest(len) ? 1 : dir
+     • gatilho = pivô de volume (centro > len barras de cada lado)
+     • zona (Length) = ATR a partir do corpo; (Full) = candle inteiro
+     • força = 0.6·volRelativo + 0.4·frescor ,  frescor = 1/(1+testes·0.5)
+     • status relativo ao close atual, com folga 'farmult'
+   ========================================================================= */
+const OB = {
+  cfg:{ on:false, len:5, count:5, miti:'Close', mode:'Length', farmult:1.0 },
+  bull:[], bear:[],
+
+  // ATR estilo Pine (ta.rma do True Range, semente = SMA dos primeiros len)
+  atrSeries(c, len){
+    const tr = c.map((x,i)=> i===0 ? x.high-x.low
+        : Math.max(x.high-x.low, Math.abs(x.high-c[i-1].close), Math.abs(x.low-c[i-1].close)));
+    const out = new Array(c.length).fill(null);
+    let prev=null;
+    for(let i=0;i<tr.length;i++){
+      if(i<len-1) continue;
+      if(i===len-1){ let s=0; for(let k=0;k<len;k++) s+=tr[k]; prev=s/len; }
+      else prev = (prev*(len-1)+tr[i])/len;
+      out[i]=prev;
+    }
+    return out;
+  },
+
+  // pivô de volume: centro estritamente maior que os len de cada lado
+  isVolPivot(c, p, len){
+    const v=c[p].volume;
+    for(let k=1;k<=len;k++){
+      if(c[p-k].volume >= v) return false;
+      if(c[p+k].volume >= v) return false;
+    }
+    return true;
+  },
+
+  compute(){
+    const c=S.candles, {len,mode,miti}=this.cfg;
+    this.bull=[]; this.bear=[];
+    if(!this.cfg.on || c.length < 2*len+1) return;
+    const atr=this.atrSeries(c,len);
+    let dir=0;
+    const bull=[], bear=[];
+    for(let i=0;i<c.length;i++){
+      if(i>=len){
+        let up=-Infinity, dn=Infinity;
+        for(let k=i-len+1;k<=i;k++){ if(c[k].high>up)up=c[k].high; if(c[k].low<dn)dn=c[k].low; }
+        const hb=c[i-len].high, lb=c[i-len].low;
+        dir = hb>up ? -1 : lb<dn ? 1 : dir;
+      }
+      const p=i-len;
+      if(p-len>=0 && this.isVolPivot(c,p,len)){
+        const a=atr[p], pc=c[p];
+        if(a!=null && dir===1){
+          const btm=pc.low, top = mode==='Length' ? Math.min(pc.low+a, pc.high) : pc.high;
+          bull.unshift({top,btm,avg:(top+btm)/2, loc:pc.time, vol:pc.volume, bias:1, startIdx:i});
+        } else if(a!=null && dir===-1){
+          const top=pc.high, btm = mode==='Length' ? Math.max(pc.high-a, pc.low) : pc.low;
+          bear.unshift({top,btm,avg:(top+btm)/2, loc:pc.time, vol:pc.volume, bias:-1, startIdx:i});
+        }
+      }
+      // mitigação contra a barra i (só a partir da barra seguinte à criação)
+      const bar=c[i];
+      for(let k=bull.length-1;k>=0;k--){
+        const o=bull[k]; if(i<=o.startIdx) continue;
+        const broke = miti==='Close' ? Math.min(bar.close,bar.open)<o.btm : miti==='Wick' ? bar.low<o.btm : bar.low<o.avg;
+        if(broke) bull.splice(k,1);
+      }
+      for(let k=bear.length-1;k>=0;k--){
+        const o=bear[k]; if(i<=o.startIdx) continue;
+        const broke = miti==='Close' ? Math.max(bar.close,bar.open)>o.top : miti==='Wick' ? bar.high>o.top : bar.high>o.avg;
+        if(broke) bear.splice(k,1);
+      }
+    }
+    this.finalize(bull); this.finalize(bear);
+    this.hideOverlap(bull); this.hideOverlap(bear);
+    this.bull=bull; this.bear=bear;
+  },
+
+  // testes (visitas) + força, por lado
+  finalize(list){
+    const c=S.candles;
+    let maxV=0; for(const o of list) if(o.vol>maxV) maxV=o.vol;
+    for(const o of list){
+      let tests=0, wasInside=false;
+      for(let i=o.startIdx;i<c.length;i++){
+        const inZone = c[i].high>o.btm && c[i].low<o.top;
+        if(inZone && !wasInside){ tests++; wasInside=true; }
+        if(!inZone) wasInside=false;
+      }
+      o.tests=tests;
+      const volScore = maxV>0 ? o.vol/maxV : 0;
+      const freshScore = 1/(1+tests*0.5);
+      o.strength = (volScore*0.6 + freshScore*0.4)*100;
+    }
+  },
+
+  // esconde sobreposição, preservando o mais recente (index 0)
+  hideOverlap(list){
+    if(list.length<2) return;
+    const cur=list[0];
+    for(let i=list.length-1;i>=1;i--){
+      const s=list[i];
+      if( (s.btm>cur.btm && s.btm<cur.top) ||
+          (s.top<cur.top && s.btm>cur.btm) ||
+          (s.top>cur.top && s.btm<cur.btm) ||
+          (s.top<cur.top && s.top>cur.btm) ) list.splice(i,1);
+    }
+  },
+
+  status(o){
+    const c=S.candles; const close = c.length ? c[c.length-1].close : 0;
+    const h=o.top-o.btm, fm=this.cfg.farmult;
+    if(o.bias===1){
+      if(close>=o.top){ const f=h>0?(close-o.top)/h:0; return f>fm?['🟢 Intacta','#26a69a']:['🟡 Próxima','#f7d33f']; }
+      if(close>=o.btm) return ['🟠 Em teste','#f7931a'];
+      return ['🔴 Rompida','#ef5350'];
+    } else {
+      if(close<=o.btm){ const f=h>0?(o.btm-close)/h:0; return f>fm?['🟢 Intacta','#26a69a']:['🟡 Próxima','#f7d33f']; }
+      if(close<=o.top) return ['🟠 Em teste','#f7931a'];
+      return ['🔴 Rompida','#ef5350'];
+    }
+  },
+
+  stars(n){ let s=''; for(let i=1;i<=5;i++) s+= i<=n?'★':'☆'; return s; },
+
+  draw(){
+    if(!this.cfg.on) return;
+    const rightEdge=cv.clientWidth;
+    const shown=[ ...this.bull.slice(0,this.cfg.count), ...this.bear.slice(0,this.cfg.count) ];
+    for(const o of shown){
+      let x1=xOf(o.loc); if(x1==null||x1<0) x1=0;
+      const yT=yOf(o.top), yB=yOf(o.btm), yA=yOf(o.avg);
+      if(yT==null||yB==null) continue;
+      const bull=o.bias===1;
+      ctx.save();
+      ctx.fillStyle = bull?'rgba(38,166,154,.10)':'rgba(239,83,80,.10)';
+      ctx.fillRect(x1,yT,rightEdge-x1,yB-yT);
+      ctx.strokeStyle = bull?'rgba(38,166,154,.55)':'rgba(239,83,80,.55)';
+      ctx.lineWidth=1; ctx.strokeRect(x1+.5,yT+.5,rightEdge-x1-1,yB-yT-1);
+      ctx.restore();
+      const [stxt,scol]=this.status(o);
+      if(yA!=null) line(x1, yA, rightEdge, yA, scol, [5,4]);
+      const frc=Math.round(o.strength);
+      const l1=(bull?'▲ COMPRA':'▼ VENDA')+'  '+this.stars(Math.round(o.strength/20))+' '+frc+'%';
+      this.label(rightEdge, yA==null?(yT+yB)/2:yA, [l1, stxt], scol);
+    }
+  },
+
+  label(rightX, y, lines, col){
+    ctx.save();
+    ctx.font="10px 'IBM Plex Mono', monospace";
+    let wmax=0; for(const t of lines){ const m=ctx.measureText(t).width; if(m>wmax)wmax=m; }
+    const padX=6, padY=4, lh=13, bw=wmax+padX*2, bh=lines.length*lh+padY*2;
+    let x=rightX-bw-6, yy=y-bh/2;
+    if(yy<2) yy=2; if(yy+bh>cv.clientHeight-2) yy=cv.clientHeight-2-bh;
+    ctx.beginPath();
+    const r=5;
+    ctx.moveTo(x+r,yy); ctx.arcTo(x+bw,yy,x+bw,yy+bh,r); ctx.arcTo(x+bw,yy+bh,x,yy+bh,r);
+    ctx.arcTo(x,yy+bh,x,yy,r); ctx.arcTo(x,yy,x+bw,yy,r); ctx.closePath();
+    ctx.fillStyle='rgba(13,18,27,.88)'; ctx.fill();
+    ctx.strokeStyle=col; ctx.lineWidth=1; ctx.stroke();
+    ctx.fillStyle=col; ctx.textBaseline='middle';
+    lines.forEach((t,i)=> ctx.fillText(t, x+padX, yy+padY+lh*i+lh/2));
+    ctx.restore();
+  }
+};
+
 function redraw(){
   ctx.clearRect(0,0,cv.width,cv.height);
+  OB.draw();
   for(const d of S.drawings){
     if(d.type==='trend') drawTrend(d);
     else if(d.type==='hline') drawHLine(d);
@@ -583,6 +779,19 @@ $('#tfs').addEventListener('click', e=>{
 $('#src').addEventListener('change', e=>{ S.source=e.target.value; store.save(); loadData(); });
 $('#emaOn').addEventListener('change', renderEMA);
 $('#emaLen').addEventListener('change', renderEMA);
+
+// ---- Order Blocks (toggle e parâmetros ao vivo, estilo TradingView) ----
+function syncOB(){
+  OB.cfg.on    = $('#obOn').checked;
+  OB.cfg.len   = Math.max(1, Math.min(20, +$('#obLen').value||5));
+  OB.cfg.count = Math.max(1, Math.min(20, +$('#obCount').value||5));
+  OB.cfg.miti  = $('#obMiti').value;
+  OB.compute(); store.save();
+}
+$('#obOn').addEventListener('change', syncOB);
+$('#obLen').addEventListener('change', syncOB);
+$('#obCount').addEventListener('change', syncOB);
+$('#obMiti').addEventListener('change', syncOB);
 $('#bannerBtn').addEventListener('click', ()=>{
   S.source = S.source==='binance'?'bybit':'binance';
   $('#src').value=S.source; store.save(); loadData();
@@ -607,6 +816,9 @@ new ResizeObserver(resizeOverlay).observe(stage);
   if(saved.tf){ S.tf=saved.tf; document.querySelectorAll('.tf').forEach(x=>x.classList.toggle('active',x.dataset.tf===S.tf)); }
   if(saved.source){ S.source=saved.source; $('#src').value=S.source; }
   if(Array.isArray(saved.drawings)) S.drawings=saved.drawings;
+  if(saved.ob){ Object.assign(OB.cfg, saved.ob);
+    $('#obOn').checked=OB.cfg.on; $('#obLen').value=OB.cfg.len;
+    $('#obCount').value=OB.cfg.count; $('#obMiti').value=OB.cfg.miti; }
   resizeOverlay();
   loadData();
 })();
