@@ -173,6 +173,47 @@
     padding:8px 16px;font-family:inherit;font-weight:600;cursor:pointer;font-size:13px;
   }
 
+  /* ---------- SELETOR DE LAYOUT (1/2/4/6 painéis) ---------- */
+  .layout-sw{display:flex;gap:2px;background:var(--panel-2);border:1px solid var(--hair);border-radius:8px;padding:2px}
+  .layout-sw button{
+    display:flex;align-items:center;justify-content:center;width:26px;height:24px;
+    background:transparent;border:none;border-radius:6px;color:var(--muted);cursor:pointer;transition:.12s;
+  }
+  .layout-sw button:hover{color:var(--txt)}
+  .layout-sw button.active{background:var(--btc);color:#1a1205}
+  .layout-sw svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7}
+
+  /* ---------- GRID DE ATIVOS ---------- */
+  #grid{flex:1;display:none;min-height:0;gap:1px;background:var(--hair);grid-auto-rows:1fr}
+  body.grid-on .row{display:none}
+  body.grid-on #grid{display:grid}
+  body.grid-on #tfSel, body.grid-on .ind-menu-wrap, body.grid-on #src, body.grid-on .ticker{display:none}
+  #grid.g2{grid-template-columns:repeat(2,1fr)}
+  #grid.g4{grid-template-columns:repeat(2,1fr)}
+  #grid.g6{grid-template-columns:repeat(3,1fr)}
+  .pane{position:relative;display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--ink);overflow:hidden}
+  .pane-head{
+    display:flex;align-items:center;gap:8px;padding:5px 8px;border-bottom:1px solid var(--hair);
+    background:var(--panel-2);
+  }
+  .pane-asset{
+    background:var(--panel);color:var(--txt);border:1px solid var(--hair);border-radius:6px;
+    font-family:"Space Grotesk",sans-serif;font-size:12px;font-weight:600;padding:3px 6px;cursor:pointer;
+  }
+  .pane-px{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600}
+  .pane-chg{font-family:"IBM Plex Mono",monospace;font-size:10.5px;padding:1px 5px;border-radius:4px}
+  .pane-tf{
+    margin-left:auto;background:var(--panel);color:var(--btc);border:1px solid var(--hair);border-radius:6px;
+    font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;padding:3px 5px;cursor:pointer;
+  }
+  .pane-chart{flex:1;min-height:0}
+  @media (max-width:700px){
+    #grid.g4,#grid.g6{grid-template-columns:repeat(2,1fr)}
+    .pane-head{gap:5px;padding:4px 6px}
+    .pane-chg{display:none}   /* espaço p/ ativo + preço + período nos painéis estreitos */
+    .pane-px{font-size:11px}
+  }
+
   @media (prefers-reduced-motion: reduce){ .flash{animation:none} }
 
   /* ---------- RESPONSIVO (tablet / celular) ---------- */
@@ -271,6 +312,13 @@
       <option value="bybit">Bybit</option>
     </select>
 
+    <div class="layout-sw" id="layoutSw" title="Layout de painéis">
+      <button data-n="1" class="active" title="1 painel"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1"/></svg></button>
+      <button data-n="2" title="2 painéis"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="8" height="16"/><rect x="13" y="4" width="8" height="16"/></svg></button>
+      <button data-n="4" title="4 painéis"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8"/><rect x="13" y="3" width="8" height="8"/><rect x="3" y="13" width="8" height="8"/><rect x="13" y="13" width="8" height="8"/></svg></button>
+      <button data-n="6" title="6 painéis"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="6" height="7"/><rect x="9" y="4" width="6" height="7"/><rect x="16" y="4" width="6" height="7"/><rect x="2" y="13" width="6" height="7"/><rect x="9" y="13" width="6" height="7"/><rect x="16" y="13" width="6" height="7"/></svg></button>
+    </div>
+
     <button class="icon-btn" id="fsBtn" title="Tela cheia" aria-label="Tela cheia">
       <svg viewBox="0 0 24 24" width="16" height="16" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
     </button>
@@ -293,6 +341,9 @@
 
   </div>
 </div>
+
+<!-- GRID de múltiplos ativos (preenchido por JS nos layouts 2/4/6) -->
+<div id="grid"></div>
 
 <script>
 /* =========================================================================
@@ -319,7 +370,7 @@ const S = {
 
 /* ---------- persistência (localStorage com proteção) ---------- */
 const store = {
-  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined)})); }catch(e){} },
+  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined)})); }catch(e){} },
   load(){ try{ return JSON.parse(localStorage.getItem('ib_term')||'{}'); }catch(e){ return {}; } }
 };
 
@@ -330,14 +381,14 @@ const store = {
 const SOURCES = {
   binance:{
     tfMap:{'1m':'1m','5m':'5m','15m':'15m','1h':'1h','4h':'4h','1d':'1d','1w':'1w','1M':'1M'},
-    async rest(tf){
-      const url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${this.tfMap[tf]}&limit=1000`;
+    async rest(tf, symbol='BTCUSDT'){
+      const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${this.tfMap[tf]}&limit=1000`;
       const r = await fetch(url); if(!r.ok) throw new Error('http '+r.status);
       const d = await r.json();
       return d.map(k=>({time:k[0]/1000, open:+k[1], high:+k[2], low:+k[3], close:+k[4], volume:+k[5]}));
     },
-    ws(tf, onCandle){
-      const sock = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${this.tfMap[tf]}`);
+    ws(tf, onCandle, symbol='BTCUSDT'){
+      const sock = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${this.tfMap[tf]}`);
       sock.onmessage = e=>{
         const k = JSON.parse(e.data).k;
         onCandle({time:k.t/1000, open:+k.o, high:+k.h, low:+k.l, close:+k.c, volume:+k.v}, k.x);
@@ -347,16 +398,16 @@ const SOURCES = {
   },
   bybit:{
     tfMap:{'1m':'1','5m':'5','15m':'15','1h':'60','4h':'240','1d':'D','1w':'W','1M':'M'},
-    async rest(tf){
-      const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=BTCUSDT&interval=${this.tfMap[tf]}&limit=1000`;
+    async rest(tf, symbol='BTCUSDT'){
+      const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=${this.tfMap[tf]}&limit=1000`;
       const r = await fetch(url); if(!r.ok) throw new Error('http '+r.status);
       const j = await r.json();
       const list = (j.result&&j.result.list)||[];
       return list.map(k=>({time:+k[0]/1000, open:+k[1], high:+k[2], low:+k[3], close:+k[4], volume:+k[5]})).reverse();
     },
-    ws(tf, onCandle){
+    ws(tf, onCandle, symbol='BTCUSDT'){
       const sock = new WebSocket('wss://stream.bybit.com/v5/public/spot');
-      sock.onopen = ()=> sock.send(JSON.stringify({op:'subscribe', args:[`kline.${this.tfMap[tf]}.BTCUSDT`]}));
+      sock.onopen = ()=> sock.send(JSON.stringify({op:'subscribe', args:[`kline.${this.tfMap[tf]}.${symbol}`]}));
       sock.onmessage = e=>{
         const m = JSON.parse(e.data);
         if(m.topic && m.data && m.data[0]){
@@ -1060,6 +1111,113 @@ document.addEventListener('keydown', e=>{
 new ResizeObserver(resizeOverlay).observe(stage);
 
 /* =========================================================================
+   MÚLTIPLOS ATIVOS — grid ajustável (1/2/4/6 painéis)
+   Cada painel é um mini-chart independente (candles+volume) com seu próprio
+   ativo, período e WebSocket. A tela única (modo "1") mantém o arsenal completo.
+   ========================================================================= */
+const ASSETS = [
+  ['BTC','BTCUSDT'],['ETH','ETHUSDT'],['SOL','SOLUSDT'],['BNB','BNBUSDT'],
+  ['XRP','XRPUSDT'],['DOGE','DOGEUSDT'],['ADA','ADAUSDT'],['AVAX','AVAXUSDT'],
+  ['LINK','LINKUSDT'],['TRX','TRXUSDT'],['DOT','DOTUSDT'],['LTC','LTCUSDT'],
+  ['BCH','BCHUSDT'],['NEAR','NEARUSDT'],['SUI','SUIUSDT'],['ATOM','ATOMUSDT'],
+  ['UNI','UNIUSDT'],['APT','APTUSDT']
+];
+const PANE_TFS = ['15m','1h','4h','1d','1w'];
+
+function pauseSingle(){ if(S.ws){ try{S.ws.close();}catch(e){} S.ws=null; } }
+function resumeSingle(){ loadData(); }
+
+function makePane(symbol, tf){
+  const el = document.createElement('div'); el.className='pane';
+  el.innerHTML =
+    '<div class="pane-head">'+
+      '<select class="pane-asset">'+ASSETS.map(([l,s])=>`<option value="${s}"${s===symbol?' selected':''}>${l}</option>`).join('')+'</select>'+
+      '<span class="pane-px mono">—</span><span class="pane-chg mono"></span>'+
+      '<select class="pane-tf">'+PANE_TFS.map(t=>`<option value="${t}"${t===tf?' selected':''}>${t.toUpperCase()}</option>`).join('')+'</select>'+
+    '</div><div class="pane-chart"></div>';
+
+  const chart = LightweightCharts.createChart(el.querySelector('.pane-chart'),{
+    layout:{ background:{color:'transparent'}, textColor:'#7f8a9e', fontFamily:"'IBM Plex Mono', monospace", fontSize:10 },
+    grid:{ vertLines:{color:'rgba(29,37,52,.4)'}, horzLines:{color:'rgba(29,37,52,.4)'} },
+    crosshair:{ mode:LightweightCharts.CrosshairMode.Normal },
+    rightPriceScale:{ borderColor:'#1d2534', scaleMargins:{top:.1, bottom:.2} },
+    timeScale:{ borderColor:'#1d2534', timeVisible:true, secondsVisible:false },
+    autoSize:true,
+  });
+  const cs = chart.addCandlestickSeries({ upColor:'#26a69a', downColor:'#ef5350', borderVisible:false, wickUpColor:'#26a69a', wickDownColor:'#ef5350' });
+  const vs = chart.addHistogramSeries({ priceScaleId:'vol', priceFormat:{type:'volume'}, color:'#26a69a55' });
+  chart.priceScale('vol').applyOptions({ scaleMargins:{top:.82, bottom:0} });
+
+  const pxEl=el.querySelector('.pane-px'), chgEl=el.querySelector('.pane-chg');
+  const state={symbol, tf}; let ws=null, arr=[];
+
+  function fmt(v){ return v.toLocaleString('en-US',{maximumFractionDigits: v<1?6:2}); }
+  function setPx(cur, prev){
+    if(!cur) return; pxEl.textContent=fmt(cur.close);
+    if(prev){ const d=cur.close-prev.close, pct=d/prev.close*100;
+      chgEl.textContent=(d>=0?'+':'')+pct.toFixed(2)+'%'; chgEl.style.color=d>=0?'#26a69a':'#ef5350'; }
+  }
+  function volColor(c){ return c.close>=c.open?'#26a69a55':'#ef535055'; }
+  async function load(){
+    if(ws){ try{ws.close();}catch(e){} ws=null; }
+    pxEl.textContent='…';
+    try{
+      arr = await SOURCES[S.source].rest(state.tf, state.symbol);
+      cs.setData(arr); vs.setData(arr.map(c=>({time:c.time, value:c.volume, color:volColor(c)})));
+      chart.timeScale().fitContent();
+      setPx(arr[arr.length-1], arr[arr.length-2]);
+      openWS();
+    }catch(e){ pxEl.textContent='erro'; }
+  }
+  function openWS(){
+    try{
+      const sock = SOURCES[S.source].ws(state.tf, (c)=>{
+        const last=arr[arr.length-1];
+        if(last && c.time===last.time) arr[arr.length-1]=c;
+        else if(!last || c.time>last.time) arr.push(c); else return;
+        cs.update(c); vs.update({time:c.time, value:c.volume, color:volColor(c)});
+        setPx(c, arr[arr.length-2]);
+      }, state.symbol);
+      sock.onerror=()=>{ try{sock.close();}catch(e){} };
+      ws=sock;
+    }catch(e){}
+  }
+  el.querySelector('.pane-asset').addEventListener('change', e=>{ state.symbol=e.target.value; GRID.persist(); load(); });
+  el.querySelector('.pane-tf').addEventListener('change', e=>{ state.tf=e.target.value; GRID.persist(); load(); });
+
+  load();
+  return { el, state, destroy(){ if(ws){try{ws.close();}catch(e){}} chart.remove(); el.remove(); } };
+}
+
+const GRID = {
+  host: $('#grid'), panes: [], n: 1, saved: null,
+  defaults: ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','DOGEUSDT'],
+  set(n){
+    this.n=n;
+    document.querySelectorAll('#layoutSw button').forEach(b=>b.classList.toggle('active', +b.dataset.n===n));
+    if(this.panes.length) this.saved = this.panes.map(p=>({symbol:p.state.symbol, tf:p.state.tf})); // preserva config
+    this.panes.forEach(p=>p.destroy()); this.panes=[];
+    this.host.className='';
+    if(n===1){
+      document.body.classList.remove('grid-on');
+      resumeSingle();
+    } else {
+      pauseSingle();
+      document.body.classList.add('grid-on');
+      this.host.classList.add('g'+n);
+      for(let i=0;i<n;i++){
+        const c=(this.saved&&this.saved[i]) ? this.saved[i] : {symbol:this.defaults[i%this.defaults.length], tf:'1h'};
+        const pane=makePane(c.symbol, c.tf);
+        this.host.appendChild(pane.el); this.panes.push(pane);
+      }
+    }
+    store.save();
+  },
+  persist(){ this.saved = this.panes.map(p=>({symbol:p.state.symbol, tf:p.state.tf})); store.save(); }
+};
+$('#layoutSw').addEventListener('click', e=>{ const b=e.target.closest('button'); if(b) GRID.set(+b.dataset.n); });
+
+/* =========================================================================
    BOOT
    ========================================================================= */
 (function init(){
@@ -1081,7 +1239,9 @@ new ResizeObserver(resizeOverlay).observe(stage);
     }
   }
   resizeOverlay();
-  loadData();
+  // restaura layout de painéis (GRID.set(1) carrega a tela única via resumeSingle→loadData)
+  if(saved.grid && Array.isArray(saved.grid.panes)) GRID.saved = saved.grid.panes;
+  GRID.set(saved.grid && [2,4,6].includes(saved.grid.n) ? saved.grid.n : 1);
 })();
 </script>
 </body>
