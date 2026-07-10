@@ -109,16 +109,9 @@
   /* ---------- CHART AREA ---------- */
   .stage{flex:1;position:relative;min-width:0;background:var(--ink)}
   #chart{position:absolute;inset:0}
-  #overlay{position:absolute;inset:0;pointer-events:none}
-
-  .hint{
-    position:absolute;left:12px;bottom:12px;z-index:5;
-    font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted-2);
-    background:rgba(10,13,19,.72);border:1px solid var(--hair);
-    border-radius:6px;padding:5px 9px;backdrop-filter:blur(3px);
-    max-width:60%;line-height:1.5;
-  }
-  .hint b{color:var(--muted)}
+  /* overlay ACIMA das canvas internas do gráfico (que usam z-index 1 e 2),
+     senão os toques/cliques de desenho não chegam nele */
+  #overlay{position:absolute;inset:0;pointer-events:none;z-index:4}
 
   /* indicator chip panel, top-right of stage */
   .ind-panel{
@@ -268,9 +261,6 @@
       <button id="bannerBtn">Tentar Bybit</button>
     </div>
 
-    <div class="hint" id="hint">
-      Selecione uma ferramenta à esquerda e <b>clique no gráfico</b> para marcar os pontos. <b>Esc</b> cancela · <b>Del</b> desfaz.
-    </div>
   </div>
 </div>
 
@@ -686,7 +676,8 @@ const OB = {
 
   draw(){
     if(!this.cfg.on) return;
-    const rightEdge=cv.clientWidth;
+    let rsw=0; try{ rsw=chart.priceScale('right').width()||0; }catch(_){}
+    const rightEdge = cv.clientWidth - rsw - 1;   // não invade a escala de preços à direita
     const shown=[ ...this.bull.slice(0,this.cfg.count), ...this.bear.slice(0,this.cfg.count) ];
     for(const o of shown){
       let x1=xOf(o.loc); if(x1==null||x1<0) x1=0;
@@ -709,10 +700,10 @@ const OB = {
 
   label(rightX, y, lines, col){
     ctx.save();
-    ctx.font="10px 'IBM Plex Mono', monospace";
+    ctx.font="9px 'IBM Plex Mono', monospace";
     let wmax=0; for(const t of lines){ const m=ctx.measureText(t).width; if(m>wmax)wmax=m; }
-    const padX=6, padY=4, lh=13, bw=wmax+padX*2, bh=lines.length*lh+padY*2;
-    let x=rightX-bw-6, yy=y-bh/2;
+    const padX=5, padY=3, lh=11, bw=wmax+padX*2, bh=lines.length*lh+padY*2;
+    let x=rightX-bw-4, yy=y-bh/2;
     if(yy<2) yy=2; if(yy+bh>cv.clientHeight-2) yy=cv.clientHeight-2-bh;
     ctx.beginPath();
     const r=5;
