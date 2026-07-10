@@ -140,6 +140,18 @@
   .sw input:checked + span::before{transform:translateX(15px);background:#1a1205}
   .sw input:focus-visible + span{outline:2px solid var(--draw);outline-offset:1px}
 
+  /* chips das médias móveis (50/100/200/300/400) */
+  .ma-toggles{display:flex;flex-wrap:wrap;gap:6px;padding:2px 8px 9px}
+  .ma-chip{
+    display:inline-flex;align-items:center;gap:6px;cursor:pointer;user-select:none;
+    border:1px solid var(--hair);border-radius:8px;padding:5px 10px;
+    font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted);transition:.12s;
+  }
+  .ma-chip:hover{color:var(--txt);border-color:var(--hair-2)}
+  .ma-chip input{display:none}
+  .ma-chip .dotc{width:9px;height:9px;border-radius:2px;flex:0 0 auto}
+  .ma-chip.on{color:var(--txt);border-color:var(--hair-2);background:var(--panel-2);font-weight:600}
+
   /* ---------- CHART AREA ---------- */
   .stage{flex:1;position:relative;min-width:0;background:var(--ink)}
   #chart{position:absolute;inset:0}
@@ -202,6 +214,9 @@
       <option value="1h" selected>1h</option>
       <option value="4h">4h</option>
       <option value="1d">1D</option>
+      <option value="1w">1S</option>
+      <option value="1M">1Mês</option>
+      <option value="1y">1Ano</option>
     </select>
 
     <div class="ind-menu-wrap">
@@ -230,6 +245,23 @@
               <option value="Avg">Avg</option>
             </select>
           </span>
+        </div>
+
+        <div class="ind-row">
+          <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,#ffd54f,#4dd0e1,#fff,#ba68c8,#7e9cff)"></span>Médias Móveis</span>
+          <span class="ind-params">tipo
+            <select id="maType" title="Tipo de média">
+              <option value="SMA">SMA</option>
+              <option value="EMA">EMA</option>
+            </select>
+          </span>
+        </div>
+        <div class="ma-toggles" id="maToggles">
+          <label class="ma-chip" data-len="50"><input type="checkbox" id="ma50"><span class="dotc" style="background:#ffd54f"></span>50</label>
+          <label class="ma-chip" data-len="100"><input type="checkbox" id="ma100"><span class="dotc" style="background:#4dd0e1"></span>100</label>
+          <label class="ma-chip" data-len="200"><input type="checkbox" id="ma200"><span class="dotc" style="background:#ffffff"></span>200</label>
+          <label class="ma-chip" data-len="300"><input type="checkbox" id="ma300"><span class="dotc" style="background:#ba68c8"></span>300</label>
+          <label class="ma-chip" data-len="400"><input type="checkbox" id="ma400"><span class="dotc" style="background:#7e9cff"></span>400</label>
         </div>
       </div>
     </div>
@@ -287,7 +319,7 @@ const S = {
 
 /* ---------- persistência (localStorage com proteção) ---------- */
 const store = {
-  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined)})); }catch(e){} },
+  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined)})); }catch(e){} },
   load(){ try{ return JSON.parse(localStorage.getItem('ib_term')||'{}'); }catch(e){ return {}; } }
 };
 
@@ -297,7 +329,7 @@ const store = {
    ========================================================================= */
 const SOURCES = {
   binance:{
-    tfMap:{'1m':'1m','5m':'5m','15m':'15m','1h':'1h','4h':'4h','1d':'1d'},
+    tfMap:{'1m':'1m','5m':'5m','15m':'15m','1h':'1h','4h':'4h','1d':'1d','1w':'1w','1M':'1M'},
     async rest(tf){
       const url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${this.tfMap[tf]}&limit=1000`;
       const r = await fetch(url); if(!r.ok) throw new Error('http '+r.status);
@@ -314,7 +346,7 @@ const SOURCES = {
     }
   },
   bybit:{
-    tfMap:{'1m':'1','5m':'5','15m':'15','1h':'60','4h':'240','1d':'D'},
+    tfMap:{'1m':'1','5m':'5','15m':'15','1h':'60','4h':'240','1d':'D','1w':'W','1M':'M'},
     async rest(tf){
       const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=BTCUSDT&interval=${this.tfMap[tf]}&limit=1000`;
       const r = await fetch(url); if(!r.ok) throw new Error('http '+r.status);
@@ -394,6 +426,57 @@ function renderEMA(){
 }
 
 /* =========================================================================
+   MÉDIAS MÓVEIS 50/100/200/300/400  (SMA ou EMA, seleção pelo usuário)
+   Cada período é uma linha própria, com cor distinta e toggle individual.
+   ========================================================================= */
+const MA = {
+  periods:[50,100,200,300,400],
+  colors:{50:'#ffd54f',100:'#4dd0e1',200:'#ffffff',300:'#ba68c8',400:'#7e9cff'},
+  cfg:{ type:'SMA', on:{50:false,100:false,200:false,300:false,400:false} },
+  series:{}, prev:{},
+  init(){
+    for(const p of this.periods){
+      this.series[p] = chart.addLineSeries({ color:this.colors[p], lineWidth:1.5, priceLineVisible:false, lastValueVisible:false });
+    }
+  },
+  calc(candles, len){
+    const out=[];
+    if(this.cfg.type==='EMA'){
+      const k=2/(len+1); let prev=null;
+      for(const c of candles){ prev = prev===null?c.close:c.close*k+prev*(1-k); out.push({time:c.time, value:prev}); }
+    } else {               // SMA (janela deslizante)
+      let sum=0;
+      for(let i=0;i<candles.length;i++){
+        sum += candles[i].close;
+        if(i>=len) sum -= candles[i-len].close;
+        if(i>=len-1) out.push({time:candles[i].time, value:sum/len});
+      }
+    }
+    return out;
+  },
+  render(){   // no carregamento e a cada candle fechado
+    for(const p of this.periods){
+      if(this.cfg.on[p] && S.candles.length>=p){
+        const d=this.calc(S.candles,p);
+        this.series[p].setData(d);
+        this.prev[p] = d.length>1 ? d[d.length-2].value : null; // último fechado (p/ EMA ao vivo)
+      } else { this.series[p].setData([]); this.prev[p]=null; }
+    }
+  },
+  live(c){    // atualiza só o último ponto no tick ao vivo
+    const n=S.candles.length;
+    for(const p of this.periods){
+      if(!this.cfg.on[p] || n<p) continue;
+      let val;
+      if(this.cfg.type==='EMA' && this.prev[p]!=null){ const k=2/(p+1); val=c.close*k+this.prev[p]*(1-k); }
+      else { let s=0; for(let i=n-p;i<n;i++) s+=S.candles[i].close; val=s/p; }  // SMA das últimas p closes
+      this.series[p].update({time:c.time, value:val});
+    }
+  }
+};
+MA.init();
+
+/* =========================================================================
    CARREGAMENTO + TEMPO REAL
    ========================================================================= */
 function setStatus(state, txt){
@@ -401,21 +484,33 @@ function setStatus(state, txt){
   $('#statusTxt').textContent = txt;
 }
 
+// agrega candles mensais em anuais (exchanges não têm kline anual nativo)
+function aggregateYearly(monthly){
+  const map={}, order=[];
+  for(const c of monthly){
+    const y = new Date(c.time*1000).getUTCFullYear();
+    if(!map[y]){ map[y]={time:Date.UTC(y,0,1)/1000, open:c.open, high:c.high, low:c.low, close:c.close, volume:c.volume}; order.push(y); }
+    else { const a=map[y]; a.high=Math.max(a.high,c.high); a.low=Math.min(a.low,c.low); a.close=c.close; a.volume+=c.volume; }
+  }
+  return order.map(y=>map[y]);
+}
+
 async function loadData(){
   setStatus('', 'carregando…'); $('#banner').classList.remove('show');
   const src = SOURCES[S.source];
   try{
-    const candles = await src.rest(S.tf);
+    const candles = S.tf==='1y' ? aggregateYearly(await src.rest('1M')) : await src.rest(S.tf);
     if(!candles.length) throw new Error('vazio');
     S.candles = candles;
     candleSeries.setData(candles);
     volSeries.setData(candles.map(c=>({time:c.time, value:c.volume, color:c.close>=c.open?'#26a69a55':'#ef535055'})));
     renderEMA();
+    MA.render();
     OB.compute();
     chart.timeScale().fitContent();
     updateTicker(candles[candles.length-1], candles[candles.length-2]);
-    openSocket();
-    setStatus('live','ao vivo');
+    if(S.tf==='1y'){ setStatus('live','anual (histórico)'); }  // sem stream nativo p/ anual
+    else { openSocket(); setStatus('live','ao vivo'); }
   }catch(err){
     console.error(err);
     setStatus('err','falha na fonte');
@@ -450,6 +545,10 @@ function onLiveCandle(c, closed){
     emaSeries.update({time:c.time, value:c.close*k + S.emaPrev*(1-k)});
     if(closed) S.emaPrev = c.close*k + S.emaPrev*(1-k);
   } else if(closed){ renderEMA(); }
+
+  // Médias Móveis: último ponto ao vivo; recomputa tudo no fechamento
+  MA.live(c);
+  if(closed) MA.render();
 
   // Order Blocks só recalculam quando o candle fecha (mitigação = barra confirmada)
   if(closed) OB.compute();
@@ -930,6 +1029,18 @@ $('#obOn').addEventListener('change', syncOB);
 $('#obLen').addEventListener('change', syncOB);
 $('#obCount').addEventListener('change', syncOB);
 $('#obMiti').addEventListener('change', syncOB);
+
+// ---- Médias Móveis (SMA/EMA + toggles 50/100/200/300/400) ----
+function syncMA(){
+  MA.cfg.type = $('#maType').value;
+  for(const p of MA.periods){
+    MA.cfg.on[p] = $('#ma'+p).checked;
+    document.querySelector('.ma-chip[data-len="'+p+'"]').classList.toggle('on', MA.cfg.on[p]);
+  }
+  MA.render(); store.save();
+}
+$('#maType').addEventListener('change', syncMA);
+MA.periods.forEach(p=> $('#ma'+p).addEventListener('change', syncMA));
 $('#bannerBtn').addEventListener('click', ()=>{
   S.source = S.source==='binance'?'bybit':'binance';
   $('#src').value=S.source; store.save(); loadData();
@@ -960,6 +1071,15 @@ new ResizeObserver(resizeOverlay).observe(stage);
   if(saved.ob){ Object.assign(OB.cfg, saved.ob);
     $('#obOn').checked=OB.cfg.on; $('#obLen').value=OB.cfg.len;
     $('#obCount').value=OB.cfg.count; $('#obMiti').value=OB.cfg.miti; }
+  if(saved.ma){
+    MA.cfg.type = saved.ma.type||'SMA';
+    Object.assign(MA.cfg.on, saved.ma.on||{});
+    $('#maType').value = MA.cfg.type;
+    for(const p of MA.periods){
+      $('#ma'+p).checked = !!MA.cfg.on[p];
+      document.querySelector('.ma-chip[data-len="'+p+'"]').classList.toggle('on', !!MA.cfg.on[p]);
+    }
+  }
   resizeOverlay();
   loadData();
 })();
