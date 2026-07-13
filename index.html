@@ -346,6 +346,12 @@
           <span class="ind-params">1h · 4h · 1D</span>
         </div>
 
+        <div class="ind-row">
+          <label class="sw"><input type="checkbox" id="soundOn"><span></span></label>
+          <span class="ind-name">🔔 Alertas sonoros</span>
+          <span class="ind-params">rompeu · virada · novo</span>
+        </div>
+
         <div class="ind-foot">
           <span>Proxy p/ ações tokenizadas (xStocks)</span>
           <input type="text" id="proxyInput" spellcheck="false" placeholder="URL do seu Cloudflare Worker (recomendado)">
@@ -420,9 +426,35 @@ const S = {
 
 /* ---------- persistência (localStorage com proteção) ---------- */
 const store = {
-  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), mforce:(typeof MFORCE!=='undefined'?MFORCE.on:undefined)})); }catch(e){} },
+  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), mforce:(typeof MFORCE!=='undefined'?MFORCE.on:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined)})); }catch(e){} },
   load(){ try{ return JSON.parse(localStorage.getItem('ib_term')||'{}'); }catch(e){ return {}; } }
 };
+
+/* =========================================================================
+   ALERTAS SONOROS — sons sintetizados (Web Audio API, sem arquivos)
+   Opt-in: navegador só libera áudio após gesto do usuário (o toggle serve de gesto).
+   ========================================================================= */
+const SOUND = {
+  ctx:null, on:false,
+  init(){
+    if(!this.ctx){ try{ this.ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+    if(this.ctx && this.ctx.state==='suspended') this.ctx.resume();
+  },
+  tone(freq, dur, type, gain, when){
+    if(!this.on || !this.ctx) return;
+    const t=this.ctx.currentTime+(when||0);
+    const o=this.ctx.createOscillator(), g=this.ctx.createGain();
+    o.type=type||'sine'; o.frequency.value=freq;
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(gain||0.2, t+0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    o.connect(g).connect(this.ctx.destination); o.start(t); o.stop(t+dur+0.03);
+  },
+  bell(){ this.tone(1660,0.55,'sine',0.28); this.tone(2490,0.55,'sine',0.10); }, // cineta de balcão
+  chime(){ this.tone(880,0.28,'sine',0.22,0); this.tone(587,0.5,'sine',0.22,0.13); }, // rompido (descendente)
+  ding(){ this.tone(1245,0.22,'triangle',0.16); },                                  // bloco novo
+  enable(on){ this.on=on; if(on){ this.init(); this.ding(); } if(typeof store!=='undefined') store.save(); }
+};
+document.addEventListener('pointerdown', ()=>{ if(SOUND.on) SOUND.init(); });
 
 /* =========================================================================
    FONTES DE DADOS
@@ -684,6 +716,7 @@ function onLiveCandle(c, closed){
 
   // Order Blocks só recalculam quando o candle fecha (mitigação = barra confirmada)
   if(closed) OB.compute();
+  if(OB.cfg.on) OB.checkAlerts();   // alertas sonoros (rompeu / virada / bloco novo)
 
   updateTicker(c, arr[arr.length-2]);
   setStatus('live','ao vivo');
@@ -926,6 +959,28 @@ const OB = {
     const color = buyPct>58 ? '#26a69a' : buyPct<42 ? '#ef5350' : '#f7d33f';  // verde/amarelo/vermelho
     const period = Math.max(350, Math.min(1600, 1600 - (intensity-0.6)*700)); // pesado -> período curto (rápido)
     return { color, period };
+  },
+
+  // dispara sons em eventos: bloco novo (ding), rompido (serene), virada da briga (cineta)
+  _seen:{}, _init:false,
+  checkAlerts(){
+    const shown=[...this.bull, ...this.bear], now=performance.now(), present=new Set();
+    for(const o of shown){
+      present.add(o.loc);
+      const st=this.status(o)[0], atk=this.attackInfo(o), prev=this._seen[o.loc];
+      if(!prev){
+        if(this._init) SOUND.ding();                                   // bloco novo
+        this._seen[o.loc]={st, color:atk?atk.color:null, ts:now};
+      } else {
+        if(st.includes('Rompida') && !prev.st.includes('Rompida') && this._init) SOUND.chime(); // rompeu
+        if(atk && prev.color && atk.color!==prev.color && now-(prev.ts||0)>3500 && this._init){  // virada da briga
+          SOUND.bell(); prev.ts=now;
+        }
+        prev.st=st; if(atk) prev.color=atk.color;
+      }
+    }
+    for(const loc in this._seen){ if(!present.has(+loc)) delete this._seen[loc]; }
+    this._init=true;
   },
 
   // estampa animada de setinhas dentro do bloco, subindo/descendo pela INTENÇÃO
@@ -1448,6 +1503,7 @@ const MFORCE = {
   }
 };
 $('#mforceOn').addEventListener('change', e=>MFORCE.set(e.target.checked));
+$('#soundOn').addEventListener('change', e=>SOUND.enable(e.target.checked));
 
 /* =========================================================================
    BOOT
@@ -1474,6 +1530,7 @@ $('#mforceOn').addEventListener('change', e=>MFORCE.set(e.target.checked));
   $('#proxyInput').value = GATE_PROXY;
   if(saved.mforce===false){ MFORCE.on=false; $('#mforceOn').checked=false; }
   MFORCE.set(MFORCE.on);
+  if(saved.sound){ SOUND.on=true; $('#soundOn').checked=true; }  // áudio libera no 1º clique
   resizeOverlay();
   // restaura layout de painéis (GRID.set(1) carrega a tela única via resumeSingle→loadData)
   if(saved.grid && Array.isArray(saved.grid.panes)) GRID.saved = saved.grid.panes;
