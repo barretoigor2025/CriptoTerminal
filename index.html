@@ -894,17 +894,25 @@ const OB = {
     const c=S.candles;
     let maxV=0; for(const o of list) if(o.vol>maxV) maxV=o.vol;
     for(const o of list){
-      let tests=0, wasInside=false;
+      let tests=0, wasInside=false, wear=0;
       for(let i=o.startIdx;i<c.length;i++){
         const inZone = c[i].high>o.btm && c[i].low<o.top;
         if(inZone && !wasInside){ tests++; wasInside=true; }
         if(!inZone) wasInside=false;
+        const p=this.penOf(o, c[i]); if(p>wear) wear=p;     // penetração máxima já sofrida (permanente)
       }
-      o.tests=tests;
+      o.tests=tests; o.wear=wear;
       const volScore = maxV>0 ? o.vol/maxV : 0;
       const freshScore = 1/(1+tests*0.5);
       o.strength = (volScore*0.6 + freshScore*0.4)*100;
     }
+  },
+
+  // penetração do candle na zona (0 = não tocou, 1 = atravessou toda a altura)
+  penOf(o, cndl){
+    const h=o.top-o.btm; if(h<=0 || !cndl) return 0;
+    if(o.bias===1) return cndl.low  < o.top ? Math.min(1,(o.top-cndl.low)/h) : 0;   // demanda: erode de cima
+    return              cndl.high > o.btm ? Math.min(1,(cndl.high-o.btm)/h) : 0;    // oferta: erode de baixo
   },
 
   // esconde sobreposição, preservando o mais recente (index 0)
@@ -920,32 +928,29 @@ const OB = {
     }
   },
 
+  // desgaste permanente do bloco: maior penetração já sofrida (fechada) + a atual ao vivo
+  wearOf(o){
+    const c=S.candles; return Math.max(o.wear||0, this.penOf(o, c[c.length-1]));
+  },
+
   status(o){
     const c=S.candles; const close = c.length ? c[c.length-1].close : 0;
-    const h=o.top-o.btm, fm=this.cfg.farmult;
+    const h=o.top-o.btm, fm=this.cfg.farmult, wear=this.wearOf(o);
     if(o.bias===1){
-      if(close>=o.top){ const f=h>0?(close-o.top)/h:0; return f>fm?['🟢 Intacta','#26a69a']:['🟡 Próxima','#f7d33f']; }
-      if(close>=o.btm) return ['🟠 Em teste','#f7931a'];
-      return ['🔴 Rompida','#ef5350'];
+      if(close < o.btm) return ['🔴 Rompida','#ef5350'];
+      if(close < o.top) return ['🟠 Em teste','#f7931a'];
+      if(wear > 0.05)   return ['🟡 Desgastada','#f7d33f'];   // saiu, mas já levou dano
+      const f=h>0?(close-o.top)/h:0; return f>fm?['🟢 Intacta','#26a69a']:['🟡 Próxima','#f7d33f'];
     } else {
-      if(close<=o.btm){ const f=h>0?(o.btm-close)/h:0; return f>fm?['🟢 Intacta','#26a69a']:['🟡 Próxima','#f7d33f']; }
-      if(close<=o.top) return ['🟠 Em teste','#f7931a'];
-      return ['🔴 Rompida','#ef5350'];
+      if(close > o.top) return ['🔴 Rompida','#ef5350'];
+      if(close > o.btm) return ['🟠 Em teste','#f7931a'];
+      if(wear > 0.05)   return ['🟡 Desgastada','#f7d33f'];
+      const f=h>0?(o.btm-close)/h:0; return f>fm?['🟢 Intacta','#26a69a']:['🟡 Próxima','#f7d33f'];
     }
   },
 
-  // saúde AO VIVO: quanto do bloco ainda está intacto agora (100% segura, 0% destruído)
-  health(o){
-    const c=S.candles; const close=c.length?c[c.length-1].close:0;
-    const h=o.top-o.btm; if(h<=0) return 100;
-    if(o.bias===1){                       // demanda: erode de cima (top=100) p/ baixo (btm=0)
-      if(close>=o.top) return 100; if(close<=o.btm) return 0;
-      return Math.round((close-o.btm)/h*100);
-    } else {                              // oferta: erode de baixo (btm=100) p/ cima (top=0)
-      if(close<=o.btm) return 100; if(close>=o.top) return 0;
-      return Math.round((o.top-close)/h*100);
-    }
-  },
+  // saúde = quanto do bloco AINDA resiste (100 = intacto). Não recupera: usa o pior ataque já sofrido.
+  health(o){ return Math.round((1 - Math.min(1, this.wearOf(o)))*100); },
 
   // leitura AO VIVO da "briga" dentro do bloco (só quando o preço está tocando a zona)
   attackInfo(o){
