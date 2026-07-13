@@ -166,6 +166,31 @@
      senão os toques/cliques de desenho não chegam nele */
   #overlay{position:absolute;inset:0;pointer-events:none;z-index:4}
 
+  /* ---------- PAINEL FORÇA DE MERCADO (canto sup. esq.) ---------- */
+  .mforce{
+    position:absolute;top:10px;left:10px;z-index:5;
+    background:rgba(13,18,27,.9);border:1px solid var(--hair);border-radius:9px;
+    padding:8px 9px;backdrop-filter:blur(4px);min-width:198px;
+  }
+  .mforce[hidden]{display:none}
+  .mf-title{
+    font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;
+    color:var(--muted-2);margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;
+  }
+  .mf-title b{color:var(--muted);font-weight:600}
+  .mf-cols{display:flex;gap:7px}
+  .mf-col{flex:1;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px}
+  .mf-tf{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--muted);font-weight:600}
+  .mf-arrow{font-size:17px;line-height:1;font-weight:700}
+  .mf-trend{font-family:"Space Grotesk",sans-serif;font-size:9.5px;font-weight:600;letter-spacing:.3px}
+  .mf-bar{width:100%;height:5px;border-radius:3px;background:var(--bear);overflow:hidden;position:relative}
+  .mf-bar i{position:absolute;left:0;top:0;height:100%;background:var(--bull);display:block}
+  .mf-pct{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--muted)}
+  .mf-str{font-family:"IBM Plex Mono",monospace;font-size:8.5px;color:var(--muted-2);display:flex;align-items:center;gap:3px}
+  .mf-heavy{color:var(--btc)}
+  body.grid-on .mforce{display:none}
+  @media (max-width:560px){ .mforce{min-width:170px;transform:scale(.9);transform-origin:top left} }
+
   /* error banner */
   .banner{
     position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:8;
@@ -312,6 +337,12 @@
           <label class="ma-chip" data-len="400"><input type="checkbox" id="ma400"><span class="dotc" style="background:#7e9cff"></span>400</label>
         </div>
 
+        <div class="ind-row">
+          <label class="sw"><input type="checkbox" id="mforceOn" checked><span></span></label>
+          <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,var(--bull),var(--bear))"></span>Força de Mercado</span>
+          <span class="ind-params">1h · 4h · 1D</span>
+        </div>
+
         <div class="ind-foot">
           <span>Proxy p/ ações tokenizadas (xStocks)</span>
           <input type="text" id="proxyInput" spellcheck="false" placeholder="URL do seu Cloudflare Worker (recomendado)">
@@ -344,6 +375,8 @@
   <div class="stage">
     <div id="chart"></div>
     <canvas id="overlay"></canvas>
+
+    <div class="mforce" id="mforce" hidden></div>
 
     <div class="banner" id="banner">
       <h3>Sem dados do mercado</h3>
@@ -382,7 +415,7 @@ const S = {
 
 /* ---------- persistência (localStorage com proteção) ---------- */
 const store = {
-  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined)})); }catch(e){} },
+  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), mforce:(typeof MFORCE!=='undefined'?MFORCE.on:undefined)})); }catch(e){} },
   load(){ try{ return JSON.parse(localStorage.getItem('ib_term')||'{}'); }catch(e){ return {}; } }
 };
 
@@ -863,6 +896,19 @@ const OB = {
     }
   },
 
+  // saúde AO VIVO: quanto do bloco ainda está intacto agora (100% segura, 0% destruído)
+  health(o){
+    const c=S.candles; const close=c.length?c[c.length-1].close:0;
+    const h=o.top-o.btm; if(h<=0) return 100;
+    if(o.bias===1){                       // demanda: erode de cima (top=100) p/ baixo (btm=0)
+      if(close>=o.top) return 100; if(close<=o.btm) return 0;
+      return Math.round((close-o.btm)/h*100);
+    } else {                              // oferta: erode de baixo (btm=100) p/ cima (top=0)
+      if(close<=o.btm) return 100; if(close>=o.top) return 0;
+      return Math.round((o.top-close)/h*100);
+    }
+  },
+
   stars(n){ let s=''; for(let i=1;i<=5;i++) s+= i<=n?'★':'☆'; return s; },
 
   draw(){
@@ -883,9 +929,10 @@ const OB = {
       ctx.restore();
       const [stxt,scol]=this.status(o);
       if(yA!=null) line(x1, yA, rightEdge, yA, scol, [5,4]);
-      const frc=Math.round(o.strength);
-      const l1=(bull?'▲ COMPRA':'▼ VENDA')+'  '+this.stars(Math.round(o.strength/20))+' '+frc+'%';
-      this.label(rightEdge, yA==null?(yT+yB)/2:yA, [l1, stxt], scol);
+      // L1: força de FORMAÇÃO (estrelas, fixa) · L2: status + SAÚDE ao vivo (%, se move)
+      const l1=(bull?'▲ COMPRA':'▼ VENDA')+'  '+this.stars(Math.round(o.strength/20));
+      const l2=stxt+'  '+this.health(o)+'%';
+      this.label(rightEdge, yA==null?(yT+yB)/2:yA, [l1, l2], scol);
     }
   },
 
@@ -1107,7 +1154,7 @@ fsBtn.addEventListener('click', toggleFS);
 document.addEventListener('fullscreenchange', syncFSIcon);
 document.addEventListener('webkitfullscreenchange', syncFSIcon);
 
-$('#src').addEventListener('change', e=>{ S.source=e.target.value; store.save(); loadData(); });
+$('#src').addEventListener('change', e=>{ S.source=e.target.value; store.save(); loadData(); MFORCE.refresh().catch(()=>{}); });
 $('#emaOn').addEventListener('change', renderEMA);
 $('#emaLen').addEventListener('change', renderEMA);
 
@@ -1282,6 +1329,61 @@ const GRID = {
 $('#layoutSw').addEventListener('click', e=>{ const b=e.target.closest('button'); if(b) GRID.set(+b.dataset.n); });
 
 /* =========================================================================
+   FORÇA DE MERCADO — leitura multi-timeframe (1h/4h/1D) do ativo principal
+   • tendência: EMA(9) vs EMA(21) + momentum (14 barras)
+   • pressão: volume comprador vs vendedor (24 barras) → % compra/venda
+   • força 0-100: desvio da pressão + momentum + bônus se alinhados
+   • ⚡ "pesado": volume da última barra > 1.6× a média
+   ========================================================================= */
+const MFORCE = {
+  tfs:['1h','4h','1d'], on:true, timer:null, el:$('#mforce'),
+  calc(c){
+    const n=c.length; if(n<25) return null;
+    const cl=c.map(x=>x.close);
+    const ema=len=>{ const k=2/(len+1); let p=cl[0]; for(let i=1;i<n;i++) p=cl[i]*k+p*(1-k); return p; };
+    const e9=ema(9), e21=ema(21);
+    const w=Math.min(24,n); let bv=0,sv=0,avgV=0;
+    for(let i=n-w;i<n;i++){ const x=c[i]; (x.close>=x.open ? bv+=x.volume : sv+=x.volume); avgV+=x.volume; }
+    avgV/=w; const buyPct=(bv+sv)>0 ? bv/(bv+sv)*100 : 50;
+    const ml=Math.min(14,n-1); const mom=(cl[n-1]-cl[n-1-ml])/cl[n-1-ml]*100;
+    const pF=Math.abs(buyPct-50)*2, mF=Math.min(100,Math.abs(mom)*8), aligned=(e9>=e21)===(mom>=0);
+    const strength=Math.min(100, Math.round(pF*0.5 + mF*0.3 + (aligned?20:0)));
+    let dir=0; if(e9>=e21 && mom>0.05) dir=1; else if(e9<e21 && mom<-0.05) dir=-1;
+    return { dir, buyPct:Math.round(buyPct), strength, heavy: c[n-1].volume > avgV*1.6 };
+  },
+  async refresh(){
+    if(!this.on) return;
+    const src=SOURCES[S.source];
+    const data = await Promise.all(this.tfs.map(tf=>src.rest(tf).catch(()=>null)));
+    this.render(this.tfs.map((tf,i)=>({tf, m: data[i] ? this.calc(data[i]) : null})));
+  },
+  render(cols){
+    const AR=d=>d>0?'▲':d<0?'▼':'→', COL=d=>d>0?'#26a69a':d<0?'#ef5350':'#7f8a9e', W=d=>d>0?'ALTA':d<0?'BAIXA':'LAT';
+    const L={'1h':'1h','4h':'4h','1d':'1D'};
+    this.el.innerHTML =
+      '<div class="mf-title"><span>Força de Mercado</span><b>BTC</b></div><div class="mf-cols">'+
+      cols.map(({tf,m})=> !m
+        ? `<div class="mf-col"><div class="mf-tf">${L[tf]}</div><div class="mf-arrow" style="color:#586074">–</div></div>`
+        : `<div class="mf-col">
+             <div class="mf-tf">${L[tf]}</div>
+             <div class="mf-arrow" style="color:${COL(m.dir)}">${AR(m.dir)}</div>
+             <div class="mf-trend" style="color:${COL(m.dir)}">${W(m.dir)}</div>
+             <div class="mf-bar"><i style="width:${m.buyPct}%"></i></div>
+             <div class="mf-pct">${m.buyPct>=50 ? m.buyPct+'% compra' : (100-m.buyPct)+'% venda'}</div>
+             <div class="mf-str">força ${m.strength}${m.heavy?' <span class="mf-heavy">⚡</span>':''}</div>
+           </div>`
+      ).join('')+'</div>';
+  },
+  set(on){
+    this.on=on; this.el.hidden=!on;
+    if(this.timer){ clearInterval(this.timer); this.timer=null; }
+    if(on){ this.refresh().catch(()=>{}); this.timer=setInterval(()=>this.refresh().catch(()=>{}), 60000); }
+    store.save();
+  }
+};
+$('#mforceOn').addEventListener('change', e=>MFORCE.set(e.target.checked));
+
+/* =========================================================================
    BOOT
    ========================================================================= */
 (function init(){
@@ -1303,6 +1405,8 @@ $('#layoutSw').addEventListener('click', e=>{ const b=e.target.closest('button')
     }
   }
   $('#proxyInput').value = GATE_PROXY;
+  if(saved.mforce===false){ MFORCE.on=false; $('#mforceOn').checked=false; }
+  MFORCE.set(MFORCE.on);
   resizeOverlay();
   // restaura layout de painéis (GRID.set(1) carrega a tela única via resumeSingle→loadData)
   if(saved.grid && Array.isArray(saved.grid.panes)) GRID.saved = saved.grid.panes;
