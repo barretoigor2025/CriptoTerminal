@@ -152,6 +152,13 @@
   .ma-chip .dotc{width:9px;height:9px;border-radius:2px;flex:0 0 auto}
   .ma-chip.on{color:var(--txt);border-color:var(--hair-2);background:var(--panel-2);font-weight:600}
 
+  .ind-foot{border-top:1px solid var(--hair);margin-top:4px;padding:9px 8px 6px;display:flex;flex-direction:column;gap:5px}
+  .ind-foot span{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--muted-2)}
+  .ind-foot input{
+    background:var(--panel-2);border:1px solid var(--hair);color:var(--txt);border-radius:6px;
+    font-family:"IBM Plex Mono",monospace;font-size:11px;padding:5px 7px;width:100%;
+  }
+
   /* ---------- CHART AREA ---------- */
   .stage{flex:1;position:relative;min-width:0;background:var(--ink)}
   #chart{position:absolute;inset:0}
@@ -304,6 +311,11 @@
           <label class="ma-chip" data-len="300"><input type="checkbox" id="ma300"><span class="dotc" style="background:#ba68c8"></span>300</label>
           <label class="ma-chip" data-len="400"><input type="checkbox" id="ma400"><span class="dotc" style="background:#7e9cff"></span>400</label>
         </div>
+
+        <div class="ind-foot">
+          <span>Proxy p/ ações tokenizadas (xStocks)</span>
+          <input type="text" id="proxyInput" spellcheck="false" placeholder="URL do seu Cloudflare Worker (recomendado)">
+        </div>
       </div>
     </div>
 
@@ -378,6 +390,11 @@ const store = {
    FONTES DE DADOS
    Cada fonte expõe: rest(tf) -> Promise<candles[]>  e  ws(tf, onCandle) -> socket
    ========================================================================= */
+// Proxy para os xStocks (Gate não manda CORS e bloqueia alguns países).
+// Público (allorigins) é instável — cole a URL do SEU Cloudflare Worker para 100% confiável.
+let GATE_PROXY = 'https://api.allorigins.win/raw?url=';
+try{ const pv=localStorage.getItem('ib_proxy'); if(pv!==null) GATE_PROXY=pv; }catch(e){}
+
 const SOURCES = {
   binance:{
     tfMap:{'1m':'1m','5m':'5m','15m':'15m','1h':'1h','4h':'4h','1d':'1d','1w':'1w','1M':'1M'},
@@ -418,26 +435,30 @@ const SOURCES = {
       return sock;
     }
   },
-  /* Gate.io — usada para AÇÕES TOKENIZADAS (xStocks: MSTRX_USDT, CRCLX_USDT...) */
+  /* Gate.io — AÇÕES TOKENIZADAS (xStocks). A Gate não manda CORS e bloqueia
+     alguns países, então tudo passa por um PROXY (GATE_PROXY). Sem WebSocket via
+     proxy: usamos polling do último candle. */
   gate:{
     tfMap:{'1m':'1m','5m':'5m','15m':'15m','1h':'1h','4h':'4h','1d':'1d','1w':'7d','1M':'30d'},
-    async rest(tf, symbol){
-      const url = `https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=${symbol}&interval=${this.tfMap[tf]}&limit=1000`;
-      const r = await fetch(url); if(!r.ok) throw new Error('http '+r.status);
-      const d = await r.json();  // [t, volQuote, close, high, low, open, volBase, fechado]
-      return d.map(k=>({time:+k[0], open:+k[5], high:+k[3], low:+k[4], close:+k[2], volume:+k[6]}));
+    _url(tf, symbol, limit){
+      const api = `https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=${symbol}&interval=${this.tfMap[tf]}&limit=${limit}`;
+      return GATE_PROXY ? GATE_PROXY + encodeURIComponent(api) : api;
     },
-    ws(tf, onCandle, symbol){
-      const sock = new WebSocket('wss://api.gateio.ws/ws/v4/');
-      sock.onopen = ()=> sock.send(JSON.stringify({time:Math.floor(Date.now()/1000), channel:'spot.candlesticks', event:'subscribe', payload:[this.tfMap[tf], symbol]}));
-      sock.onmessage = e=>{
-        const m = JSON.parse(e.data);
-        if(m.event==='update' && m.result && m.result.t){
-          const r = m.result;
-          onCandle({time:+r.t, open:+r.o, high:+r.h, low:+r.l, close:+r.c, volume:+(r.a||r.v||0)}, r.w);
-        }
+    async _get(url){
+      const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(), 9000);
+      try{ const r=await fetch(url,{signal:ctrl.signal}); if(!r.ok) throw new Error('http '+r.status); return await r.json(); }
+      finally{ clearTimeout(t); }
+    },
+    map(k){ return {time:+k[0], open:+k[5], high:+k[3], low:+k[4], close:+k[2], volume:+k[6]}; }, // [t,volQ,close,high,low,open,volB,fechado]
+    async rest(tf, symbol){ return (await this._get(this._url(tf,symbol,500))).map(k=>this.map(k)); },
+    ws(tf, onCandle, symbol){   // "socket" que na verdade faz polling do último candle
+      let stop=false;
+      const poll=async()=>{
+        if(stop) return;
+        try{ const d=await this._get(this._url(tf,symbol,2)); const k=d[d.length-1]; if(k) onCandle(this.map(k), k[7]==='true'); }catch(e){}
       };
-      return sock;
+      const id=setInterval(poll, 15000);
+      return { close(){ stop=true; clearInterval(id); } };
     }
   }
 };
@@ -1114,6 +1135,13 @@ function syncMA(){
 }
 $('#maType').addEventListener('change', syncMA);
 MA.periods.forEach(p=> $('#ma'+p).addEventListener('change', syncMA));
+
+// ---- proxy dos xStocks (Cloudflare Worker do usuário, opcional) ----
+$('#proxyInput').addEventListener('change', e=>{
+  GATE_PROXY = e.target.value.trim();
+  try{ localStorage.setItem('ib_proxy', GATE_PROXY); }catch(_){}
+  if(GRID.n>1) GRID.set(GRID.n);   // reconstrói os painéis p/ refetch dos xStocks
+});
 $('#bannerBtn').addEventListener('click', ()=>{
   S.source = S.source==='binance'?'bybit':'binance';
   $('#src').value=S.source; store.save(); loadData();
@@ -1274,6 +1302,7 @@ $('#layoutSw').addEventListener('click', e=>{ const b=e.target.closest('button')
       document.querySelector('.ma-chip[data-len="'+p+'"]').classList.toggle('on', !!MA.cfg.on[p]);
     }
   }
+  $('#proxyInput').value = GATE_PROXY;
   resizeOverlay();
   // restaura layout de painéis (GRID.set(1) carrega a tela única via resumeSingle→loadData)
   if(saved.grid && Array.isArray(saved.grid.panes)) GRID.saved = saved.grid.panes;
