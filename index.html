@@ -133,6 +133,10 @@
   }
   .ob-sub{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--muted);cursor:pointer}
   .ob-sub input{accent-color:var(--btc);width:12px;height:12px;cursor:pointer}
+  .ind-params input[type=date]{
+    background:var(--panel-2);border:1px solid var(--hair);color:var(--txt);border-radius:5px;
+    font-family:"IBM Plex Mono",monospace;font-size:10.5px;padding:2px 4px;color-scheme:dark;
+  }
   /* toggle switch */
   .sw{position:relative;display:inline-block;width:34px;height:19px;flex:0 0 auto}
   .sw input{opacity:0;width:0;height:0;position:absolute}
@@ -347,6 +351,15 @@
         </div>
 
         <div class="ind-row">
+          <label class="sw"><input type="checkbox" id="cycleOn"><span></span></label>
+          <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,var(--bull),var(--bear))"></span>BTC Time Cycle</span>
+          <span class="ind-params">
+            fundo <input type="date" id="cycleAnchor" value="2022-11-21" title="Data de um fundo do ciclo (âncora)">
+            dias <input type="number" id="cycleDays" value="1437" min="200" max="3000" title="Comprimento do ciclo em dias">
+          </span>
+        </div>
+
+        <div class="ind-row">
           <label class="sw"><input type="checkbox" id="soundOn"><span></span></label>
           <span class="ind-name">🔔 Alertas sonoros</span>
           <span class="ind-params">rompeu · virada · novo</span>
@@ -426,7 +439,7 @@ const S = {
 
 /* ---------- persistência (localStorage com proteção) ---------- */
 const store = {
-  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), mforce:(typeof MFORCE!=='undefined'?MFORCE.on:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined)})); }catch(e){} },
+  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), mforce:(typeof MFORCE!=='undefined'?MFORCE.on:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined)})); }catch(e){} },
   load(){ try{ return JSON.parse(localStorage.getItem('ib_term')||'{}'); }catch(e){ return {}; } }
 };
 
@@ -1083,8 +1096,56 @@ const OB = {
   }
 };
 
+/* =========================================================================
+   BTC TIME CYCLE — reconstrução (fonte fechada) pela descrição do autor:
+   divide o tempo de fundo-a-fundo (~4 anos) em segmentos de Fibonacci; bull
+   (verde) 0→0.75, bear (vermelho) 0.75→1.0. Âncora e comprimento configuráveis.
+   ========================================================================= */
+const CYCLE = {
+  cfg:{ on:false, anchor:'2022-11-21', days:1437 },
+  fibs:[0, 0.25, 0.382, 0.5, 0.618, 0.75, 1.0], bearFrom:0.75,
+  anchorSec(){ const d=Date.parse((this.cfg.anchor||'2022-11-21')+'T00:00:00Z'); return (isNaN(d)?Date.parse('2022-11-21T00:00:00Z'):d)/1000; },
+  // tempo -> x via índice lógico extrapolado (funciona no passado E no futuro, além dos candles)
+  timeToX(t){
+    const c=S.candles, n=c.length; if(n<2) return null;
+    const t0=c[0].time, dt=(c[n-1].time-t0)/(n-1); if(dt<=0) return null;
+    return chart.timeScale().logicalToCoordinate(Math.round((t-t0)/dt)); // v4 só aceita índice inteiro
+  },
+  draw(){
+    if(!this.cfg.on) return;
+    const c=S.candles, n=c.length; if(n<2) return;
+    const len=Math.max(1,this.cfg.days)*86400, a0=this.anchorSec();
+    const H=cv.clientHeight, W=cv.clientWidth;
+    const viewTo=c[n-1].time + len*0.6;
+    let k=Math.floor((c[0].time - a0)/len) - 1;
+    for(; ; k++){
+      const cs=a0 + k*len; if(cs>viewTo) break;
+      const xa=this.timeToX(cs), xb=this.timeToX(cs+this.bearFrom*len), xe=this.timeToX(cs+len);
+      if(xa!=null&&xb!=null){ ctx.save(); ctx.fillStyle='rgba(38,166,154,.11)'; ctx.fillRect(Math.min(xa,xb),0,Math.abs(xb-xa),H); ctx.restore(); } // bull
+      if(xb!=null&&xe!=null){ ctx.save(); ctx.fillStyle='rgba(239,83,80,.12)'; ctx.fillRect(Math.min(xb,xe),0,Math.abs(xe-xb),H); ctx.restore(); } // bear
+      for(const f of this.fibs){
+        const x=this.timeToX(cs+f*len); if(x==null||x<-30||x>W+30) continue;
+        const col=f===this.bearFrom?'#f7931a':(f===0||f===1?'#aeb8c9':'#7f8a9e');
+        line(x,0,x,H,col,[4,5]); tag(x+3,H-13,(f===1?'1.0':(''+f)),col);
+      }
+    }
+    // pílula: posição atual do ciclo
+    const now=c[n-1].time, kn=Math.floor((now-a0)/len), pct=((now-(a0+kn*len))/len)*100;
+    const bull=pct<this.bearFrom*100, txt='Ciclo BTC '+pct.toFixed(1)+'% · '+(bull?'BULL':'BEAR');
+    ctx.save(); ctx.font="600 11px 'IBM Plex Mono', monospace";
+    const tw=ctx.measureText(txt).width, px=W-tw-16, py=10;
+    ctx.fillStyle='rgba(13,18,27,.9)'; ctx.strokeStyle=bull?'#26a69a':'#ef5350';
+    ctx.beginPath(); const r=5,bw=tw+16,bh=22;
+    ctx.moveTo(px-8+r,py); ctx.arcTo(px-8+bw,py,px-8+bw,py+bh,r); ctx.arcTo(px-8+bw,py+bh,px-8,py+bh,r); ctx.arcTo(px-8,py+bh,px-8,py,r); ctx.arcTo(px-8,py,px-8+bw,py,r); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle=bull?'#26a69a':'#ef5350'; ctx.textBaseline='middle'; ctx.fillText(txt, px, py+bh/2);
+    ctx.restore();
+  }
+};
+
 function redraw(){
   ctx.clearRect(0,0,cv.width,cv.height);
+  CYCLE.draw();
   OB.draw();
   for(const d of S.drawings){
     if(d.type==='trend') drawTrend(d);
@@ -1514,6 +1575,17 @@ const MFORCE = {
 $('#mforceOn').addEventListener('change', e=>MFORCE.set(e.target.checked));
 $('#soundOn').addEventListener('change', e=>SOUND.enable(e.target.checked));
 
+// ---- BTC Time Cycle ----
+function syncCycle(){
+  CYCLE.cfg.on     = $('#cycleOn').checked;
+  CYCLE.cfg.anchor = $('#cycleAnchor').value || '2022-11-21';
+  CYCLE.cfg.days   = Math.max(200, Math.min(3000, +$('#cycleDays').value||1437));
+  store.save();
+}
+$('#cycleOn').addEventListener('change', syncCycle);
+$('#cycleAnchor').addEventListener('change', syncCycle);
+$('#cycleDays').addEventListener('change', syncCycle);
+
 /* =========================================================================
    BOOT
    ========================================================================= */
@@ -1540,6 +1612,8 @@ $('#soundOn').addEventListener('change', e=>SOUND.enable(e.target.checked));
   if(saved.mforce===false){ MFORCE.on=false; $('#mforceOn').checked=false; }
   MFORCE.set(MFORCE.on);
   if(saved.sound){ SOUND.on=true; $('#soundOn').checked=true; }  // áudio libera no 1º clique
+  if(saved.cycle){ Object.assign(CYCLE.cfg, saved.cycle);
+    $('#cycleOn').checked=CYCLE.cfg.on; $('#cycleAnchor').value=CYCLE.cfg.anchor; $('#cycleDays').value=CYCLE.cfg.days; }
   resizeOverlay();
   // restaura layout de painéis (GRID.set(1) carrega a tela única via resumeSingle→loadData)
   if(saved.grid && Array.isArray(saved.grid.panes)) GRID.saved = saved.grid.panes;
