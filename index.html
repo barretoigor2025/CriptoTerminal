@@ -899,7 +899,10 @@ const OB = {
         const inZone = c[i].high>o.btm && c[i].low<o.top;
         if(inZone && !wasInside){ tests++; wasInside=true; }
         if(!inZone) wasInside=false;
-        const p=this.penOf(o, c[i]); if(p>wear) wear=p;     // penetração máxima já sofrida (permanente)
+        // desgaste = profundidade × volume do ataque (vol normal ≈ profundidade pura).
+        // é um MÁXIMO histórico → permanente, não recupera.
+        const p=this.penOf(o, c[i]);
+        if(p>0){ const amp=0.5+0.5*Math.min(2, o.vol>0 ? c[i].volume/o.vol : 1); const bite=Math.min(1,p*amp); if(bite>wear) wear=bite; }
       }
       o.tests=tests; o.wear=wear;
       const volScore = maxV>0 ? o.vol/maxV : 0;
@@ -1053,8 +1056,9 @@ const OB = {
 
       const [stxt,scol]=this.status(o);
       if(yA!=null) line(x1, yA, rightEdge, yA, scol, [5,4]);
-      // L1: força de FORMAÇÃO (estrelas, fixa) · L2: status + SAÚDE ao vivo (%, se move)
-      const l1=(bull?'▲ COMPRA':'▼ VENDA')+'  '+this.stars(Math.round(o.strength/20));
+      // L1: estrelas = força EFETIVA (formação × integridade) · L2: status + SAÚDE (%)
+      const eff=o.strength*(1-Math.min(1,o.wear||0));
+      const l1=(bull?'▲ COMPRA':'▼ VENDA')+'  '+this.stars(Math.round(eff/20));
       const l2=stxt+'  '+this.health(o)+'%';
       this.label(rightEdge, yA==null?(yT+yB)/2:yA, [l1, l2], scol);
     }
