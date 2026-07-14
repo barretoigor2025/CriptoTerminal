@@ -729,7 +729,7 @@ function onLiveCandle(c, closed){
 
   // Order Blocks só recalculam quando o candle fecha (mitigação = barra confirmada)
   if(closed) OB.compute();
-  if(OB.cfg.on) OB.checkAlerts();   // alertas sonoros (rompeu / virada / bloco novo)
+  if(OB.cfg.on){ OB.checkAlerts(); OB.sweepDead(); }   // alertas + remove mortos ao vivo (explosão)
 
   updateTicker(c, arr[arr.length-2]);
   setStatus('live','ao vivo');
@@ -898,8 +898,10 @@ const OB = {
       }
     }
     this.finalize(bull); this.finalize(bear);
-    this.hideOverlap(bull); this.hideOverlap(bear);
-    this.bull=bull; this.bear=bear;
+    const alive=o=>(o.wear||0)<0.999;                 // bloco totalmente atravessado = morto
+    let bull2=bull.filter(alive), bear2=bear.filter(alive);
+    this.hideOverlap(bull2); this.hideOverlap(bear2);
+    this.bull=bull2; this.bear=bear2;
   },
 
   // testes (visitas) + força, por lado
@@ -1002,6 +1004,22 @@ const OB = {
     }
     for(const loc in this._seen){ if(!present.has(+loc)) delete this._seen[loc]; }
     this._init=true;
+  },
+
+  // remove AO VIVO os blocos mortos (saúde 0 = totalmente atravessado), com explosão.
+  // roda a cada tick, então some sozinho — sem precisar atualizar o navegador.
+  sweepDead(){
+    for(const side of ['bull','bear']){
+      const arr=this[side];
+      for(let i=arr.length-1;i>=0;i--){
+        if(this.health(arr[i])<=0){
+          const o=arr[i];
+          EXPLOSION.spawn(o.avg, o.bias===1?'#26a69a':'#ef5350');
+          delete this._seen[o.loc];
+          arr.splice(i,1);
+        }
+      }
+    }
   },
 
   // estampa animada de setinhas dentro do bloco, subindo/descendo pela INTENÇÃO
@@ -1143,10 +1161,33 @@ const CYCLE = {
   }
 };
 
+/* efeito de explosão quando um Order Block é destruído (saúde 0) */
+const EXPLOSION = {
+  list:[],
+  spawn(price, color){ const c=S.candles; this.list.push({time:c.length?c[c.length-1].time:0, price, color, start:performance.now()}); },
+  draw(){
+    const now=performance.now();
+    for(let i=this.list.length-1;i>=0;i--){
+      const e=this.list[i], age=(now-e.start)/650;
+      if(age>=1){ this.list.splice(i,1); continue; }
+      const x=xOf(e.time), y=yOf(e.price); if(x==null||y==null) continue;
+      const R=age*48, a=1-age;
+      ctx.save();
+      ctx.strokeStyle=e.color; ctx.globalAlpha=a*0.55; ctx.lineWidth=2.5-age;   // onda de choque
+      ctx.beginPath(); ctx.arc(x,y,R,0,7); ctx.stroke();
+      ctx.fillStyle=e.color; ctx.globalAlpha=a;                                 // estilhaços
+      for(let p=0;p<11;p++){ const ang=p/11*Math.PI*2, d=R*(0.85+((p*37)%20)/60);
+        ctx.beginPath(); ctx.arc(x+Math.cos(ang)*d, y+Math.sin(ang)*d, 2.6*a+0.5, 0,7); ctx.fill(); }
+      ctx.restore();
+    }
+  }
+};
+
 function redraw(){
   ctx.clearRect(0,0,cv.width,cv.height);
   CYCLE.draw();
   OB.draw();
+  EXPLOSION.draw();
   for(const d of S.drawings){
     if(d.type==='trend') drawTrend(d);
     else if(d.type==='hline') drawHLine(d);
@@ -1361,6 +1402,10 @@ $('#obLen').addEventListener('change', syncOB);
 $('#obCount').addEventListener('change', syncOB);
 $('#obMiti').addEventListener('change', syncOB);
 $('#obArrows').addEventListener('change', syncOB);
+
+// rede de segurança: recalcula os Order Blocks periodicamente (novos aparecem,
+// mitigados somem) mesmo que o flag de fechamento do WebSocket falhe — sem refresh
+setInterval(()=>{ if(OB.cfg.on && S.candles.length){ OB.compute(); OB.checkAlerts(); OB.sweepDead(); } }, 15000);
 
 // ---- Médias Móveis (SMA/EMA + toggles 50/100/200/300/400) ----
 function syncMA(){
