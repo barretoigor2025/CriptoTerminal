@@ -556,7 +556,8 @@ const chart = LightweightCharts.createChart(stage,{
   crosshair:{ mode:LightweightCharts.CrosshairMode.Normal,
     vertLine:{color:'#41b3ff66', width:1, style:2, labelBackgroundColor:'#1d2534'},
     horzLine:{color:'#41b3ff66', width:1, style:2, labelBackgroundColor:'#1d2534'} },
-  rightPriceScale:{ borderColor:'#1d2534', scaleMargins:{top:.08, bottom:.22} },
+  rightPriceScale:{ borderColor:'#1d2534', scaleMargins:{top:.08, bottom:.22},
+    mode:LightweightCharts.PriceScaleMode.Logarithmic, autoScale:false },  /* log + escala manual */
   timeScale:{ borderColor:'#1d2534', timeVisible:true, secondsVisible:false },
   handleScale:true, handleScroll:true,
   autoSize:true,   /* o gráfico se ajusta sozinho ao container em qualquer tela */
@@ -661,6 +662,12 @@ function setStatus(state, txt){
   $('#statusTxt').textContent = txt;
 }
 
+// com autoScale desligado (escala manual), faz UM fit de preço na carga e depois trava
+function fitPriceOnce(ch){
+  try{ const ps=ch.priceScale('right'); ps.applyOptions({autoScale:true});
+    setTimeout(()=>{ try{ ps.applyOptions({autoScale:false}); }catch(e){} }, 150); }catch(e){}
+}
+
 // agrega candles mensais em anuais (exchanges não têm kline anual nativo)
 function aggregateYearly(monthly){
   const map={}, order=[];
@@ -685,6 +692,7 @@ async function loadData(){
     MA.render();
     OB.compute();
     chart.timeScale().fitContent();
+    fitPriceOnce(chart);   // fit de preço 1x (depois escala manual)
     updateTicker(candles[candles.length-1], candles[candles.length-2]);
     if(S.tf==='1y'){ setStatus('live','anual (histórico)'); }  // sem stream nativo p/ anual
     else { openSocket(); setStatus('live','ao vivo'); }
@@ -1510,7 +1518,8 @@ function makePane(symbol, tf){
     layout:{ background:{color:'transparent'}, textColor:'#7f8a9e', fontFamily:"'IBM Plex Mono', monospace", fontSize:10 },
     grid:{ vertLines:{color:'rgba(29,37,52,.4)'}, horzLines:{color:'rgba(29,37,52,.4)'} },
     crosshair:{ mode:LightweightCharts.CrosshairMode.Normal },
-    rightPriceScale:{ borderColor:'#1d2534', scaleMargins:{top:.1, bottom:.2} },
+    rightPriceScale:{ borderColor:'#1d2534', scaleMargins:{top:.1, bottom:.2},
+      mode:LightweightCharts.PriceScaleMode.Logarithmic, autoScale:false },
     timeScale:{ borderColor:'#1d2534', timeVisible:true, secondsVisible:false },
     autoSize:true,
   });
@@ -1538,6 +1547,7 @@ function makePane(symbol, tf){
       if(GRID.sharedOffset){ const tl=arr.length-1;
         try{ chart.timeScale().setVisibleLogicalRange({from:tl+GRID.sharedOffset.fromR, to:tl+GRID.sharedOffset.toR}); }catch(e){ chart.timeScale().fitContent(); } }
       else chart.timeScale().fitContent();
+      fitPriceOnce(chart);   // fit de preço 1x (depois escala manual)
       setPx(arr[arr.length-1], arr[arr.length-2]);
       openWS();
     }catch(e){ pxEl.textContent='erro'; }
