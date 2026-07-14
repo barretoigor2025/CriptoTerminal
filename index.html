@@ -1474,13 +1474,19 @@ function assetSelectHTML(cur){
 function pauseSingle(){ if(S.ws){ try{S.ws.close();}catch(e){} S.ws=null; } }
 function resumeSingle(){ loadData(); }
 
-// sincroniza a faixa de tempo visível entre os painéis do grid (pan/zoom/scroll)
-let _syncingPanes=false, _syncRange=null, _syncingCross=false;
-function syncPaneRange(range, source){
-  if(_syncingPanes) return;
-  if(_syncRange && range && _syncRange.from===range.from && _syncRange.to===range.to) return; // já nesse range (evita eco)
-  _syncRange=range; GRID.sharedRange=range; _syncingPanes=true;   // guarda p/ painéis que carregarem depois
-  for(const p of GRID.panes){ if(p!==source && p.chart){ try{ p.chart.timeScale().setVisibleRange(range); }catch(e){} } }
+// sincroniza os painéis pela faixa LÓGICA ancorada na BORDA DIREITA (offset em barras
+// a partir do último candle). Alinha pela mesma data, mesma largura, e acompanha a
+// rolagem pro futuro/vazio (o que setVisibleRange por tempo não fazia).
+let _syncingPanes=false, _syncingCross=false;
+function syncPaneLogical(range, source){
+  if(_syncingPanes || !range) return;
+  const srcLast=source.barCount()-1;
+  const fromR=range.from-srcLast, toR=range.to-srcLast;   // offsets relativos ao último candle
+  const so=GRID.sharedOffset;
+  if(so && Math.abs(so.fromR-fromR)<0.01 && Math.abs(so.toR-toR)<0.01) return; // mesmo offset (evita eco)
+  GRID.sharedOffset={fromR,toR}; _syncingPanes=true;
+  for(const p of GRID.panes){ if(p!==source && p.chart){ const tl=p.barCount()-1;
+    try{ p.chart.timeScale().setVisibleLogicalRange({from:tl+fromR, to:tl+toR}); }catch(e){} } }
   _syncingPanes=false;
 }
 // sincroniza o cursor (linha vertical na mesma hora em todos os painéis)
@@ -1527,8 +1533,9 @@ function makePane(symbol, tf){
     try{
       arr = await SOURCES[providerFor(state.symbol)].rest(state.tf, state.symbol);
       cs.setData(arr); vs.setData(arr.map(c=>({time:c.time, value:c.volume, color:volColor(c)})));
-      // já entra alinhado com os outros painéis (evita a corrida da carga inicial)
-      if(GRID.sharedRange){ try{ chart.timeScale().setVisibleRange(GRID.sharedRange); }catch(e){ chart.timeScale().fitContent(); } }
+      // já entra alinhado com os outros painéis (offset da borda direita — evita a corrida da carga)
+      if(GRID.sharedOffset){ const tl=arr.length-1;
+        try{ chart.timeScale().setVisibleLogicalRange({from:tl+GRID.sharedOffset.fromR, to:tl+GRID.sharedOffset.toR}); }catch(e){ chart.timeScale().fitContent(); } }
       else chart.timeScale().fitContent();
       setPx(arr[arr.length-1], arr[arr.length-2]);
       openWS();
@@ -1551,6 +1558,7 @@ function makePane(symbol, tf){
   el.querySelector('.pane-tf').addEventListener('change', e=>{ state.tf=e.target.value; GRID.persist(); load(); });
 
   const handle={ el, state, chart,
+    barCount(){ return arr.length; },
     // mostra o cursor neste painel na hora 'time' (com o candle deste ativo)
     showCrosshairAt(time){
       if(time==null){ try{ chart.clearCrosshairPosition(); }catch(e){} return; }
@@ -1558,15 +1566,15 @@ function makePane(symbol, tf){
       if(k){ try{ chart.setCrosshairPosition(k.close, time, cs); }catch(e){} }
     },
     destroy(){ if(ws){try{ws.close();}catch(e){}} chart.remove(); el.remove(); } };
-  // sincroniza EIXO DE TEMPO (pan/zoom) e CURSOR com os outros painéis
-  chart.timeScale().subscribeVisibleTimeRangeChange(r=>{ if(r) syncPaneRange(r, handle); });
+  // sincroniza EIXO DE TEMPO (pan/zoom/scroll, inclusive futuro) e CURSOR com os outros painéis
+  chart.timeScale().subscribeVisibleLogicalRangeChange(r=>{ if(r) syncPaneLogical(r, handle); });
   chart.subscribeCrosshairMove(param=>{ if(!_syncingCross) syncCrosshair(param.time, handle); });
   load();
   return handle;
 }
 
 const GRID = {
-  host: $('#grid'), panes: [], n: 1, saved: null, sharedRange: null,
+  host: $('#grid'), panes: [], n: 1, saved: null, sharedOffset: null,
   defaults: ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','DOGEUSDT'],
   set(n){
     this.n=n;
