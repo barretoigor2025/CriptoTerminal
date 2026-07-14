@@ -1474,6 +1474,16 @@ function assetSelectHTML(cur){
 function pauseSingle(){ if(S.ws){ try{S.ws.close();}catch(e){} S.ws=null; } }
 function resumeSingle(){ loadData(); }
 
+// sincroniza a faixa de tempo visível entre os painéis do grid (pan/zoom/scroll)
+let _syncingPanes=false, _syncRange=null;
+function syncPaneRange(range, source){
+  if(_syncingPanes) return;
+  if(_syncRange && range && _syncRange.from===range.from && _syncRange.to===range.to) return; // já nesse range (evita eco)
+  _syncRange=range; _syncingPanes=true;
+  for(const p of GRID.panes){ if(p!==source && p.chart){ try{ p.chart.timeScale().setVisibleRange(range); }catch(e){} } }
+  _syncingPanes=false;
+}
+
 function makePane(symbol, tf){
   const el = document.createElement('div'); el.className='pane';
   el.innerHTML =
@@ -1532,8 +1542,11 @@ function makePane(symbol, tf){
   el.querySelector('.pane-asset').addEventListener('change', e=>{ state.symbol=e.target.value; GRID.persist(); load(); });
   el.querySelector('.pane-tf').addEventListener('change', e=>{ state.tf=e.target.value; GRID.persist(); load(); });
 
+  const handle={ el, state, chart, destroy(){ if(ws){try{ws.close();}catch(e){}} chart.remove(); el.remove(); } };
+  // sincroniza o eixo de tempo com os outros painéis (mesma data/hora, sem distorção)
+  chart.timeScale().subscribeVisibleTimeRangeChange(r=>{ if(r) syncPaneRange(r, handle); });
   load();
-  return { el, state, destroy(){ if(ws){try{ws.close();}catch(e){}} chart.remove(); el.remove(); } };
+  return handle;
 }
 
 const GRID = {
