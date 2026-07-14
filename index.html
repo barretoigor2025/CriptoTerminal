@@ -172,13 +172,32 @@
      senão os toques/cliques de desenho não chegam nele */
   #overlay{position:absolute;inset:0;pointer-events:none;z-index:4}
 
-  /* ---------- PAINEL FORÇA DE MERCADO (canto sup. esq.) ---------- */
+  /* ---------- PILHA DO CANTO SUP. ESQ. (Força de Mercado + Ciclo) ---------- */
+  .leftstack{position:absolute;top:10px;left:10px;z-index:5;display:flex;flex-direction:column;gap:8px;width:216px}
   .mforce{
-    position:absolute;top:10px;left:10px;z-index:5;
+    width:100%;
     background:rgba(13,18,27,.9);border:1px solid var(--hair);border-radius:9px;
-    padding:8px 9px;backdrop-filter:blur(4px);min-width:198px;
+    padding:8px 9px;backdrop-filter:blur(4px);
   }
   .mforce[hidden]{display:none}
+
+  /* card BTC Time Cycle (abaixo da Força de Mercado, mesma largura, maior/visível) */
+  .cyclebox{
+    width:100%;background:rgba(13,18,27,.92);border:1px solid var(--hair-2);border-radius:9px;
+    padding:9px 10px;backdrop-filter:blur(4px);box-shadow:0 4px 16px rgba(0,0,0,.35);
+  }
+  .cyclebox[hidden]{display:none}
+  .cb-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+  .cb-tag{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted-2)}
+  .cb-phase{font-family:"Space Grotesk",sans-serif;font-size:11px;font-weight:700;letter-spacing:.5px}
+  .cb-row{display:flex;align-items:baseline;gap:7px;margin-bottom:6px}
+  .cb-pct{font-family:"Space Grotesk",sans-serif;font-size:26px;font-weight:700;line-height:1}
+  .cb-sub{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--muted)}
+  .cb-bar{position:relative;width:100%;height:6px;border-radius:3px;background:var(--hair);overflow:hidden;margin-bottom:7px}
+  .cb-bar i{position:absolute;left:0;top:0;height:100%;display:block;border-radius:3px}
+  .cb-bar b{position:absolute;top:-2px;width:2px;height:10px;background:var(--btc);border-radius:1px}  /* marca do topo 0.75 */
+  .cb-note{font-family:"IBM Plex Mono",monospace;font-size:10.5px;line-height:1.45;color:var(--muted)}
+  .cb-note b{font-weight:700}
   .mf-title{
     font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;
     color:var(--muted-2);margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;
@@ -194,7 +213,7 @@
   .mf-pct{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--muted)}
   .mf-str{font-family:"IBM Plex Mono",monospace;font-size:8.5px;color:var(--muted-2);display:flex;align-items:center;gap:3px}
   .mf-heavy{color:var(--btc)}
-  body.grid-on .mforce{display:none}
+  body.grid-on .leftstack{display:none}
   @media (max-width:560px){ .mforce{min-width:170px;transform:scale(.9);transform-origin:top left} }
 
   /* error banner */
@@ -398,7 +417,10 @@
     <div id="chart"></div>
     <canvas id="overlay"></canvas>
 
-    <div class="mforce" id="mforce" hidden></div>
+    <div class="leftstack">
+      <div class="mforce" id="mforce" hidden></div>
+      <div class="cyclebox" id="cyclebox" hidden></div>
+    </div>
 
     <div class="banner" id="banner">
       <h3>Sem dados do mercado</h3>
@@ -1155,17 +1177,32 @@ const CYCLE = {
         line(x,0,x,H,col,[4,5]); tag(x+3,H-13,(f===1?'1.0':(''+f)),col);
       }
     }
-    // pílula: posição atual do ciclo
-    const now=c[n-1].time, kn=Math.floor((now-a0)/len), pct=((now-(a0+kn*len))/len)*100;
-    const bull=pct<this.bearFrom*100, txt='Ciclo BTC '+pct.toFixed(1)+'% · '+(bull?'BULL':'BEAR');
-    ctx.save(); ctx.font="600 11px 'IBM Plex Mono', monospace";
-    const tw=ctx.measureText(txt).width, px=W-tw-16, py=10;
-    ctx.fillStyle='rgba(13,18,27,.9)'; ctx.strokeStyle=bull?'#26a69a':'#ef5350';
-    ctx.beginPath(); const r=5,bw=tw+16,bh=22;
-    ctx.moveTo(px-8+r,py); ctx.arcTo(px-8+bw,py,px-8+bw,py+bh,r); ctx.arcTo(px-8+bw,py+bh,px-8,py+bh,r); ctx.arcTo(px-8,py+bh,px-8,py,r); ctx.arcTo(px-8,py,px-8+bw,py,r); ctx.closePath();
-    ctx.fill(); ctx.stroke();
-    ctx.fillStyle=bull?'#26a69a':'#ef5350'; ctx.textBaseline='middle'; ctx.fillText(txt, px, py+bh/2);
-    ctx.restore();
+    // (a leitura de posição do ciclo agora fica no card DOM 'cyclebox', canto sup. esq.)
+  },
+  // calcula a posição atual do ciclo pelo TEMPO REAL (avança sozinho, ao vivo)
+  info(){
+    const len=Math.max(1,this.cfg.days), a0=this.anchorSec();
+    const nowSec=Date.now()/1000, lenSec=len*86400;
+    const k=Math.floor((nowSec-a0)/lenSec), cs=a0+k*lenSec;
+    const pct=(nowSec-cs)/lenSec, bull=pct<this.bearFrom;
+    const dToPeak=Math.max(0,(this.bearFrom-pct))*len, dToEnd=Math.max(0,(1-pct))*len;
+    return { pct:pct*100, bull, dToPeak:Math.round(dToPeak), dToEnd:Math.round(dToEnd) };
+  },
+  // atualiza o card DOM (ao vivo, sem refresh)
+  renderBox(){
+    const box=$('#cyclebox'); if(!box) return;
+    box.hidden = !this.cfg.on;
+    if(!this.cfg.on) return;
+    const i=this.info(), col=i.bull?'#26a69a':'#ef5350';
+    const meses=d=>(d/30.44).toFixed(1);
+    const note = i.bull
+      ? `No padrão · ainda em <b style="color:${col}">ALTA</b> — faltam ~${i.dToPeak}d (~${meses(i.dToPeak)} meses) até o topo (0.75)`
+      : `<b style="color:${col}">FASE FINAL (BEAR)</b> — faltam ~${i.dToEnd}d (~${meses(i.dToEnd)} meses) até o novo ciclo (1.0)`;
+    box.innerHTML =
+      '<div class="cb-top"><span class="cb-tag">BTC TIME CYCLE</span><span class="cb-phase" style="color:'+col+'">'+(i.bull?'BULL':'BEAR')+'</span></div>'+
+      '<div class="cb-row"><span class="cb-pct" style="color:'+col+'">'+i.pct.toFixed(1)+'%</span><span class="cb-sub">do ciclo de '+this.cfg.days+'d</span></div>'+
+      '<div class="cb-bar"><i style="width:'+Math.max(0,Math.min(100,i.pct))+'%;background:'+col+'"></i><b style="left:75%"></b></div>'+
+      '<div class="cb-note">'+note+'</div>';
   }
 };
 
@@ -1677,8 +1714,11 @@ function syncCycle(){
   CYCLE.cfg.on     = $('#cycleOn').checked;
   CYCLE.cfg.anchor = $('#cycleAnchor').value || '2022-11-21';
   CYCLE.cfg.days   = Math.max(200, Math.min(3000, +$('#cycleDays').value||1437));
+  CYCLE.renderBox();
   store.save();
 }
+// atualização AO VIVO do card (igual aos Order Blocks): avança sozinho, sem refresh
+setInterval(()=>{ if(CYCLE.cfg.on) CYCLE.renderBox(); }, 15000);
 $('#cycleOn').addEventListener('change', syncCycle);
 $('#cycleAnchor').addEventListener('change', syncCycle);
 $('#cycleDays').addEventListener('change', syncCycle);
@@ -1711,6 +1751,7 @@ $('#cycleDays').addEventListener('change', syncCycle);
   if(saved.sound){ SOUND.on=true; $('#soundOn').checked=true; }  // áudio libera no 1º clique
   if(saved.cycle){ Object.assign(CYCLE.cfg, saved.cycle);
     $('#cycleOn').checked=CYCLE.cfg.on; $('#cycleAnchor').value=CYCLE.cfg.anchor; $('#cycleDays').value=CYCLE.cfg.days; }
+  CYCLE.renderBox();
   resizeOverlay();
   // restaura layout de painéis (GRID.set(1) carrega a tela única via resumeSingle→loadData)
   if(saved.grid && Array.isArray(saved.grid.panes)) GRID.saved = saved.grid.panes;
