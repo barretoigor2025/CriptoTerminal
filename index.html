@@ -55,6 +55,12 @@
 
   .ticker{display:flex;align-items:baseline;gap:8px;white-space:nowrap}
   .ticker .sym{color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.3px}
+  .ticker .asset-sel{
+    background:var(--panel-2);color:var(--btc);border:1px solid var(--hair);
+    border-radius:8px;font-family:"Space Grotesk",sans-serif;font-size:13px;font-weight:700;
+    letter-spacing:.4px;padding:4px 6px;cursor:pointer;align-self:center;
+  }
+  .ticker .asset-sel:hover{border-color:var(--hair-2)}
   .ticker .px{font-size:16px;font-weight:600}
   .ticker .chg{font-size:11px;font-weight:500;padding:2px 6px;border-radius:5px}
   .chg.up{color:var(--bull);background:rgba(38,166,154,.12)}
@@ -297,7 +303,11 @@
   <div class="brand"><span class="dot"></span>IB<span class="brand-full">&nbsp;TERMINAL</span></div>
 
   <div class="ticker">
-    <span class="sym">BTC/USDT</span>
+    <select class="asset-sel" id="mainAsset" title="Ativo">
+      <option value="BTCUSDT" selected>BTC</option>
+      <option value="ETHUSDT">ETH</option>
+      <option value="SOLUSDT">SOL</option>
+    </select>
     <span class="px mono" id="px">—</span>
     <span class="chg mono" id="chg">—</span>
   </div>
@@ -449,6 +459,7 @@ const PULSE_STATIC = !!(window.matchMedia && window.matchMedia('(prefers-reduced
 /* ---------- estado global ---------- */
 const S = {
   source: 'binance',
+  symbol: 'BTCUSDT',    // ativo da tela principal (BTC/ETH/SOL…)
   tf: '1h',
   candles: [],          // {time, open, high, low, close, volume}
   drawings: [],         // desenhos do usuário (âncoras em time/price)
@@ -461,7 +472,7 @@ const S = {
 
 /* ---------- persistência (localStorage com proteção) ---------- */
 const store = {
-  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), mforce:(typeof MFORCE!=='undefined'?MFORCE.on:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined)})); }catch(e){} },
+  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, symbol:S.symbol, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), mforce:(typeof MFORCE!=='undefined'?MFORCE.on:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined)})); }catch(e){} },
   load(){ try{ return JSON.parse(localStorage.getItem('ib_term')||'{}'); }catch(e){ return {}; } }
 };
 
@@ -705,7 +716,7 @@ async function loadData(){
   setStatus('', 'carregando…'); $('#banner').classList.remove('show');
   const src = SOURCES[S.source];
   try{
-    const candles = S.tf==='1y' ? aggregateYearly(await src.rest('1M')) : await src.rest(S.tf);
+    const candles = S.tf==='1y' ? aggregateYearly(await src.rest('1M', S.symbol)) : await src.rest(S.tf, S.symbol);
     if(!candles.length) throw new Error('vazio');
     S.candles = candles;
     candleSeries.setData(candles);
@@ -730,7 +741,7 @@ async function loadData(){
 
 function openSocket(){
   if(S.ws){ try{S.ws.close();}catch(e){} S.ws=null; }
-  const sock = SOURCES[S.source].ws(S.tf, onLiveCandle);
+  const sock = SOURCES[S.source].ws(S.tf, onLiveCandle, S.symbol);
   sock.onclose = ()=>{ if(S.ws===sock){ setStatus('', 'reconectando…'); setTimeout(()=>{ if(S.ws===sock) openSocket(); }, 2000); } };
   sock.onerror = ()=>{ try{sock.close();}catch(e){} };
   S.ws = sock;
@@ -1413,6 +1424,9 @@ document.addEventListener('click', e=>{
 
 $('#tfSel').addEventListener('change', e=>{ S.tf=e.target.value; store.save(); loadData(); });
 
+// ---- ativo da tela principal (BTC / ETH / SOL) ----
+$('#mainAsset').addEventListener('change', e=>{ S.symbol=e.target.value; store.save(); loadData(); MFORCE.refresh().catch(()=>{}); });
+
 // ---- tela cheia (entra/sai; o botão vira "voltar" quando em tela cheia) ----
 const fsBtn=$('#fsBtn');
 const ICON_EXPAND='<svg viewBox="0 0 24 24" width="16" height="16" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
@@ -1508,6 +1522,7 @@ const ASSETS = [
 const PANE_TFS = ['15m','1h','4h','1d','1w'];
 // provedor de um símbolo: xStocks -> gate; cripto -> a fonte selecionada
 function providerFor(sym){ const a=ASSETS.find(x=>x[1]===sym); return (a&&a[3]) || S.source; }
+function symLabel(sym){ const a=ASSETS.find(x=>x[1]===sym); return a ? a[0] : (sym||'').replace(/USDT$/,''); }
 function assetSelectHTML(cur){
   const groups={};
   for(const [l,s,g] of ASSETS){ (groups[g]=groups[g]||[]).push([l,s]); }
@@ -1679,14 +1694,14 @@ const MFORCE = {
   async refresh(){
     if(!this.on) return;
     const src=SOURCES[S.source];
-    const data = await Promise.all(this.tfs.map(tf=>src.rest(tf).catch(()=>null)));
+    const data = await Promise.all(this.tfs.map(tf=>src.rest(tf, S.symbol).catch(()=>null)));
     this.render(this.tfs.map((tf,i)=>({tf, m: data[i] ? this.calc(data[i]) : null})));
   },
   render(cols){
     const AR=d=>d>0?'▲':d<0?'▼':'→', COL=d=>d>0?'#26a69a':d<0?'#ef5350':'#7f8a9e', W=d=>d>0?'ALTA':d<0?'BAIXA':'LAT';
     const L={'1h':'1h','4h':'4h','1d':'1D'};
     this.el.innerHTML =
-      '<div class="mf-title"><span>Força de Mercado</span><b>BTC</b></div><div class="mf-cols">'+
+      '<div class="mf-title"><span>Força de Mercado</span><b>'+symLabel(S.symbol)+'</b></div><div class="mf-cols">'+
       cols.map(({tf,m})=> !m
         ? `<div class="mf-col"><div class="mf-tf">${L[tf]}</div><div class="mf-arrow" style="color:#586074">–</div></div>`
         : `<div class="mf-col">
@@ -1731,6 +1746,7 @@ $('#cycleDays').addEventListener('change', syncCycle);
   if(saved.tf){ S.tf=saved.tf; }
   $('#tfSel').value = S.tf;
   if(saved.source){ S.source=saved.source; $('#src').value=S.source; }
+  if(saved.symbol){ S.symbol=saved.symbol; $('#mainAsset').value=S.symbol; }
   if(Array.isArray(saved.drawings)) S.drawings=saved.drawings;
   if(saved.ob){ Object.assign(OB.cfg, saved.ob);
     $('#obOn').checked=OB.cfg.on; $('#obLen').value=OB.cfg.len;
