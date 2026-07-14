@@ -1480,10 +1480,11 @@ function resumeSingle(){ loadData(); }
 let _syncingPanes=false, _syncingCross=false;
 function syncPaneLogical(range, source){
   if(_syncingPanes || !range) return;
+  if(GRID.active && source!==GRID.active) return;   // só o painel sob interação comanda (mata o eco/briga)
   const srcLast=source.barCount()-1;
   const fromR=range.from-srcLast, toR=range.to-srcLast;   // offsets relativos ao último candle
   const so=GRID.sharedOffset;
-  if(so && Math.abs(so.fromR-fromR)<0.01 && Math.abs(so.toR-toR)<0.01) return; // mesmo offset (evita eco)
+  if(so && Math.abs(so.fromR-fromR)<0.4 && Math.abs(so.toR-toR)<0.4) return; // mesmo offset (evita eco)
   GRID.sharedOffset={fromR,toR}; _syncingPanes=true;
   for(const p of GRID.panes){ if(p!==source && p.chart){ const tl=p.barCount()-1;
     try{ p.chart.timeScale().setVisibleLogicalRange({from:tl+fromR, to:tl+toR}); }catch(e){} } }
@@ -1569,12 +1570,14 @@ function makePane(symbol, tf){
   // sincroniza EIXO DE TEMPO (pan/zoom/scroll, inclusive futuro) e CURSOR com os outros painéis
   chart.timeScale().subscribeVisibleLogicalRangeChange(r=>{ if(r) syncPaneLogical(r, handle); });
   chart.subscribeCrosshairMove(param=>{ if(!_syncingCross) syncCrosshair(param.time, handle); });
+  // ao tocar/rolar/arrastar um painel, ele vira o "dono" do movimento (os outros só seguem)
+  ['pointerdown','wheel','touchstart'].forEach(ev=> el.addEventListener(ev, ()=>{ GRID.active=handle; }, {passive:true}));
   load();
   return handle;
 }
 
 const GRID = {
-  host: $('#grid'), panes: [], n: 1, saved: null, sharedOffset: null,
+  host: $('#grid'), panes: [], n: 1, saved: null, sharedOffset: null, active: null,
   defaults: ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','DOGEUSDT'],
   set(n){
     this.n=n;
@@ -1589,6 +1592,8 @@ const GRID = {
       pauseSingle();
       document.body.classList.add('grid-on');
       this.host.classList.add('g'+n);
+      this.active=null;
+      if(!this.sharedOffset) this.sharedOffset={fromR:-89, toR:0};  // padrão: últimas ~90 barras, alinhado à direita
       for(let i=0;i<n;i++){
         const c=(this.saved&&this.saved[i]) ? this.saved[i] : {symbol:this.defaults[i%this.defaults.length], tf:'1h'};
         const pane=makePane(c.symbol, c.tf);
