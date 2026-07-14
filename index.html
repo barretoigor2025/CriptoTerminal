@@ -1475,13 +1475,19 @@ function pauseSingle(){ if(S.ws){ try{S.ws.close();}catch(e){} S.ws=null; } }
 function resumeSingle(){ loadData(); }
 
 // sincroniza a faixa de tempo visível entre os painéis do grid (pan/zoom/scroll)
-let _syncingPanes=false, _syncRange=null;
+let _syncingPanes=false, _syncRange=null, _syncingCross=false;
 function syncPaneRange(range, source){
   if(_syncingPanes) return;
   if(_syncRange && range && _syncRange.from===range.from && _syncRange.to===range.to) return; // já nesse range (evita eco)
-  _syncRange=range; _syncingPanes=true;
+  _syncRange=range; GRID.sharedRange=range; _syncingPanes=true;   // guarda p/ painéis que carregarem depois
   for(const p of GRID.panes){ if(p!==source && p.chart){ try{ p.chart.timeScale().setVisibleRange(range); }catch(e){} } }
   _syncingPanes=false;
+}
+// sincroniza o cursor (linha vertical na mesma hora em todos os painéis)
+function syncCrosshair(time, source){
+  _syncingCross=true;
+  for(const p of GRID.panes){ if(p!==source && p.showCrosshairAt) p.showCrosshairAt(time); }
+  _syncingCross=false;
 }
 
 function makePane(symbol, tf){
@@ -1521,7 +1527,9 @@ function makePane(symbol, tf){
     try{
       arr = await SOURCES[providerFor(state.symbol)].rest(state.tf, state.symbol);
       cs.setData(arr); vs.setData(arr.map(c=>({time:c.time, value:c.volume, color:volColor(c)})));
-      chart.timeScale().fitContent();
+      // já entra alinhado com os outros painéis (evita a corrida da carga inicial)
+      if(GRID.sharedRange){ try{ chart.timeScale().setVisibleRange(GRID.sharedRange); }catch(e){ chart.timeScale().fitContent(); } }
+      else chart.timeScale().fitContent();
       setPx(arr[arr.length-1], arr[arr.length-2]);
       openWS();
     }catch(e){ pxEl.textContent='erro'; }
@@ -1542,15 +1550,23 @@ function makePane(symbol, tf){
   el.querySelector('.pane-asset').addEventListener('change', e=>{ state.symbol=e.target.value; GRID.persist(); load(); });
   el.querySelector('.pane-tf').addEventListener('change', e=>{ state.tf=e.target.value; GRID.persist(); load(); });
 
-  const handle={ el, state, chart, destroy(){ if(ws){try{ws.close();}catch(e){}} chart.remove(); el.remove(); } };
-  // sincroniza o eixo de tempo com os outros painéis (mesma data/hora, sem distorção)
+  const handle={ el, state, chart,
+    // mostra o cursor neste painel na hora 'time' (com o candle deste ativo)
+    showCrosshairAt(time){
+      if(time==null){ try{ chart.clearCrosshairPosition(); }catch(e){} return; }
+      let k=null; for(let i=arr.length-1;i>=0;i--){ if(arr[i].time<=time){ k=arr[i]; break; } }
+      if(k){ try{ chart.setCrosshairPosition(k.close, time, cs); }catch(e){} }
+    },
+    destroy(){ if(ws){try{ws.close();}catch(e){}} chart.remove(); el.remove(); } };
+  // sincroniza EIXO DE TEMPO (pan/zoom) e CURSOR com os outros painéis
   chart.timeScale().subscribeVisibleTimeRangeChange(r=>{ if(r) syncPaneRange(r, handle); });
+  chart.subscribeCrosshairMove(param=>{ if(!_syncingCross) syncCrosshair(param.time, handle); });
   load();
   return handle;
 }
 
 const GRID = {
-  host: $('#grid'), panes: [], n: 1, saved: null,
+  host: $('#grid'), panes: [], n: 1, saved: null, sharedRange: null,
   defaults: ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','DOGEUSDT'],
   set(n){
     this.n=n;
