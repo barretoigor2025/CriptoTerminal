@@ -219,6 +219,29 @@
   .mf-pct{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--muted)}
   .mf-str{font-family:"IBM Plex Mono",monospace;font-size:8.5px;color:var(--muted-2);display:flex;align-items:center;gap:3px}
   .mf-heavy{color:var(--btc)}
+
+  /* card Order Blocks Multi-TF (confluência 1h / 4h / 1D vs. preço atual) */
+  .mtfob{
+    width:100%;background:rgba(13,18,27,.92);border:1px solid var(--hair);border-radius:9px;
+    padding:8px 9px;backdrop-filter:blur(4px);
+  }
+  .mtfob[hidden]{display:none}
+  .mtf-title{
+    font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;
+    color:var(--muted-2);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;
+  }
+  .mtf-title b{color:var(--muted);font-weight:600}
+  .mtf-row{display:flex;align-items:flex-start;gap:8px;padding:4px 0;border-top:1px solid rgba(255,255,255,.04)}
+  .mtf-row:first-of-type{border-top:none}
+  .mtf-row.cur{background:rgba(247,147,26,.06);border-radius:6px;padding-left:5px;margin-left:-5px}
+  .mtf-tf{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:700;color:var(--btc);min-width:22px;padding-top:1px}
+  .mtf-body{flex:1;min-width:0}
+  .mtf-state{font-family:"IBM Plex Mono",monospace;font-size:10.5px;line-height:1.35;display:block}
+  .mtf-state b{font-weight:700}
+  .mtf-dy{color:#ef5350;font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:.3px}
+  .mtf-bar{width:100%;height:4px;border-radius:2px;background:var(--hair);overflow:hidden;position:relative;margin-top:4px}
+  .mtf-bar i{position:absolute;left:0;top:0;height:100%;display:block;border-radius:2px}
+
   body.grid-on .leftstack{display:none}
   @media (max-width:560px){ .mforce{min-width:170px;transform:scale(.9);transform-origin:top left} }
 
@@ -430,6 +453,7 @@
     <div class="leftstack">
       <div class="mforce" id="mforce" hidden></div>
       <div class="cyclebox" id="cyclebox" hidden></div>
+      <div class="mtfob" id="mtfob" hidden></div>
     </div>
 
     <div class="banner" id="banner">
@@ -770,7 +794,7 @@ function onLiveCandle(c, closed){
 
   // Order Blocks só recalculam quando o candle fecha (mitigação = barra confirmada)
   if(closed) OB.compute();
-  if(OB.cfg.on){ OB.checkAlerts(); OB.sweepDead(); }   // alertas + remove mortos ao vivo (explosão)
+  if(OB.cfg.on){ OB.checkAlerts(); OB.sweepDead(); MTFOB.render(); }   // alertas + remove mortos + confluência MTF ao vivo
 
   updateTicker(c, arr[arr.length-2]);
   setStatus('live','ao vivo');
@@ -901,9 +925,16 @@ const OB = {
   },
 
   compute(){
-    const c=S.candles, {len,mode,miti}=this.cfg;
-    this.bull=[]; this.bear=[];
-    if(!this.cfg.on || c.length < 2*len+1) return;
+    if(!this.cfg.on){ this.bull=[]; this.bear=[]; return; }
+    const r=this.computeArr(S.candles);
+    this.bull=r.bull; this.bear=r.bear;
+  },
+
+  // versão PURA: calcula os blocos sobre um array de candles qualquer, sem mexer
+  // no estado. Usada pelo painel Multi-TF (1h / 4h / 1D) sem afetar a tela.
+  computeArr(c){
+    const {len,mode,miti}=this.cfg;
+    if(c.length < 2*len+1) return {bull:[], bear:[]};
     const atr=this.atrSeries(c,len);
     let dir=0;
     const bull=[], bear=[];
@@ -938,16 +969,15 @@ const OB = {
         if(broke) bear.splice(k,1);
       }
     }
-    this.finalize(bull); this.finalize(bear);
+    this.finalize(bull, c); this.finalize(bear, c);
     const alive=o=>(o.wear||0)<0.999;                 // bloco totalmente atravessado = morto
     let bull2=bull.filter(alive), bear2=bear.filter(alive);
     this.hideOverlap(bull2); this.hideOverlap(bear2);
-    this.bull=bull2; this.bear=bear2;
+    return {bull:bull2, bear:bear2};
   },
 
-  // testes (visitas) + força, por lado
-  finalize(list){
-    const c=S.candles;
+  // testes (visitas) + força, por lado (sobre o array de candles 'c' informado)
+  finalize(list, c){
     let maxV=0; for(const o of list) if(o.vol>maxV) maxV=o.vol;
     for(const o of list){
       let tests=0, wasInside=false, wear=0;
@@ -1425,7 +1455,7 @@ document.addEventListener('click', e=>{
 $('#tfSel').addEventListener('change', e=>{ S.tf=e.target.value; store.save(); loadData(); });
 
 // ---- ativo da tela principal (BTC / ETH / SOL) ----
-$('#mainAsset').addEventListener('change', e=>{ S.symbol=e.target.value; store.save(); loadData(); MFORCE.refresh().catch(()=>{}); });
+$('#mainAsset').addEventListener('change', e=>{ S.symbol=e.target.value; store.save(); loadData(); MFORCE.refresh().catch(()=>{}); MTFOB.refresh().catch(()=>{}); });
 
 // ---- tela cheia (entra/sai; o botão vira "voltar" quando em tela cheia) ----
 const fsBtn=$('#fsBtn');
@@ -1443,7 +1473,7 @@ fsBtn.addEventListener('click', toggleFS);
 document.addEventListener('fullscreenchange', syncFSIcon);
 document.addEventListener('webkitfullscreenchange', syncFSIcon);
 
-$('#src').addEventListener('change', e=>{ S.source=e.target.value; store.save(); loadData(); MFORCE.refresh().catch(()=>{}); });
+$('#src').addEventListener('change', e=>{ S.source=e.target.value; store.save(); loadData(); MFORCE.refresh().catch(()=>{}); MTFOB.refresh().catch(()=>{}); });
 $('#emaOn').addEventListener('change', renderEMA);
 $('#emaLen').addEventListener('change', renderEMA);
 
@@ -1454,7 +1484,7 @@ function syncOB(){
   OB.cfg.count = Math.max(1, Math.min(20, +$('#obCount').value||5));
   OB.cfg.miti  = $('#obMiti').value;
   OB.cfg.arrows= $('#obArrows').checked;
-  OB.compute(); store.save();
+  OB.compute(); MTFOB.set(OB.cfg.on); store.save();
 }
 $('#obOn').addEventListener('change', syncOB);
 $('#obLen').addEventListener('change', syncOB);
@@ -1464,7 +1494,7 @@ $('#obArrows').addEventListener('change', syncOB);
 
 // rede de segurança: recalcula os Order Blocks periodicamente (novos aparecem,
 // mitigados somem) mesmo que o flag de fechamento do WebSocket falhe — sem refresh
-setInterval(()=>{ if(OB.cfg.on && S.candles.length){ OB.compute(); OB.checkAlerts(); OB.sweepDead(); } }, 15000);
+setInterval(()=>{ if(OB.cfg.on && S.candles.length){ OB.compute(); OB.checkAlerts(); OB.sweepDead(); MTFOB.render(); } }, 15000);
 
 // ---- Médias Móveis (SMA/EMA + toggles 50/100/200/300/400) ----
 function syncMA(){
@@ -1724,6 +1754,93 @@ const MFORCE = {
 $('#mforceOn').addEventListener('change', e=>MFORCE.set(e.target.checked));
 $('#soundOn').addEventListener('change', e=>SOUND.enable(e.target.checked));
 
+/* =========================================================================
+   ORDER BLOCKS MULTI-TF — painelzinho de confluência (1h / 4h / 1D)
+   Para cada período diz, em relação ao PREÇO ATUAL, se estamos DENTRO de um
+   bloco (compra/venda) e a saúde dele (se está morrendo), ou se estamos
+   CHEGANDO num bloco logo acima/abaixo. Assim dá pra ver se o bloco de 1h
+   já era e o preço está entrando num bloco de 4h ou do diário.
+   Estrutura dos blocos é buscada por REST a cada 45s; a leitura (dentro/perto/
+   saúde) é reavaliada AO VIVO contra o preço a cada tick, sem refresh.
+   ========================================================================= */
+const MTFOB = {
+  tfs:['1h','4h','1d'], data:{}, timer:null, el:$('#mtfob'),
+  visible(){ return OB.cfg.on; },
+  // penetração viva do preço na zona (0=fora, 1=atravessou tudo)
+  livePen(o, price){
+    const h=o.top-o.btm; if(h<=0) return 0;
+    if(o.bias===1) return price<o.top ? Math.min(1,(o.top-price)/h) : 0;   // demanda: erode de cima
+    return              price>o.btm ? Math.min(1,(price-o.btm)/h) : 0;      // oferta: erode de baixo
+  },
+  liveHealth(o, price){ return Math.round((1-Math.min(1, Math.max(o.wear||0, this.livePen(o,price))))*100); },
+  // avalia um período contra o preço: dentro de um bloco? o mais próximo?
+  evalTF(price, d){
+    if(!d) return {kind:'load'};
+    const blocks=[...(d.bull||[]), ...(d.bear||[])];
+    if(!blocks.length) return {kind:'none'};
+    let inside=null;
+    for(const o of blocks){
+      if(price>=o.btm && price<=o.top && (!inside || (o.top-o.btm)<(inside.top-inside.btm))) inside=o;
+    }
+    if(inside){
+      const health=this.liveHealth(inside, price);
+      return {kind:'inside', bias:inside.bias, health, dying:health<=30};
+    }
+    let best=null, bestD=Infinity, above=false;
+    for(const o of blocks){
+      const dist = price>o.top ? (price-o.top) : price<o.btm ? (o.btm-price) : 0;
+      const dp=dist/price*100;
+      if(dp<bestD){ bestD=dp; best=o; above=(o.btm>price); }
+    }
+    return {kind:'near', bias:best.bias, health:this.liveHealth(best,price), distPct:bestD, above};
+  },
+  async refresh(){
+    if(!this.visible()) return;
+    const src=SOURCES[providerFor(S.symbol)];
+    const got=await Promise.all(this.tfs.map(tf=>src.rest(tf, S.symbol).then(c=>OB.computeArr(c)).catch(()=>null)));
+    this.tfs.forEach((tf,i)=>{ if(got[i]) this.data[tf]=got[i]; });
+    this.render();
+  },
+  render(){
+    this.el.hidden = !this.visible();
+    if(!this.visible()) return;
+    const price = S.candles.length ? S.candles[S.candles.length-1].close : 0;
+    const L={'1h':'1h','4h':'4h','1d':'1D'};
+    const rows = this.tfs.map(tf=>{
+      const r=this.evalTF(price, this.data[tf]);
+      const cur = (tf===S.tf);           // período que está no gráfico agora
+      let icon, col, txt, bar='';
+      if(r.kind==='load'){ icon='·'; col='#586074'; txt='carregando…'; }
+      else if(r.kind==='none'){ icon='·'; col='#586074'; txt='sem bloco'; }
+      else {
+        const dem = r.bias===1;                       // demanda(compra) x oferta(venda)
+        const word = dem?'COMPRA':'VENDA';
+        col = dem?'#26a69a':'#ef5350';
+        if(r.kind==='inside'){
+          icon = dem?'🟢':'🔴';
+          const dyingTag = r.dying ? ' <span class="mtf-dy">morrendo</span>' : '';
+          txt = 'dentro · <b>'+word+'</b> · '+r.health+'%'+dyingTag;
+          const bc = r.dying?'#ef5350':col;
+          bar = '<div class="mtf-bar"><i style="width:'+Math.max(3,r.health)+'%;background:'+bc+'"></i></div>';
+        } else {
+          icon = r.above?'⬆':'⬇';
+          txt = 'entrando · <b>'+word+'</b> a '+r.distPct.toFixed(2)+'%';
+        }
+      }
+      return '<div class="mtf-row'+(cur?' cur':'')+'">'+
+               '<span class="mtf-tf">'+L[tf]+'</span>'+
+               '<div class="mtf-body"><span class="mtf-state" style="color:'+col+'">'+icon+' '+txt+'</span>'+bar+'</div>'+
+             '</div>';
+    }).join('');
+    this.el.innerHTML = '<div class="mtf-title"><span>Order Blocks · Multi-TF</span><b>'+symLabel(S.symbol)+'</b></div>'+rows;
+  },
+  set(on){
+    if(this.timer){ clearInterval(this.timer); this.timer=null; }
+    if(on){ this.refresh().catch(()=>{}); this.timer=setInterval(()=>this.refresh().catch(()=>{}), 45000); }
+    else this.render();
+  }
+};
+
 // ---- BTC Time Cycle ----
 function syncCycle(){
   CYCLE.cfg.on     = $('#cycleOn').checked;
@@ -1764,6 +1881,7 @@ $('#cycleDays').addEventListener('change', syncCycle);
   $('#proxyInput').value = GATE_PROXY;
   if(saved.mforce===false){ MFORCE.on=false; $('#mforceOn').checked=false; }
   MFORCE.set(MFORCE.on);
+  MTFOB.set(OB.cfg.on);   // painel de confluência Multi-TF acompanha o toggle dos Order Blocks
   if(saved.sound){ SOUND.on=true; $('#soundOn').checked=true; }  // áudio libera no 1º clique
   if(saved.cycle){ Object.assign(CYCLE.cfg, saved.cycle);
     $('#cycleOn').checked=CYCLE.cfg.on; $('#cycleAnchor').value=CYCLE.cfg.anchor; $('#cycleDays').value=CYCLE.cfg.days; }
