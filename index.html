@@ -178,72 +178,63 @@
      senão os toques/cliques de desenho não chegam nele */
   #overlay{position:absolute;inset:0;pointer-events:none;z-index:4}
 
-  /* ---------- PILHA DO CANTO SUP. ESQ. (Força de Mercado + Ciclo) ---------- */
-  .leftstack{position:absolute;top:10px;left:10px;z-index:5;display:flex;flex-direction:column;gap:8px;width:216px}
-  .mforce{
-    width:100%;
-    background:rgba(13,18,27,.9);border:1px solid var(--hair);border-radius:9px;
-    padding:8px 9px;backdrop-filter:blur(4px);
+  /* ---------- PILHA DO CANTO SUP. ESQ. (Ciclo + Order Blocks Multi-TF) ---------- */
+  .leftstack{
+    position:absolute;top:10px;left:10px;z-index:5;display:flex;flex-direction:column;gap:7px;
+    width:196px;max-width:calc(100vw - 20px);max-height:calc(100% - 20px);
+    overflow-y:auto;overflow-x:hidden;scrollbar-width:none;
   }
-  .mforce[hidden]{display:none}
+  .leftstack::-webkit-scrollbar{display:none}
 
-  /* card BTC Time Cycle (abaixo da Força de Mercado, mesma largura, maior/visível) */
+  /* card BTC Time Cycle — compacto (altura/fonte reduzidas) */
   .cyclebox{
     width:100%;background:rgba(13,18,27,.92);border:1px solid var(--hair-2);border-radius:9px;
-    padding:9px 10px;backdrop-filter:blur(4px);box-shadow:0 4px 16px rgba(0,0,0,.35);
+    padding:7px 9px;backdrop-filter:blur(4px);box-shadow:0 4px 16px rgba(0,0,0,.35);
   }
   .cyclebox[hidden]{display:none}
-  .cb-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
-  .cb-tag{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted-2)}
-  .cb-phase{font-family:"Space Grotesk",sans-serif;font-size:11px;font-weight:700;letter-spacing:.5px}
-  .cb-row{display:flex;align-items:baseline;gap:7px;margin-bottom:6px}
-  .cb-pct{font-family:"Space Grotesk",sans-serif;font-size:26px;font-weight:700;line-height:1}
-  .cb-sub{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--muted)}
-  .cb-bar{position:relative;width:100%;height:6px;border-radius:3px;background:var(--hair);overflow:hidden;margin-bottom:7px}
+  .cb-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+  .cb-tag{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted-2)}
+  .cb-phase{font-family:"Space Grotesk",sans-serif;font-size:10px;font-weight:700;letter-spacing:.4px}
+  .cb-row{display:flex;align-items:baseline;gap:6px;margin-bottom:4px}
+  .cb-pct{font-family:"Space Grotesk",sans-serif;font-size:18px;font-weight:700;line-height:1}
+  .cb-sub{font-family:"IBM Plex Mono",monospace;font-size:9px;color:var(--muted)}
+  .cb-bar{position:relative;width:100%;height:5px;border-radius:3px;background:var(--hair);overflow:hidden;margin-bottom:5px}
   .cb-bar i{position:absolute;left:0;top:0;height:100%;display:block;border-radius:3px}
-  .cb-bar b{position:absolute;top:-2px;width:2px;height:10px;background:var(--btc);border-radius:1px}  /* marca do topo 0.75 */
-  .cb-note{font-family:"IBM Plex Mono",monospace;font-size:10.5px;line-height:1.45;color:var(--muted)}
+  .cb-bar b{position:absolute;top:-2px;width:2px;height:9px;background:var(--btc);border-radius:1px}  /* marca do topo 0.75 */
+  .cb-note{font-family:"IBM Plex Mono",monospace;font-size:9px;line-height:1.35;color:var(--muted)}
   .cb-note b{font-weight:700}
-  .mf-title{
-    font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;
-    color:var(--muted-2);margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;
-  }
-  .mf-title b{color:var(--muted);font-weight:600}
-  .mf-cols{display:flex;gap:7px}
-  .mf-col{flex:1;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px}
-  .mf-tf{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--muted);font-weight:600}
-  .mf-arrow{font-size:17px;line-height:1;font-weight:700}
-  .mf-trend{font-family:"Space Grotesk",sans-serif;font-size:9.5px;font-weight:600;letter-spacing:.3px}
-  .mf-bar{width:100%;height:5px;border-radius:3px;background:var(--bear);overflow:hidden;position:relative}
-  .mf-bar i{position:absolute;left:0;top:0;height:100%;background:var(--bull);display:block}
-  .mf-pct{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--muted)}
-  .mf-str{font-family:"IBM Plex Mono",monospace;font-size:8.5px;color:var(--muted-2);display:flex;align-items:center;gap:3px}
-  .mf-heavy{color:var(--btc)}
 
-  /* card Order Blocks Multi-TF (confluência 1h / 4h / 1D vs. preço atual) */
+  /* card Order Blocks Multi-TF (confluência 1h / 4h / 1D vs. preço atual) — compacto */
   .mtfob{
     width:100%;background:rgba(13,18,27,.92);border:1px solid var(--hair);border-radius:9px;
-    padding:8px 9px;backdrop-filter:blur(4px);
+    padding:7px 9px;backdrop-filter:blur(4px);
   }
   .mtfob[hidden]{display:none}
   .mtf-title{
-    font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;
-    color:var(--muted-2);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;
+    font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.5px;text-transform:uppercase;
+    color:var(--muted-2);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;
   }
   .mtf-title b{color:var(--muted);font-weight:600}
-  .mtf-row{display:flex;align-items:flex-start;gap:8px;padding:4px 0;border-top:1px solid rgba(255,255,255,.04)}
+  .mtf-row{display:flex;align-items:flex-start;gap:7px;padding:3px 0;border-top:1px solid rgba(255,255,255,.04)}
   .mtf-row:first-of-type{border-top:none}
   .mtf-row.cur{background:rgba(247,147,26,.06);border-radius:6px;padding-left:5px;margin-left:-5px}
-  .mtf-tf{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:700;color:var(--btc);min-width:22px;padding-top:1px}
+  .mtf-tf{font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:700;color:var(--btc);min-width:20px;padding-top:1px}
   .mtf-body{flex:1;min-width:0}
-  .mtf-state{font-family:"IBM Plex Mono",monospace;font-size:10.5px;line-height:1.35;display:block}
+  .mtf-state{font-family:"IBM Plex Mono",monospace;font-size:9.5px;line-height:1.3;display:block}
   .mtf-state b{font-weight:700}
-  .mtf-dy{color:#ef5350;font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:.3px}
-  .mtf-bar{width:100%;height:4px;border-radius:2px;background:var(--hair);overflow:hidden;position:relative;margin-top:4px}
+  .mtf-dy{color:#ef5350;font-weight:700;text-transform:uppercase;font-size:8.5px;letter-spacing:.3px}
+  .mtf-bar{width:100%;height:3px;border-radius:2px;background:var(--hair);overflow:hidden;position:relative;margin-top:3px}
   .mtf-bar i{position:absolute;left:0;top:0;height:100%;display:block;border-radius:2px}
 
   body.grid-on .leftstack{display:none}
-  @media (max-width:560px){ .mforce{min-width:170px;transform:scale(.9);transform-origin:top left} }
+  /* telas estreitas / celular na horizontal: encolhe a pilha e nunca deixa vazar */
+  @media (max-width:560px){ .leftstack{width:176px;gap:6px} .cb-pct{font-size:16px} }
+  @media (orientation:landscape) and (max-height:520px){
+    .leftstack{width:168px;gap:5px;transform:scale(.9);transform-origin:top left}
+    .cyclebox,.mtfob{padding:6px 8px}
+    .cb-pct{font-size:15px}
+    .cb-note,.mtf-state{font-size:8.5px}
+  }
 
   /* error banner */
   .banner{
@@ -397,12 +388,6 @@
         </div>
 
         <div class="ind-row">
-          <label class="sw"><input type="checkbox" id="mforceOn" checked><span></span></label>
-          <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,var(--bull),var(--bear))"></span>Força de Mercado</span>
-          <span class="ind-params">1h · 4h · 1D</span>
-        </div>
-
-        <div class="ind-row">
           <label class="sw"><input type="checkbox" id="cycleOn"><span></span></label>
           <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,var(--bull),var(--bear))"></span>BTC Time Cycle</span>
           <span class="ind-params">
@@ -451,7 +436,6 @@
     <canvas id="overlay"></canvas>
 
     <div class="leftstack">
-      <div class="mforce" id="mforce" hidden></div>
       <div class="cyclebox" id="cyclebox" hidden></div>
       <div class="mtfob" id="mtfob" hidden></div>
     </div>
@@ -496,7 +480,7 @@ const S = {
 
 /* ---------- persistência (localStorage com proteção) ---------- */
 const store = {
-  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, symbol:S.symbol, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), mforce:(typeof MFORCE!=='undefined'?MFORCE.on:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined)})); }catch(e){} },
+  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, symbol:S.symbol, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined)})); }catch(e){} },
   load(){ try{ return JSON.parse(localStorage.getItem('ib_term')||'{}'); }catch(e){ return {}; } }
 };
 
@@ -1455,7 +1439,7 @@ document.addEventListener('click', e=>{
 $('#tfSel').addEventListener('change', e=>{ S.tf=e.target.value; store.save(); loadData(); });
 
 // ---- ativo da tela principal (BTC / ETH / SOL) ----
-$('#mainAsset').addEventListener('change', e=>{ S.symbol=e.target.value; store.save(); loadData(); MFORCE.refresh().catch(()=>{}); MTFOB.refresh().catch(()=>{}); });
+$('#mainAsset').addEventListener('change', e=>{ S.symbol=e.target.value; store.save(); loadData(); MTFOB.refresh().catch(()=>{}); });
 
 // ---- tela cheia (entra/sai; o botão vira "voltar" quando em tela cheia) ----
 const fsBtn=$('#fsBtn');
@@ -1473,7 +1457,7 @@ fsBtn.addEventListener('click', toggleFS);
 document.addEventListener('fullscreenchange', syncFSIcon);
 document.addEventListener('webkitfullscreenchange', syncFSIcon);
 
-$('#src').addEventListener('change', e=>{ S.source=e.target.value; store.save(); loadData(); MFORCE.refresh().catch(()=>{}); MTFOB.refresh().catch(()=>{}); });
+$('#src').addEventListener('change', e=>{ S.source=e.target.value; store.save(); loadData(); MTFOB.refresh().catch(()=>{}); });
 $('#emaOn').addEventListener('change', renderEMA);
 $('#emaLen').addEventListener('change', renderEMA);
 
@@ -1698,60 +1682,6 @@ const GRID = {
 };
 $('#layoutSw').addEventListener('click', e=>{ const b=e.target.closest('button'); if(b) GRID.set(+b.dataset.n); });
 
-/* =========================================================================
-   FORÇA DE MERCADO — leitura multi-timeframe (1h/4h/1D) do ativo principal
-   • tendência: EMA(9) vs EMA(21) + momentum (14 barras)
-   • pressão: volume comprador vs vendedor (24 barras) → % compra/venda
-   • força 0-100: desvio da pressão + momentum + bônus se alinhados
-   • ⚡ "pesado": volume da última barra > 1.6× a média
-   ========================================================================= */
-const MFORCE = {
-  tfs:['1h','4h','1d'], on:true, timer:null, el:$('#mforce'),
-  calc(c){
-    const n=c.length; if(n<25) return null;
-    const cl=c.map(x=>x.close);
-    const ema=len=>{ const k=2/(len+1); let p=cl[0]; for(let i=1;i<n;i++) p=cl[i]*k+p*(1-k); return p; };
-    const e9=ema(9), e21=ema(21);
-    const w=Math.min(24,n); let bv=0,sv=0,avgV=0;
-    for(let i=n-w;i<n;i++){ const x=c[i]; (x.close>=x.open ? bv+=x.volume : sv+=x.volume); avgV+=x.volume; }
-    avgV/=w; const buyPct=(bv+sv)>0 ? bv/(bv+sv)*100 : 50;
-    const ml=Math.min(14,n-1); const mom=(cl[n-1]-cl[n-1-ml])/cl[n-1-ml]*100;
-    const pF=Math.abs(buyPct-50)*2, mF=Math.min(100,Math.abs(mom)*8), aligned=(e9>=e21)===(mom>=0);
-    const strength=Math.min(100, Math.round(pF*0.5 + mF*0.3 + (aligned?20:0)));
-    let dir=0; if(e9>=e21 && mom>0.05) dir=1; else if(e9<e21 && mom<-0.05) dir=-1;
-    return { dir, buyPct:Math.round(buyPct), strength, heavy: c[n-1].volume > avgV*1.6 };
-  },
-  async refresh(){
-    if(!this.on) return;
-    const src=SOURCES[S.source];
-    const data = await Promise.all(this.tfs.map(tf=>src.rest(tf, S.symbol).catch(()=>null)));
-    this.render(this.tfs.map((tf,i)=>({tf, m: data[i] ? this.calc(data[i]) : null})));
-  },
-  render(cols){
-    const AR=d=>d>0?'▲':d<0?'▼':'→', COL=d=>d>0?'#26a69a':d<0?'#ef5350':'#7f8a9e', W=d=>d>0?'ALTA':d<0?'BAIXA':'LAT';
-    const L={'1h':'1h','4h':'4h','1d':'1D'};
-    this.el.innerHTML =
-      '<div class="mf-title"><span>Força de Mercado</span><b>'+symLabel(S.symbol)+'</b></div><div class="mf-cols">'+
-      cols.map(({tf,m})=> !m
-        ? `<div class="mf-col"><div class="mf-tf">${L[tf]}</div><div class="mf-arrow" style="color:#586074">–</div></div>`
-        : `<div class="mf-col">
-             <div class="mf-tf">${L[tf]}</div>
-             <div class="mf-arrow" style="color:${COL(m.dir)}">${AR(m.dir)}</div>
-             <div class="mf-trend" style="color:${COL(m.dir)}">${W(m.dir)}</div>
-             <div class="mf-bar"><i style="width:${m.buyPct}%"></i></div>
-             <div class="mf-pct">${m.buyPct>=50 ? m.buyPct+'% compra' : (100-m.buyPct)+'% venda'}</div>
-             <div class="mf-str">força ${m.strength}${m.heavy?' <span class="mf-heavy">⚡</span>':''}</div>
-           </div>`
-      ).join('')+'</div>';
-  },
-  set(on){
-    this.on=on; this.el.hidden=!on;
-    if(this.timer){ clearInterval(this.timer); this.timer=null; }
-    if(on){ this.refresh().catch(()=>{}); this.timer=setInterval(()=>this.refresh().catch(()=>{}), 60000); }
-    store.save();
-  }
-};
-$('#mforceOn').addEventListener('change', e=>MFORCE.set(e.target.checked));
 $('#soundOn').addEventListener('change', e=>SOUND.enable(e.target.checked));
 
 /* =========================================================================
@@ -1879,8 +1809,6 @@ $('#cycleDays').addEventListener('change', syncCycle);
     }
   }
   $('#proxyInput').value = GATE_PROXY;
-  if(saved.mforce===false){ MFORCE.on=false; $('#mforceOn').checked=false; }
-  MFORCE.set(MFORCE.on);
   MTFOB.set(OB.cfg.on);   // painel de confluência Multi-TF acompanha o toggle dos Order Blocks
   if(saved.sound){ SOUND.on=true; $('#soundOn').checked=true; }  // áudio libera no 1º clique
   if(saved.cycle){ Object.assign(CYCLE.cfg, saved.cycle);
