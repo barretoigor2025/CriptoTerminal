@@ -1253,11 +1253,53 @@ const EXPLOSION = {
   }
 };
 
+// contador regressivo até o candle atual fechar (estilo TradingView), desenhado
+// na faixa da escala de preços, logo ABAIXO do rótulo do último preço.
+function fmtCountdown(sec){
+  sec=Math.max(0,Math.floor(sec));
+  const d=Math.floor(sec/86400), h=Math.floor(sec%86400/3600), m=Math.floor(sec%3600/60), s=sec%60;
+  const p=n=>String(n).padStart(2,'0');
+  if(d>0) return d+'d '+p(h)+':'+p(m);
+  if(h>0) return p(h)+':'+p(m)+':'+p(s);
+  return p(m)+':'+p(s);
+}
+function drawCountdown(){
+  const c=S.candles, n=c.length; if(n<2) return;
+  const dt=c[n-1].time - c[n-2].time; if(!(dt>0)) return;   // intervalo do timeframe
+  const last=c[n-1];
+  const rem=(last.time + dt) - Date.now()/1000;
+  let rsw=0; try{ rsw=chart.priceScale('right').width()||0; }catch(_){}
+  if(rsw<20) return;                                        // sem espaço na escala
+  const y0=yOf(last.close); if(y0==null) return;
+  const txt=fmtCountdown(rem);
+  const bull=last.close>=last.open;
+  const col= rem<=0 ? '#7f8a9e' : (bull?'#26a69a':'#ef5350');
+  ctx.save();
+  ctx.font="600 10px 'IBM Plex Mono', ui-monospace, monospace";
+  const tw=ctx.measureText(txt).width, padX=5, bh=15;
+  const bw=Math.min(rsw-4, tw+padX*2);
+  const cx=cv.clientWidth - rsw/2;             // centro da faixa da escala
+  const x=cx - bw/2;
+  let y=y0 + 10;                               // logo abaixo do rótulo de preço
+  if(y+bh > cv.clientHeight-2) y=y0 - 10 - bh; // se colar no rodapé, joga pra cima
+  if(y<2) y=2;
+  const r=4;
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.arcTo(x+bw,y,x+bw,y+bh,r); ctx.arcTo(x+bw,y+bh,x,y+bh,r);
+  ctx.arcTo(x,y+bh,x,y,r); ctx.arcTo(x,y,x+bw,y,r); ctx.closePath();
+  ctx.fillStyle='rgba(13,18,27,.92)'; ctx.fill();
+  ctx.globalAlpha=0.55; ctx.strokeStyle=col; ctx.lineWidth=1; ctx.stroke(); ctx.globalAlpha=1;
+  ctx.fillStyle=col; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(txt, x+bw/2, y+bh/2+0.5);
+  ctx.restore();
+}
+
 function redraw(){
   ctx.clearRect(0,0,cv.width,cv.height);
   CYCLE.draw();
   OB.draw();
   EXPLOSION.draw();
+  drawCountdown();
   for(const d of S.drawings){
     if(d.type==='trend') drawTrend(d);
     else if(d.type==='hline') drawHLine(d);
