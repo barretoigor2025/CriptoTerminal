@@ -226,6 +226,26 @@
   .mtf-bar{width:100%;height:3px;border-radius:2px;background:var(--hair);overflow:hidden;position:relative;margin-top:3px}
   .mtf-bar i{position:absolute;left:0;top:0;height:100%;display:block;border-radius:2px}
 
+  /* card Padrões Gráficos (figuras clássicas detectadas + status/probabilidade) */
+  .patternbox{
+    width:100%;background:rgba(13,18,27,.92);border:1px solid var(--hair);border-radius:9px;
+    padding:7px 9px;backdrop-filter:blur(4px);
+  }
+  .patternbox[hidden]{display:none}
+  .pt-title{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.5px;text-transform:uppercase;
+    color:var(--muted-2);margin-bottom:5px;display:flex;justify-content:space-between;align-items:center}
+  .pt-title b{color:#8b9dff;font-weight:600}
+  .pt-empty{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--muted-2);line-height:1.35;padding:2px 0}
+  .pt-row{padding:6px 0;border-top:1px solid rgba(255,255,255,.05)}
+  .pt-row:first-of-type{border-top:none}
+  .pt-name{font-family:"Space Grotesk",sans-serif;font-size:12px;font-weight:700;letter-spacing:.2px}
+  .pt-heur{font-family:"IBM Plex Mono",monospace;font-size:8px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.3px;font-weight:400}
+  .pt-meta{display:flex;align-items:center;gap:7px;margin:3px 0 3px;font-family:"IBM Plex Mono",monospace;font-size:9px}
+  .pt-chip{border:1px solid;border-radius:4px;padding:1px 5px;font-weight:700;letter-spacing:.3px}
+  .pt-prob{color:var(--muted)}.pt-prob b{color:var(--txt)}
+  .pt-vol{color:var(--muted-2)}
+  .pt-say{font-family:"IBM Plex Mono",monospace;font-size:9.5px;line-height:1.35;color:var(--muted)}
+
   body.grid-on .leftstack{display:none}
   /* telas estreitas / celular na horizontal: encolhe a pilha e nunca deixa vazar */
   @media (max-width:560px){ .leftstack{width:176px;gap:6px} .cb-pct{font-size:16px} }
@@ -388,6 +408,12 @@
         </div>
 
         <div class="ind-row">
+          <label class="sw"><input type="checkbox" id="patOn"><span></span></label>
+          <span class="ind-name"><span class="dotc" style="background:#8b9dff"></span>Padrões Gráficos</span>
+          <span class="ind-params">triângulos · cunhas · canais · topo/fundo duplo · Elliott</span>
+        </div>
+
+        <div class="ind-row">
           <label class="sw"><input type="checkbox" id="cycleOn"><span></span></label>
           <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,var(--bull),var(--bear))"></span>BTC Time Cycle</span>
           <span class="ind-params">
@@ -438,6 +464,7 @@
     <div class="leftstack">
       <div class="cyclebox" id="cyclebox" hidden></div>
       <div class="mtfob" id="mtfob" hidden></div>
+      <div class="patternbox" id="patternbox" hidden></div>
     </div>
 
     <div class="banner" id="banner">
@@ -480,7 +507,7 @@ const S = {
 
 /* ---------- persistência (localStorage com proteção) ---------- */
 const store = {
-  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, symbol:S.symbol, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined)})); }catch(e){} },
+  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, symbol:S.symbol, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined), pat:(typeof PATTERNS!=='undefined'?PATTERNS.cfg:undefined)})); }catch(e){} },
   load(){ try{ return JSON.parse(localStorage.getItem('ib_term')||'{}'); }catch(e){ return {}; } }
 };
 
@@ -732,6 +759,7 @@ async function loadData(){
     renderEMA();
     MA.render();
     OB.compute();
+    PATTERNS.detect();
     chart.timeScale().fitContent();
     fitPriceOnce(chart);   // fit de preço 1x (depois escala manual)
     updateTicker(candles[candles.length-1], candles[candles.length-2]);
@@ -778,6 +806,7 @@ function onLiveCandle(c, closed){
 
   // Order Blocks só recalculam quando o candle fecha (mitigação = barra confirmada)
   if(closed) OB.compute();
+  if(closed) PATTERNS.detect();
   if(OB.cfg.on){ OB.checkAlerts(); OB.sweepDead(); MTFOB.render(); }   // alertas + remove mortos + confluência MTF ao vivo
 
   updateTicker(c, arr[arr.length-2]);
@@ -1253,6 +1282,234 @@ const EXPLOSION = {
   }
 };
 
+/* =========================================================================
+   PADRÕES GRÁFICOS — detecção automática de figuras clássicas
+   Base: pivôs de swing → zig-zag → casadores de padrão. Probabilidades
+   ancoradas em estatísticas clássicas (estilo Bulkowski) e AJUSTADAS por
+   confirmação de volume e qualidade do encaixe. São ESTIMATIVAS, não garantia.
+   Detecta: Topo/Fundo Duplo, Triângulos (asc/desc/simétrico), Cunhas
+   (asc/desc), Canais (alta/baixa/lateral) e um Impulso de Elliott (1-5,
+   heurístico). Marca no gráfico + card com status, probabilidade e o que
+   costuma acontecer.
+   ========================================================================= */
+const PATTERNS = {
+  cfg:{ on:false, L:3, lookback:180 },
+  found:[], zz:[],
+  // taxas-base de sucesso (%) do rompimento na direção esperada (aprox., literatura clássica)
+  base:{ 'Topo Duplo':66,'Fundo Duplo':66,'Triângulo ascendente':70,'Triângulo descendente':66,
+    'Triângulo simétrico':62,'Cunha ascendente':62,'Cunha descendente':68,'Canal de alta':60,
+    'Canal de baixa':60,'Canal lateral':52,'Impulso de Elliott ↑':50,'Impulso de Elliott ↓':50 },
+
+  // pivôs de swing confirmados (precisa de L barras de cada lado)
+  pivotsRaw(c,L,lb){
+    const start=Math.max(L, c.length-lb), out=[];
+    for(let i=start;i<c.length-L;i++){
+      let ish=true, isl=true;
+      for(let k=1;k<=L;k++){
+        if(c[i].high<=c[i-k].high || c[i].high<=c[i+k].high) ish=false;
+        if(c[i].low >=c[i-k].low  || c[i].low >=c[i+k].low ) isl=false;
+      }
+      if(ish) out.push({i, time:c[i].time, price:c[i].high, t:'H', vol:c[i].volume});
+      else if(isl) out.push({i, time:c[i].time, price:c[i].low, t:'L', vol:c[i].volume});
+    }
+    return out;
+  },
+  // zig-zag: alterna H/L, mantendo o extremo quando repete o tipo
+  zigzag(c,L,lb){
+    const raw=this.pivotsRaw(c,L,lb), z=[];
+    for(const p of raw){
+      const last=z[z.length-1];
+      if(!last || last.t!==p.t) z.push(p);
+      else if((p.t==='H'&&p.price>last.price)||(p.t==='L'&&p.price<last.price)) z[z.length-1]=p;
+    }
+    return z;
+  },
+
+  detect(){
+    this.found=[]; this.zz=[];
+    if(!this.cfg.on){ this.renderCard(); return; }
+    const c=S.candles; if(c.length<40){ this.renderCard(); return; }
+    const zz=this.zigzag(c, this.cfg.L, this.cfg.lookback);
+    this.zz=zz;
+    if(zz.length<3){ this.renderCard(); return; }
+    const dets=[ this.doubleTopBottom(c,zz), this.triangleWedgeChannel(c,zz), this.elliott(c,zz) ].filter(Boolean);
+    // calcula prob + score e ordena (confirmados e mais recentes primeiro)
+    for(const d of dets){
+      let p=this.base[d.name]||55;
+      p += d.volConfirm ? 8 : -4;
+      p += d.status==='confirmed' ? 6 : d.status==='broke' ? -20 : 0;
+      d.prob=Math.max(45, Math.min(85, Math.round(p)));
+      d.score=(d.status==='confirmed'?100:d.status==='forming'?60:0) + (d.lastIdx/Math.max(1,c.length))*40 + (d.heur?-15:0);
+    }
+    this.found = dets.sort((a,b)=>b.score-a.score).slice(0,3);
+    this.renderCard();
+  },
+
+  // --- Topo Duplo / Fundo Duplo -------------------------------------------
+  doubleTopBottom(c, zz){
+    const last=c[c.length-1].close;
+    for(let j=zz.length-3;j>=Math.max(0,zz.length-8);j--){
+      const a=zz[j], b=zz[j+1], d=zz[j+2];
+      if(a.t==='H'&&b.t==='L'&&d.t==='H'){
+        const avg=(a.price+d.price)/2, diff=Math.abs(a.price-d.price)/avg, depth=(avg-b.price)/avg;
+        if(diff<0.03 && depth>0.02){
+          const neck=b.price, status=last<neck?'confirmed':'forming', target=neck-(avg-neck);
+          return {kind:'dbl', name:'Topo Duplo', bias:'bear', status, pts:[a,b,d], neck, target,
+            volConfirm:d.vol<a.vol, lastIdx:d.i, say:'reversão de baixa — se perder a linha de pescoço, alvo perto de '+fmtPx(target)};
+        }
+      }
+      if(a.t==='L'&&b.t==='H'&&d.t==='L'){
+        const avg=(a.price+d.price)/2, diff=Math.abs(a.price-d.price)/avg, height=(b.price-avg)/avg;
+        if(diff<0.03 && height>0.02){
+          const neck=b.price, status=last>neck?'confirmed':'forming', target=neck+(neck-avg);
+          return {kind:'dbl', name:'Fundo Duplo', bias:'bull', status, pts:[a,b,d], neck, target,
+            volConfirm:d.vol<a.vol, lastIdx:d.i, say:'reversão de alta — rompendo a linha de pescoço, alvo perto de '+fmtPx(target)};
+        }
+      }
+    }
+    return null;
+  },
+
+  // --- Triângulos / Cunhas / Canais ---------------------------------------
+  triangleWedgeChannel(c, zz){
+    const win=zz.slice(-6), hs=win.filter(p=>p.t==='H'), ls=win.filter(p=>p.t==='L');
+    if(hs.length<2||ls.length<2) return null;
+    const fit=arr=>{ const n=arr.length; let sx=0,sy=0,sxx=0,sxy=0;
+      for(const p of arr){ sx+=p.i; sy+=p.price; sxx+=p.i*p.i; sxy+=p.i*p.price; }
+      const den=n*sxx-sx*sx, m=den!==0?(n*sxy-sx*sy)/den:0; return {m, b:(sy-m*sx)/n}; };
+    const U=fit(hs), Lo=fit(ls), avgP=c[c.length-1].close, xi=c.length-1;
+    const uP=U.m/avgP, lP=Lo.m/avgP;                 // inclinação em %/barra
+    const uLast=U.m*xi+U.b, lLast=Lo.m*xi+Lo.b, last=c[xi].close;
+    if(uLast<=lLast) return null;                    // linhas cruzadas/inválidas
+    const flat=0.0006, mn=0.0004;
+    let name, bias, kind;
+    if(Math.abs(uP)<flat && lP>mn){ name='Triângulo ascendente'; bias='bull'; kind='tri'; }
+    else if(uP<-mn && Math.abs(lP)<flat){ name='Triângulo descendente'; bias='bear'; kind='tri'; }
+    else if(uP<-mn && lP>mn){ name='Triângulo simétrico'; bias='neutral'; kind='tri'; }
+    else if(uP>mn && lP>mn){ if(lP>uP*1.15){ name='Cunha ascendente'; bias='bear'; kind='wedge'; } else { name='Canal de alta'; bias='bull'; kind='channel'; } }
+    else if(uP<-mn && lP<-mn){ if(uP<lP*1.15){ name='Cunha descendente'; bias='bull'; kind='wedge'; } else { name='Canal de baixa'; bias='bear'; kind='channel'; } }
+    else if(Math.abs(uP)<flat && Math.abs(lP)<flat){ name='Canal lateral'; bias='neutral'; kind='channel'; }
+    else return null;
+    // rompimento + alvo (altura da figura projetada)
+    const li=win[0].i, height=(U.m*li+U.b)-(Lo.m*li+Lo.b);
+    let status='forming', brkUp=last>uLast, brkDn=last<lLast, dir=bias;
+    if(bias==='bull'  && brkUp) status='confirmed';
+    if(bias==='bear'  && brkDn) status='confirmed';
+    if(bias==='neutral'){ if(brkUp){status='confirmed'; dir='bull';} else if(brkDn){status='confirmed'; dir='bear';} }
+    if(bias==='bull' && brkDn) status='broke';
+    if(bias==='bear' && brkUp) status='broke';
+    const target = dir==='bull' ? uLast+height : dir==='bear' ? lLast-height : last;
+    // volume tende a cair na formação; rompimento com volume forte confirma
+    const wv=Math.min(20,c.length); let av=0; for(let k=c.length-wv;k<c.length;k++) av+=c[k].volume; av/=wv;
+    const volConfirm = c[xi].volume > av*1.3 && status==='confirmed';
+    const sayMap={
+      'Triângulo ascendente':'viés de rompimento p/ cima',
+      'Triângulo descendente':'viés de rompimento p/ baixo',
+      'Triângulo simétrico':'continuação na direção do rompimento',
+      'Cunha ascendente':'costuma resolver p/ baixo (reversão)',
+      'Cunha descendente':'costuma resolver p/ cima (reversão)',
+      'Canal de alta':'tendência de alta enquanto respeitar o canal',
+      'Canal de baixa':'tendência de baixa enquanto respeitar o canal',
+      'Canal lateral':'mercado em range — opere as bordas'
+    };
+    const say = sayMap[name] + (dir!=='neutral' && status!=='broke' ? ' · alvo ~'+fmtPx(target) : '');
+    return {kind, name, bias:dir, status, U, Lo, win, uLast, lLast, target, volConfirm, lastIdx:win[win.length-1].i, say};
+  },
+
+  // --- Impulso de Elliott (1-5) — heurístico ------------------------------
+  elliott(c, zz){
+    if(zz.length<6) return null;
+    const w=zz.slice(-6), seq=w.map(p=>p.t).join(''), P=w.map(p=>p.price);
+    if(seq==='LHLHLH'){
+      const w1=P[1]-P[0], w3=P[3]-P[2], w5=P[5]-P[4];
+      if(w1>0&&w3>0&&w5>0 && P[2]>P[0] && P[4]>P[1] && w3>=w1 && w3>=w5)
+        return {kind:'ew', name:'Impulso de Elliott ↑', bias:'bear', status:'forming', w, heur:true,
+          volConfirm:false, lastIdx:w[5].i, say:'5 ondas de alta possivelmente completas — tende a vir correção (A-B-C)'};
+    } else if(seq==='HLHLHL'){
+      const w1=P[0]-P[1], w3=P[2]-P[3], w5=P[4]-P[5];
+      if(w1>0&&w3>0&&w5>0 && P[2]<P[0] && P[4]<P[1] && w3>=w1 && w3>=w5)
+        return {kind:'ew', name:'Impulso de Elliott ↓', bias:'bull', status:'forming', w, heur:true,
+          volConfirm:false, lastIdx:w[5].i, say:'5 ondas de baixa possivelmente completas — tende a vir repique (A-B-C)'};
+    }
+    return null;
+  },
+
+  // ---- card DOM ----------------------------------------------------------
+  renderCard(){
+    const box=$('#patternbox'); if(!box) return;
+    box.hidden=!this.cfg.on;
+    if(!this.cfg.on) return;
+    const chip=s=> s==='confirmed'?['CONFIRMADO','#26a69a']:s==='broke'?['FALHOU','#ef5350']:['FORMANDO','#f7d33f'];
+    const arr=b=> b==='bull'?'▲':b==='bear'?'▼':'↔';
+    const col=b=> b==='bull'?'#26a69a':b==='bear'?'#ef5350':'#f7d33f';
+    let rows;
+    if(!this.found.length){
+      rows='<div class="pt-empty">nenhuma formação clara agora — observando os pivôs…</div>';
+    } else {
+      rows=this.found.map(d=>{
+        const [ctxt,ccol]=chip(d.status);
+        return '<div class="pt-row">'+
+          '<div class="pt-head"><span class="pt-name" style="color:'+col(d.bias)+'">'+arr(d.bias)+' '+d.name+(d.heur?' <span class="pt-heur">heurístico</span>':'')+'</span></div>'+
+          '<div class="pt-meta"><span class="pt-chip" style="color:'+ccol+';border-color:'+ccol+'">'+ctxt+'</span>'+
+            '<span class="pt-prob">prob. <b>'+d.prob+'%</b></span>'+
+            '<span class="pt-vol">'+(d.volConfirm?'vol ✓':'vol ~')+'</span></div>'+
+          '<div class="pt-say">'+d.say+'</div>'+
+        '</div>';
+      }).join('');
+    }
+    box.innerHTML='<div class="pt-title"><span>Padrões Gráficos</span><b>'+symLabel(S.symbol)+'</b></div>'+rows;
+  },
+
+  // ---- desenho no gráfico ------------------------------------------------
+  draw(){
+    if(!this.cfg.on || !this.found.length) return;
+    let rsw=0; try{ rsw=chart.priceScale('right').width()||0; }catch(_){}
+    const rightEdge=cv.clientWidth-rsw-1;
+    const STRUCT='#8b9dff';
+    for(const d of this.found.slice(0,2)){        // desenha os 2 mais fortes
+      const bc = d.bias==='bull'?'#26a69a':d.bias==='bear'?'#ef5350':'#f7d33f';
+      if(d.kind==='dbl'){
+        const P=d.pts.map(p=>({x:xOf(p.time),y:yOf(p.price)}));
+        if(P.some(q=>q.x==null||q.y==null)) continue;
+        line(P[0].x,P[0].y,P[1].x,P[1].y,STRUCT); line(P[1].x,P[1].y,P[2].x,P[2].y,STRUCT);
+        for(const q of P){ ctx.save(); ctx.fillStyle=STRUCT; ctx.beginPath(); ctx.arc(q.x,q.y,3,0,7); ctx.fill(); ctx.restore(); }
+        const yN=yOf(d.neck); if(yN!=null){ line(P[0].x,yN,rightEdge,yN,bc,[5,4]); tag(P[0].x+4,yN-8,'pescoço',bc); }
+        const yT=yOf(d.target); if(yT!=null){ line(P[2].x,yT,rightEdge,yT,bc,[2,4]); tag(rightEdge-70,yT-8,'alvo '+fmtPx(d.target),bc); }
+        this.badge(P[2].x, Math.min(...P.map(q=>q.y))-6, d, bc);
+      } else if(d.kind==='tri'||d.kind==='wedge'||d.kind==='channel'){
+        const x0=xOf(d.win[0].time); if(x0==null) continue;
+        const xR=rightEdge;                                 // linhas até a borda direita
+        const yUp0=yOf(d.U.m*d.win[0].i+d.U.b), yUp1=yOf(d.uLast);
+        const yLo0=yOf(d.Lo.m*d.win[0].i+d.Lo.b), yLo1=yOf(d.lLast);
+        if(yUp0!=null&&yUp1!=null) line(x0,yUp0,xR,yUp1,STRUCT);
+        if(yLo0!=null&&yLo1!=null) line(x0,yLo0,xR,yLo1,STRUCT);
+        const yT=yOf(d.target);
+        if(yT!=null && d.status!=='broke' && d.bias!=='neutral'){ line(xR-90,yT,xR,yT,bc,[2,4]); tag(xR-88,yT-8,'alvo '+fmtPx(d.target),bc); }
+        this.badge(x0, (yUp0!=null?yUp0:yLo0)-6, d, bc);
+      } else if(d.kind==='ew'){
+        const P=d.w.map(p=>({x:xOf(p.time),y:yOf(p.price)}));
+        if(P.some(q=>q.x==null||q.y==null)) continue;
+        for(let k=0;k<5;k++) line(P[k].x,P[k].y,P[k+1].x,P[k+1].y,STRUCT);
+        const labels=['0','1','2','3','4','5'];
+        P.forEach((q,k)=>{ ctx.save(); ctx.fillStyle=STRUCT; ctx.beginPath(); ctx.arc(q.x,q.y,2.6,0,7); ctx.fill();
+          tag(q.x+3,q.y-7,labels[k],STRUCT); ctx.restore(); });
+        this.badge(P[5].x, P[5].y-6, d, bc);
+      }
+    }
+  },
+  badge(x, y, d, col){
+    const txt=d.name+' · '+d.prob+'%';
+    ctx.save(); ctx.font="9px 'IBM Plex Mono', monospace";
+    const w=ctx.measureText(txt).width+10, h=15; let bx=Math.max(2,x), by=y-h; if(by<2) by=2;
+    ctx.fillStyle='rgba(13,18,27,.9)'; ctx.strokeStyle=col; ctx.lineWidth=1;
+    ctx.beginPath(); const r=4;
+    ctx.moveTo(bx+r,by); ctx.arcTo(bx+w,by,bx+w,by+h,r); ctx.arcTo(bx+w,by+h,bx,by+h,r);
+    ctx.arcTo(bx,by+h,bx,by,r); ctx.arcTo(bx,by,bx+w,by,r); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle=col; ctx.textBaseline='middle'; ctx.fillText(txt, bx+5, by+h/2+.5); ctx.restore();
+  }
+};
+function fmtPx(v){ return (+v).toLocaleString('en-US',{maximumFractionDigits:2}); }
+
 // contador regressivo até o candle atual fechar (estilo TradingView), desenhado
 // na faixa da escala de preços, logo ABAIXO do rótulo do último preço.
 function fmtCountdown(sec){
@@ -1298,6 +1555,7 @@ function redraw(){
   ctx.clearRect(0,0,cv.width,cv.height);
   CYCLE.draw();
   OB.draw();
+  PATTERNS.draw();
   EXPLOSION.draw();
   drawCountdown();
   for(const d of S.drawings){
@@ -1481,7 +1739,7 @@ document.addEventListener('click', e=>{
 $('#tfSel').addEventListener('change', e=>{ S.tf=e.target.value; store.save(); loadData(); });
 
 // ---- ativo da tela principal (BTC / ETH / SOL) ----
-$('#mainAsset').addEventListener('change', e=>{ S.symbol=e.target.value; store.save(); loadData(); MTFOB.refresh().catch(()=>{}); });
+$('#mainAsset').addEventListener('change', e=>{ S.symbol=e.target.value; store.save(); loadData(); MTFOB.refresh().catch(()=>{}); PATTERNS.detect(); });
 
 // ---- tela cheia (entra/sai; o botão vira "voltar" quando em tela cheia) ----
 const fsBtn=$('#fsBtn');
@@ -1518,9 +1776,15 @@ $('#obCount').addEventListener('change', syncOB);
 $('#obMiti').addEventListener('change', syncOB);
 $('#obArrows').addEventListener('change', syncOB);
 
+// ---- Padrões Gráficos (detecção de figuras clássicas) ----
+function syncPatterns(){ PATTERNS.cfg.on=$('#patOn').checked; PATTERNS.detect(); store.save(); }
+$('#patOn').addEventListener('change', syncPatterns);
+
 // rede de segurança: recalcula os Order Blocks periodicamente (novos aparecem,
 // mitigados somem) mesmo que o flag de fechamento do WebSocket falhe — sem refresh
 setInterval(()=>{ if(OB.cfg.on && S.candles.length){ OB.compute(); OB.checkAlerts(); OB.sweepDead(); MTFOB.render(); } }, 15000);
+// recomputa os padrões gráficos periodicamente (segue o preço ao vivo, sem refresh)
+setInterval(()=>{ if(PATTERNS.cfg.on && S.candles.length) PATTERNS.detect(); }, 15000);
 
 // ---- Médias Móveis (SMA/EMA + toggles 50/100/200/300/400) ----
 function syncMA(){
@@ -1852,6 +2116,8 @@ $('#cycleDays').addEventListener('change', syncCycle);
   }
   $('#proxyInput').value = GATE_PROXY;
   MTFOB.set(OB.cfg.on);   // painel de confluência Multi-TF acompanha o toggle dos Order Blocks
+  if(saved.pat){ Object.assign(PATTERNS.cfg, saved.pat); $('#patOn').checked=PATTERNS.cfg.on; }
+  PATTERNS.detect();
   if(saved.sound){ SOUND.on=true; $('#soundOn').checked=true; }  // áudio libera no 1º clique
   if(saved.cycle){ Object.assign(CYCLE.cfg, saved.cycle);
     $('#cycleOn').checked=CYCLE.cfg.on; $('#cycleAnchor').value=CYCLE.cfg.anchor; $('#cycleDays').value=CYCLE.cfg.days; }
