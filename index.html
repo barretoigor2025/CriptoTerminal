@@ -1339,9 +1339,24 @@ const PATTERNS = {
       p += d.volConfirm ? 8 : -4;
       p += d.status==='confirmed' ? 6 : d.status==='broke' ? -20 : 0;
       d.prob=Math.max(45, Math.min(85, Math.round(p)));
-      d.score=(d.status==='confirmed'?100:d.status==='forming'?60:0) + (d.lastIdx/Math.max(1,c.length))*40 + (d.heur?-15:0);
+      const spec = (d.kind==='tri'||d.kind==='wedge'||d.kind==='channel') ? 8 : 0;  // figura converge > só a borda
+      d.score=(d.status==='confirmed'?100:d.status==='forming'?60:0) + (d.lastIdx/Math.max(1,c.length))*40 + spec + (d.heur?-15:0);
     }
-    this.found = dets.sort((a,b)=>b.score-a.score).slice(0,3);
+    // dedup por região entre as figuras geométricas (topo/fundo duplo, triângulos,
+    // cunhas, canais): se dividem os mesmos pivôs, fica só a mais forte.
+    const span=d=> d.kind==='dbl' ? [d.pts[0].i,d.pts[2].i]
+                 : d.kind==='ew'  ? [d.w[0].i,d.w[5].i]
+                 : [d.win[0].i, d.win[d.win.length-1].i];
+    const clashes=(d,list)=>list.some(k=>{ const [a0,a1]=span(d),[b0,b1]=span(k);
+      const ov=Math.min(a1,b1)-Math.max(a0,b0); return ov > 0.4*Math.min(a1-a0, b1-b0); });
+    dets.sort((a,b)=>b.score-a.score);
+    const geo=dets.filter(d=>d.kind!=='ew'), ew=dets.find(d=>d.kind==='ew');
+    const kept=[];
+    for(const d of geo){ if(!clashes(d,kept)) kept.push(d); if(kept.length>=2) break; }
+    // Elliott é uma leitura de ondas (não geometria) — entra no card sempre; só é
+    // DESENHADO se não colidir com uma figura já marcada, pra não poluir.
+    if(ew){ ew._draw = !clashes(ew, kept); kept.push(ew); }
+    this.found = kept.slice(0,3);
     this.renderCard();
   },
 
@@ -1466,7 +1481,8 @@ const PATTERNS = {
     let rsw=0; try{ rsw=chart.priceScale('right').width()||0; }catch(_){}
     const rightEdge=cv.clientWidth-rsw-1;
     const STRUCT='#8b9dff';
-    for(const d of this.found.slice(0,2)){        // desenha os 2 mais fortes
+    for(const d of this.found){                   // já vêm deduplicados por região
+      if(d.kind==='ew' && d._draw===false) continue;   // Elliott só desenha se não colidir
       const bc = d.bias==='bull'?'#26a69a':d.bias==='bear'?'#ef5350':'#f7d33f';
       if(d.kind==='dbl'){
         const P=d.pts.map(p=>({x:xOf(p.time),y:yOf(p.price)}));
@@ -1477,15 +1493,29 @@ const PATTERNS = {
         const yT=yOf(d.target); if(yT!=null){ line(P[2].x,yT,rightEdge,yT,bc,[2,4]); tag(rightEdge-70,yT-8,'alvo '+fmtPx(d.target),bc); }
         this.badge(P[2].x, Math.min(...P.map(q=>q.y))-6, d, bc);
       } else if(d.kind==='tri'||d.kind==='wedge'||d.kind==='channel'){
-        const x0=xOf(d.win[0].time); if(x0==null) continue;
-        const xR=rightEdge;                                 // linhas até a borda direita
-        const yUp0=yOf(d.U.m*d.win[0].i+d.U.b), yUp1=yOf(d.uLast);
-        const yLo0=yOf(d.Lo.m*d.win[0].i+d.Lo.b), yLo1=yOf(d.lLast);
-        if(yUp0!=null&&yUp1!=null) line(x0,yUp0,xR,yUp1,STRUCT);
-        if(yLo0!=null&&yLo1!=null) line(x0,yLo0,xR,yLo1,STRUCT);
+        // linhas ancoradas em TEMPO real: do 1º pivô de cada lado até o último
+        // candle, estendendo à direita mantendo a inclinação em pixels
+        const c=S.candles, xi=c.length-1;
+        const hs=d.win.filter(p=>p.t==='H'), ls=d.win.filter(p=>p.t==='L');
+        const drawFit=(fit, side)=>{
+          if(!side.length) return;
+          const iA=side[0].i;
+          const xA=xOf(c[iA].time), xB=xOf(c[xi].time);
+          const yA=yOf(fit.m*iA+fit.b), yB=yOf(fit.m*xi+fit.b);
+          if(xA==null||xB==null||yA==null||yB==null) return;
+          let ex=xB, ey=yB;
+          if(xB!==xA){ const s=(yB-yA)/(xB-xA); ex=rightEdge; ey=yA+s*(ex-xA); }
+          line(xA,yA,ex,ey,STRUCT);
+        };
+        drawFit(d.U, hs); drawFit(d.Lo, ls);
+        // marca cada pivô usado (âncoras)
+        for(const p of d.win){ const x=xOf(p.time), y=yOf(p.price); if(x==null||y==null) continue;
+          ctx.save(); ctx.fillStyle=STRUCT; ctx.strokeStyle='#0a0d13'; ctx.lineWidth=1;
+          ctx.beginPath(); ctx.arc(x,y,3.2,0,7); ctx.fill(); ctx.stroke(); ctx.restore(); }
         const yT=yOf(d.target);
-        if(yT!=null && d.status!=='broke' && d.bias!=='neutral'){ line(xR-90,yT,xR,yT,bc,[2,4]); tag(xR-88,yT-8,'alvo '+fmtPx(d.target),bc); }
-        this.badge(x0, (yUp0!=null?yUp0:yLo0)-6, d, bc);
+        if(yT!=null && d.status!=='broke' && d.bias!=='neutral'){ line(rightEdge-90,yT,rightEdge,yT,bc,[2,4]); tag(rightEdge-88,yT-8,'alvo '+fmtPx(d.target),bc); }
+        const bx0=xOf(d.win[0].time), by0=yOf(d.win[0].price);
+        this.badge(bx0!=null?bx0:2, (by0!=null?by0:20)-6, d, bc);
       } else if(d.kind==='ew'){
         const P=d.w.map(p=>({x:xOf(p.time),y:yOf(p.price)}));
         if(P.some(q=>q.x==null||q.y==null)) continue;
