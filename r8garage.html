@@ -261,8 +261,8 @@ table.tbl tbody tr:hover,table.tbl tr.click:hover{background:var(--surface-2);cu
   padding:12px 20px;border-radius:11px;font-weight:600;font-size:14px;opacity:0;transition:.25s;z-index:100;box-shadow:var(--shadow);pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-.bars{display:flex;align-items:flex-end;gap:9px;height:120px;padding-top:8px}
-.bars .b{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.bars{display:flex;align-items:flex-end;gap:9px;height:140px;padding-top:8px}
+.bars .b{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;min-width:0}
 .bars .b .col{width:100%;max-width:38px;background:var(--primary);border-radius:6px 6px 3px 3px;transition:.2s;min-height:3px}
 .bars .b .cap{font-size:11px;color:var(--muted-2);white-space:nowrap}
 .bars .b .amt{font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -400,10 +400,12 @@ function clienteStats(cid){
   const os=ordensDe(cid).filter(o=>o.status==='entregue');
   const n=os.length, gasto=os.reduce((s,o)=>s+total(o),0);
   const lucro=os.reduce((s,o)=>{ const p=pagCalc(total(o),pagOf(o)); return s+total(o)-custoOS(o)-(p.isCard&&!p.repassar?p.taxa:0); },0);
+  // selo baseado no LUCRO que o cliente dá à oficina
   let tier=null;
-  if(gasto>=50000||n>=5) tier='ouro'; else if(gasto>=20000||n>=3) tier='prata';
+  if(lucro>=50000) tier='ouro'; else if(lucro>=18000) tier='prata';
   return {n,gasto,lucro,tier};
 }
+const TIER_OURO=50000, TIER_PRATA=18000;  // limites de lucro (¥) p/ os selos
 function clienteBadge(tier){ return tier==='ouro'?'<span class="cbadge ouro">★ Ouro</span>':tier==='prata'?'<span class="cbadge prata">★ Prata</span>':''; }
 
 const STATUS={
@@ -436,27 +438,72 @@ let DB={clientes:[],veiculos:[],pecas:[],ordens:[],seq:1,theme:''};
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){} }
 function load(){ try{ const r=localStorage.getItem(KEY); if(r){ DB=JSON.parse(r); return true; } }catch(e){} return false; }
 
-/* ---------------- dados de exemplo ---------------- */
+/* ---------------- dados de exemplo (rico: cobre todos os status/pagamentos) ---------------- */
 function seed(){
   DB={clientes:[],veiculos:[],pecas:[],ordens:[],seq:1,theme:''};
-  const c1=addCliente({nome:'Kenji Tanaka',telefone:'090-1234-5678',email:'kenji@mail.jp',obs:''});
-  const c2=addCliente({nome:'Marina Alves',telefone:'080-9876-5432',email:'',obs:'Cliente antiga'});
-  const c3=addCliente({nome:'Auto Runner K.K.',telefone:'03-5555-0101',email:'frota@runner.jp',obs:'Frota — 6 veículos'});
+  const PG=(forma,parc,pago,rep)=>({forma,parcelas:parc||1,taxaPct:forma==='credito'?3.5:forma==='debito'?1.5:0,repassar:!!rep,pago:!!pago});
+  // clientes
+  const c1=addCliente({nome:'Kenji Tanaka',telefone:'090-1234-5678',email:'kenji@mail.jp',obs:'Sempre pontual'});
+  const c2=addCliente({nome:'Marina Alves',telefone:'080-9876-5432',email:'marina@mail.jp',obs:''});
+  const c3=addCliente({nome:'Auto Runner K.K.',telefone:'03-5555-0101',email:'frota@runner.jp',obs:'Frota corporativa'});
+  const c4=addCliente({nome:'Yuki Sato',telefone:'090-2222-3333',email:'yuki.sato@mail.jp',obs:''});
+  const c5=addCliente({nome:'Bruno Costa',telefone:'080-4444-5555',email:'',obs:''});
+  const c6=addCliente({nome:'Sakura Yamamoto',telefone:'090-6666-7777',email:'sakura@mail.jp',obs:'Prefere PIX'});
+  const c7=addCliente({nome:'Diego Fernández',telefone:'080-8888-9999',email:'diego.f@mail.jp',obs:''});
+  const c8=addCliente({nome:'Hiroshi Nakamura',telefone:'090-1010-2020',email:'',obs:''});
+  const c9=addCliente({nome:'Ana Oliveira',telefone:'080-3030-4040',email:'ana.o@mail.jp',obs:''});
+  // veículos
   const v1=addVeiculo({clienteId:c1.id,placa:'品川 300 あ 12-34',marca:'Toyota',modelo:'Corolla',ano:2019,combustivel:'Híbrido',km:78500});
   const v2=addVeiculo({clienteId:c2.id,placa:'横浜 500 さ 88-01',marca:'Honda',modelo:'Fit',ano:2016,combustivel:'Gasolina',km:112300});
   const v3=addVeiculo({clienteId:c3.id,placa:'足立 800 む 45-67',marca:'Nissan',modelo:'NV350',ano:2021,combustivel:'Diesel',km:64200});
-  const p1=addPeca({nome:'Óleo 5W-30 (1L)',sku:'OIL-530',preco:1800,custo:1100,qtd:24,min:6});
-  const p2=addPeca({nome:'Filtro de óleo',sku:'FLT-OIL',preco:1500,custo:800,qtd:5,min:8});
-  const p3=addPeca({nome:'Pastilha de freio diant.',sku:'BRK-FRT',preco:9800,custo:6200,qtd:10,min:4});
-  const p4=addPeca({nome:'Bateria 40B19L',sku:'BAT-40',preco:12800,custo:8900,qtd:3,min:3});
-  // OS de exemplo em vários status
-  mkOS(c1,v1,'entregue',[{tipo:'mao',desc:'Troca de óleo + filtro',qtd:1,preco:3500},{tipo:'peca',ref:p1,qtd:4},{tipo:'peca',ref:p2,qtd:1}], -12, {forma:'credito',parcelas:3,taxaPct:3.5,repassar:false,pago:true});
-  mkOS(c1,v1,'entregue',[{tipo:'mao',desc:'Troca de pastilhas de freio',qtd:1,preco:9000},{tipo:'peca',ref:p3,qtd:1}], -34, {forma:'dinheiro',parcelas:1,taxaPct:0,repassar:false,pago:true});
-  mkOS(c1,v1,'entregue',[{tipo:'mao',desc:'Revisão completa + alinhamento',qtd:1,preco:26000},{tipo:'peca',ref:p1,qtd:5}], -62, {forma:'credito',parcelas:6,taxaPct:3.5,repassar:false,pago:true});
-  mkOS(c2,v2,'entregue',[{tipo:'mao',desc:'Serviço elétrico — alternador',qtd:1,preco:14000}], -8, {forma:'pix',parcelas:1,taxaPct:0,repassar:false,pago:true});
-  mkOS(c2,v2,'em_servico',[{tipo:'mao',desc:'Troca de pastilhas + sangria',qtd:1,preco:8000},{tipo:'peca',ref:p3,qtd:1}], -1, {forma:'dinheiro',parcelas:1,taxaPct:0,repassar:false,pago:false});
-  mkOS(c3,v3,'aguardando',[{tipo:'mao',desc:'Revisão 60.000km',qtd:1,preco:22000},{tipo:'peca',ref:p1,qtd:6}], 0, {forma:'pix',parcelas:1,taxaPct:0,repassar:false,pago:false});
-  mkOS(c1,v1,'orcamento',[{tipo:'mao',desc:'Troca de bateria',qtd:1,preco:2500},{tipo:'peca',ref:p4,qtd:1}], 0, {forma:'combinar',parcelas:1,taxaPct:0,repassar:false,pago:false});
+  const v3b=addVeiculo({clienteId:c3.id,placa:'足立 800 む 45-89',marca:'Toyota',modelo:'HiAce',ano:2020,combustivel:'Diesel',km:98700});
+  const v4=addVeiculo({clienteId:c4.id,placa:'練馬 300 か 22-10',marca:'Mazda',modelo:'CX-5',ano:2018,combustivel:'Gasolina',km:56000});
+  const v5=addVeiculo({clienteId:c5.id,placa:'品川 500 な 71-55',marca:'Suzuki',modelo:'Swift',ano:2015,combustivel:'Gasolina',km:134000});
+  const v6=addVeiculo({clienteId:c6.id,placa:'横浜 330 ら 09-88',marca:'Toyota',modelo:'Prius',ano:2020,combustivel:'Híbrido',km:41200});
+  const v7=addVeiculo({clienteId:c7.id,placa:'品川 300 さ 63-21',marca:'Volkswagen',modelo:'Golf',ano:2017,combustivel:'Gasolina',km:89400});
+  const v8=addVeiculo({clienteId:c8.id,placa:'大宮 500 は 14-07',marca:'Subaru',modelo:'Impreza',ano:2019,combustivel:'Gasolina',km:67300});
+  const v9=addVeiculo({clienteId:c9.id,placa:'足立 300 む 55-42',marca:'Nissan',modelo:'Note',ano:2014,combustivel:'Gasolina',km:151000});
+  // peças (alguns com estoque baixo)
+  const p_oil=addPeca({nome:'Óleo 5W-30 (1L)',sku:'OIL-530',preco:1800,custo:1100,qtd:36,min:8});
+  const p_foil=addPeca({nome:'Filtro de óleo',sku:'FLT-OIL',preco:1500,custo:800,qtd:4,min:8});
+  const p_fair=addPeca({nome:'Filtro de ar',sku:'FLT-AIR',preco:2200,custo:1300,qtd:14,min:5});
+  const p_pad=addPeca({nome:'Pastilha de freio diant.',sku:'BRK-PAD',preco:9800,custo:6200,qtd:9,min:4});
+  const p_disc=addPeca({nome:'Disco de freio',sku:'BRK-DSC',preco:12500,custo:8000,qtd:6,min:3});
+  const p_bat=addPeca({nome:'Bateria 40B19L',sku:'BAT-40',preco:12800,custo:8900,qtd:2,min:3});
+  const p_spark=addPeca({nome:'Vela de ignição (jogo)',sku:'SPK-SET',preco:6400,custo:3800,qtd:11,min:4});
+  const p_belt=addPeca({nome:'Correia dentada',sku:'BLT-TMG',preco:8900,custo:5200,qtd:5,min:3});
+  const p_tire=addPeca({nome:'Pneu 195/65R15',sku:'TIR-195',preco:9500,custo:6500,qtd:12,min:4});
+  const p_shock=addPeca({nome:'Amortecedor diant.',sku:'SUS-SHK',preco:15800,custo:10500,qtd:4,min:2});
+  const p_alt=addPeca({nome:'Alternador',sku:'ELE-ALT',preco:24000,custo:16000,qtd:2,min:2});
+  // ---- ORDENS (22, cobrindo todos os status, pagamentos e serviços) ----
+  // entregues (espalhadas ~5 meses; maioria paga, algumas a receber)
+  mkOS(c1,v1,'entregue',[{tipo:'mao',desc:'Troca de óleo + filtro',qtd:1,preco:3500},{tipo:'peca',ref:p_oil,qtd:4},{tipo:'peca',ref:p_foil,qtd:1}], -12, PG('credito',3,true));
+  mkOS(c1,v1,'entregue',[{tipo:'mao',desc:'Troca de pastilhas de freio',qtd:1,preco:9000},{tipo:'peca',ref:p_pad,qtd:1}], -34, PG('dinheiro',1,true));
+  mkOS(c1,v1,'entregue',[{tipo:'mao',desc:'Revisão completa + alinhamento',qtd:1,preco:26000},{tipo:'peca',ref:p_oil,qtd:5}], -62, PG('credito',6,true));
+  mkOS(c3,v3,'entregue',[{tipo:'mao',desc:'Revisão de frota + correia dentada',qtd:1,preco:19000},{tipo:'peca',ref:p_belt,qtd:1},{tipo:'peca',ref:p_oil,qtd:4}], -20, PG('pix',1,true));
+  mkOS(c3,v3b,'entregue',[{tipo:'mao',desc:'Freios completos (disco + pastilha)',qtd:1,preco:16000},{tipo:'peca',ref:p_pad,qtd:2},{tipo:'peca',ref:p_disc,qtd:2}], -48, PG('credito',4,true));
+  mkOS(c3,v3,'entregue',[{tipo:'mao',desc:'Suspensão dianteira',qtd:1,preco:18000},{tipo:'peca',ref:p_shock,qtd:2}], -95, PG('dinheiro',1,true));
+  mkOS(c4,v4,'entregue',[{tipo:'mao',desc:'Troca de velas + filtro de ar',qtd:1,preco:7000},{tipo:'peca',ref:p_spark,qtd:1},{tipo:'peca',ref:p_fair,qtd:1}], -15, PG('debito',1,true));
+  mkOS(c5,v5,'entregue',[{tipo:'mao',desc:'Serviço elétrico — troca de alternador',qtd:1,preco:12000},{tipo:'peca',ref:p_alt,qtd:1}], -72, PG('credito',3,true));
+  mkOS(c6,v6,'entregue',[{tipo:'mao',desc:'Ar-condicionado — recarga de gás',qtd:1,preco:9800}], -25, PG('pix',1,true));
+  mkOS(c7,v7,'entregue',[{tipo:'mao',desc:'Troca de 4 pneus + alinhamento e balanceamento',qtd:1,preco:8000},{tipo:'peca',ref:p_tire,qtd:4}], -40, PG('credito',5,true));
+  mkOS(c8,v8,'entregue',[{tipo:'mao',desc:'Troca de óleo',qtd:1,preco:3500},{tipo:'peca',ref:p_oil,qtd:4},{tipo:'peca',ref:p_foil,qtd:1}], -5, PG('dinheiro',1,false)); // A RECEBER
+  mkOS(c2,v2,'entregue',[{tipo:'mao',desc:'Serviço elétrico — alternador',qtd:1,preco:14000}], -8, PG('pix',1,true));
+  mkOS(c9,v9,'entregue',[{tipo:'mao',desc:'Funilaria — reparo de para-choque',qtd:1,preco:16500}], -55, PG('dinheiro',1,true));
+  mkOS(c6,v6,'entregue',[{tipo:'mao',desc:'Motor — troca de correia dentada',qtd:1,preco:15000},{tipo:'peca',ref:p_belt,qtd:1}], -115, PG('credito',6,true));
+  // em serviço
+  mkOS(c2,v2,'em_servico',[{tipo:'mao',desc:'Troca de pastilhas + sangria de freio',qtd:1,preco:8000},{tipo:'peca',ref:p_pad,qtd:1}], -1, PG('dinheiro',1,false));
+  mkOS(c4,v4,'em_servico',[{tipo:'mao',desc:'Suspensão dianteira — amortecedores',qtd:1,preco:12000},{tipo:'peca',ref:p_shock,qtd:2}], -2, PG('credito',3,false));
+  // aguardando
+  mkOS(c3,v3b,'aguardando',[{tipo:'mao',desc:'Revisão 60.000 km',qtd:1,preco:22000},{tipo:'peca',ref:p_oil,qtd:6}], 0, PG('pix',1,false));
+  mkOS(c8,v8,'aguardando',[{tipo:'mao',desc:'Diagnóstico elétrico',qtd:1,preco:4000}], 0, PG('combinar',1,false));
+  // pronto p/ retirada
+  mkOS(c5,v5,'pronto',[{tipo:'mao',desc:'Troca de bateria',qtd:1,preco:2500},{tipo:'peca',ref:p_bat,qtd:1}], -1, PG('debito',1,true));
+  // orçamentos (aguardando aprovação do cliente)
+  mkOS(c1,v1,'orcamento',[{tipo:'mao',desc:'Troca de amortecedores dianteiros',qtd:1,preco:14000},{tipo:'peca',ref:p_shock,qtd:2}], 0, PG('combinar',1,false));
+  mkOS(c7,v7,'orcamento',[{tipo:'mao',desc:'Transmissão — troca de embreagem',qtd:1,preco:38000}], -2, PG('combinar',1,false));
+  // recusado (orçamento não aprovado)
+  mkOS(c9,v9,'recusado',[{tipo:'mao',desc:'Motor — retífica completa',qtd:1,preco:120000}], -6, PG('combinar',1,false));
   DB.theme=''; save();
 }
 function mkOS(c,v,status,rawItems,daysAgo,pagamento){
@@ -700,7 +747,11 @@ function viewFinanceiro(){
   const taxasCartao=entregues.reduce((s,o)=>{ const p=pagCalc(total(o),pagOf(o)); return s + (p.isCard&&!p.repassar?p.taxa:0); },0);
   const lucro=fat-custoPec-taxasCartao, margem=fat?Math.round(lucro/fat*100):0;
   const ticket=entregues.length?fat/entregues.length:0;
+  // recebido (entregue E pago) x a receber (entregue não-pago + em aberto)
+  const recebido=entregues.filter(o=>pagOf(o).pago).reduce((s,o)=>s+total(o),0);
+  const entregueNaoPago=entregues.filter(o=>!pagOf(o).pago).reduce((s,o)=>s+total(o),0);
   const emAberto=DB.ordens.filter(o=>['aguardando','em_servico','pronto'].includes(o.status)).reduce((s,o)=>s+total(o),0);
+  const aReceber=entregueNaoPago+emAberto;
   const perBtn=(id,lbl)=>`<button class="fchip ${per===id?'active':''}" data-period="${id}">${lbl}</button>`;
   const kpi=(lbl,val,delta,cls)=>`<div class="card kpi"><span class="lbl">${lbl}</span><span class="val tnum" ${cls?`style="color:${cls}"`:''}>${val}</span>${delta?`<span class="delta">${delta}</span>`:''}</div>`;
   // gráfico: faturamento últimos 6 meses
@@ -709,19 +760,19 @@ function viewFinanceiro(){
   const monthFat=months.map(d=>DB.ordens.filter(o=>o.status==='entregue'&&o.entregueEm&&new Date(o.entregueEm).getMonth()===d.getMonth()&&new Date(o.entregueEm).getFullYear()===d.getFullYear()).reduce((s,o)=>s+total(o),0));
   const maxF=Math.max(1,...monthFat);
   const chart=`<div class="card pad"><div style="font-size:13px;font-weight:700;margin-bottom:4px">Faturamento — últimos 6 meses</div>
-    <div class="bars">${months.map((d,i)=>`<div class="b"><div class="amt">${monthFat[i]?yen(monthFat[i]).replace('¥','¥'):''}</div><div class="col" style="height:${Math.round(monthFat[i]/maxF*90)}%;background:${i===5?'var(--primary)':'color-mix(in srgb,var(--primary) 55%,var(--hair))'}"></div><div class="cap">${d.toLocaleDateString('pt-BR',{month:'short'})}</div></div>`).join('')}</div></div>`;
+    <div class="bars">${months.map((d,i)=>`<div class="b"><div class="amt">${monthFat[i]?yen(monthFat[i]):''}</div><div class="col" style="height:${Math.max(3,Math.round(monthFat[i]/maxF*104))}px;background:${i===5?'var(--primary)':'color-mix(in srgb,var(--primary) 55%,var(--hair))'}"></div><div class="cap">${d.toLocaleDateString('pt-BR',{month:'short'})}</div></div>`).join('')}</div></div>`;
   return `<div class="filters" style="margin-bottom:14px">${perBtn('mes','Mês atual')}${perBtn('mespass','Mês passado')}${perBtn('ano','Ano')}${perBtn('tudo','Tudo')}</div>
   <div class="grid kpis">
     ${kpi('Faturamento',yen(fat),entregues.length+' OS entregues')}
-    ${kpi('Custo de peças',yen(custoPec))}
-    ${kpi('Taxas de cartão',yen(taxasCartao),'absorvidas pela oficina','var(--st-recusado)')}
+    ${kpi('Recebido',yen(recebido),'já pago pelos clientes','var(--green)')}
+    ${kpi('A receber',yen(aReceber),'em aberto + não pago','var(--st-em_servico)')}
     ${kpi('Lucro bruto',yen(lucro),'margem '+margem+'%','var(--green)')}
   </div>
   <div class="grid kpis" style="margin-top:14px">
+    ${kpi('Custo de peças',yen(custoPec))}
+    ${kpi('Taxas de cartão',yen(taxasCartao),'absorvidas','var(--st-recusado)')}
     ${kpi('Ticket médio',yen(ticket))}
     ${kpi('Mão de obra',yen(maoObra))}
-    ${kpi('Peças (venda)',yen(pecasFat))}
-    ${kpi('A receber (aberto)',yen(emAberto),'não entregue ainda')}
   </div>
   <div style="height:14px"></div>${chart}
   <div class="section-h"><h2>Entregues no período</h2></div>
@@ -908,9 +959,10 @@ function pagDetalheHTML(o){
   }
   return `<div class="card pad" style="margin:8px 0 4px">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <div style="font-size:12px;color:var(--muted-2);font-weight:700;text-transform:uppercase;letter-spacing:.03em">Pagamento</div>
+      <div style="font-size:11px;color:var(--muted-2);font-weight:700;text-transform:uppercase;letter-spacing:.03em">Pagamento</div>
       <span class="paychip">${PAG[pg.forma]||'—'}${p.parc>1?' · '+p.parc+'×':''}</span>
       <div style="flex:1"></div>${pagoChip}
+      <button class="btn sm" data-act="toggle-pago" data-id="${o.id}">${pg.pago?'Marcar pendente':'Marcar como pago'}</button>
     </div>${extra}</div>`;
 }
 
@@ -1028,6 +1080,7 @@ document.addEventListener('click',e=>{
     case 'edit-os': closeModal(); modalOS(id); break;
     case 'del-os': if(confirm('Excluir esta OS?')){ const o=DB.ordens.find(x=>x.id===id); if(o&&o.consumido) restoreStock(o); DB.ordens=DB.ordens.filter(x=>x.id!==id); save(); closeModal(); render(); toast('OS excluída'); } break;
     case 'print-os': window.print(); break;
+    case 'toggle-pago': { const o=DB.ordens.find(x=>x.id===id); if(o){ o.pagamento=pagOf(o); o.pagamento.pago=!o.pagamento.pago; o.hist.push({t:nowISO(),txt:o.pagamento.pago?'Pagamento recebido':'Pagamento marcado como pendente'}); save(); render(); modalDetalhe(o.id); toast(o.pagamento.pago?'Marcado como pago — ganhos atualizados':'Marcado como pendente'); } break; }
     case 'del-cliente': if(confirm('Excluir cliente e seus veículos? (as OS permanecem)')){ DB.clientes=DB.clientes.filter(c=>c.id!==id); DB.veiculos=DB.veiculos.filter(v=>v.clienteId!==id); save(); closeModal(); render(); toast('Cliente excluído'); } break;
     case 'nova-os-cli': closeModal(); modalOS(); osDraft.clienteId=t.dataset.cli; refreshOSForm(); break;
     case 'novo-veiculo': syncDraftInputs&&syncDraftInputs(); modalVeiculo(t.dataset.cli||osDraft?.clienteId||'', osDraft?'reopen-os':'close'); break;
