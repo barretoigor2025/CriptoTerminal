@@ -536,15 +536,17 @@ const ordensDe = cid=> DB.ordens.filter(o=>o.clienteId===cid);
 const totalItens = o=> o.itens.reduce((s,i)=>s + (i.qtd*i.preco),0);
 const total = o=> Math.max(0, totalItens(o) - (o.desconto||0));
 const custoOS = o=> o.itens.reduce((s,i)=>s + (i.qtd*(i.custo||0)),0);
-// estoque reservado = peças em OS ativas (não entregue/recusado) ainda não consumidas
+// estoque reservado = peças em serviços CONFIRMADOS (aguardando/em serviço/pronto)
+// ainda não consumidos. Orçamento (não aprovado), entregue e recusado não reservam.
 function reservado(pecaId){
   let r=0;
-  for(const o of DB.ordens){ if(o.consumido) continue; if(o.status==='entregue'||o.status==='recusado') continue;
+  for(const o of DB.ordens){ if(o.consumido) continue; if(!['aguardando','em_servico','pronto'].includes(o.status)) continue;
     for(const it of o.itens){ if(it.tipo==='peca'&&it.pecaId===pecaId) r+=it.qtd; } }
   return r;
 }
 const disponivel = p=> p.qtd - reservado(p.id);
-function consumeStock(o){ if(o.consumido) return; for(const it of o.itens){ if(it.tipo==='peca'){ const p=peca(it.pecaId); if(p) p.qtd=Math.max(0,p.qtd-it.qtd); } } o.consumido=true; }
+// baixa/estorno simétricos (inversos exatos): sem clamp, pra estorno nunca "criar" estoque
+function consumeStock(o){ if(o.consumido) return; for(const it of o.itens){ if(it.tipo==='peca'){ const p=peca(it.pecaId); if(p) p.qtd-=it.qtd; } } o.consumido=true; }
 function restoreStock(o){ if(!o.consumido) return; for(const it of o.itens){ if(it.tipo==='peca'){ const p=peca(it.pecaId); if(p) p.qtd+=it.qtd; } } o.consumido=false; }
 
 function setStatus(o,st){
