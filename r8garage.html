@@ -41,14 +41,14 @@
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
 body{
-  background:var(--bg); color:var(--ink); font-size:15px; line-height:1.5;
+  background:var(--bg); color:var(--ink); font-size:13.5px; line-height:1.5;
   font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   -webkit-font-smoothing:antialiased;
 }
 .tnum{font-variant-numeric:tabular-nums}
 button{font-family:inherit;cursor:pointer}
 a{color:inherit}
-input,select,textarea{font-family:inherit;font-size:15px}
+input,select,textarea{font-family:inherit;font-size:13.5px}
 
 /* ===================== APP SHELL ===================== */
 .app{display:grid;grid-template-columns:236px 1fr;min-height:100vh}
@@ -83,8 +83,8 @@ input,select,textarea{font-family:inherit;font-size:15px}
   backdrop-filter:blur(10px);border-bottom:1px solid var(--hair);
   display:flex;align-items:center;gap:12px;padding:12px 20px;
 }
-.topbar h1{font-size:19px;margin:0;font-weight:700;letter-spacing:-.01em}
-.topbar .sub{font-size:12.5px;color:var(--muted-2);margin-top:1px}
+.topbar h1{font-size:17px;margin:0;font-weight:700;letter-spacing:-.01em}
+.topbar .sub{font-size:11.5px;color:var(--muted-2);margin-top:1px}
 .topbar .spacer{flex:1}
 .topbar-logo{width:102px;aspect-ratio:560/190;background:var(--r8logo) center/contain no-repeat;flex:none;margin-left:2px}
 @media (min-width:961px){ .topbar-logo{display:none} }  /* no desktop a logo já está na barra lateral */
@@ -112,18 +112,18 @@ input,select,textarea{font-family:inherit;font-size:15px}
 .card{background:var(--surface);border:1px solid var(--hair);border-radius:var(--radius);box-shadow:var(--shadow)}
 .card.pad{padding:16px}
 .kpi{padding:15px 16px;display:flex;flex-direction:column;gap:3px;position:relative;overflow:hidden}
-.kpi .lbl{font-size:12px;color:var(--muted-2);font-weight:600;letter-spacing:.02em;text-transform:uppercase}
-.kpi .val{font-size:26px;font-weight:750;letter-spacing:-.02em;line-height:1.1}
+.kpi .lbl{font-size:11px;color:var(--muted-2);font-weight:600;letter-spacing:.02em;text-transform:uppercase}
+.kpi .val{font-size:22px;font-weight:750;letter-spacing:-.02em;line-height:1.1}
 .kpi .delta{font-size:12px;color:var(--muted);margin-top:2px}
 .kpi .ic{position:absolute;right:14px;top:14px;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
   background:var(--primary-soft);color:var(--primary)}
 .kpi .ic svg{width:17px;height:17px;stroke-width:2}
 
 .section-h{display:flex;align-items:center;gap:10px;margin:22px 2px 12px}
-.section-h h2{font-size:16px;margin:0;font-weight:700}
+.section-h h2{font-size:14.5px;margin:0;font-weight:700}
 .section-h .spacer{flex:1}
 
-.chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:650;padding:3px 10px;border-radius:999px;
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:650;padding:3px 10px;border-radius:999px;
   border:1px solid transparent;white-space:nowrap}
 .chip .dot{width:7px;height:7px;border-radius:50%}
 .st-orcamento{background:color-mix(in srgb,var(--st-orcamento) 14%,transparent);color:var(--st-orcamento)}
@@ -135,7 +135,7 @@ input,select,textarea{font-family:inherit;font-size:15px}
 
 /* table */
 .table-wrap{overflow-x:auto;border-radius:var(--radius)}
-table.tbl{width:100%;border-collapse:collapse;font-size:14px}
+table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 table.tbl th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted-2);
   font-weight:700;padding:11px 14px;border-bottom:1px solid var(--hair);white-space:nowrap}
 table.tbl td{padding:12px 14px;border-bottom:1px solid var(--hair);vertical-align:middle}
@@ -182,7 +182,7 @@ table.tbl tbody tr:hover,table.tbl tr.click:hover{background:var(--surface-2);cu
 @media(min-width:721px){.modal{border-radius:18px}}
 .modal.wide{max-width:820px}
 .modal-h{position:sticky;top:0;background:var(--surface);display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--hair);z-index:2}
-.modal-h h3{margin:0;font-size:17px;font-weight:700}
+.modal-h h3{margin:0;font-size:15.5px;font-weight:700}
 .modal-h .x{margin-left:auto;border:none;background:var(--surface-2);width:32px;height:32px;border-radius:8px;color:var(--muted);font-size:18px;display:grid;place-items:center}
 .modal-b{padding:18px}
 .modal-f{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--hair);padding:13px 18px;display:flex;gap:10px;justify-content:flex-end}
@@ -210,6 +210,31 @@ table.tbl tbody tr:hover,table.tbl tr.click:hover{background:var(--surface-2);cu
 .tot-box .l span:last-child{white-space:nowrap}
 .tot-box .l.big{font-size:18px;font-weight:750}
 .paychip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--surface-2);border:1px solid var(--hair);color:var(--muted)}
+/* campo de dinheiro com prefixo ¥ */
+.moneywrap{position:relative;display:block}
+.moneywrap::before{content:'¥';position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted-2);font-size:13px;pointer-events:none;font-weight:600}
+.moneywrap input{width:100%;padding-left:22px !important}
+.moneywrap.mini::before{left:7px;font-size:11px}
+.moneywrap.mini input{padding-left:17px !important}
+/* selo de cliente bom */
+.cbadge{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:999px;letter-spacing:.02em;vertical-align:middle}
+.cbadge.ouro{background:linear-gradient(180deg,#f7d774,#e0a021);color:#3a2600;border:1px solid #d99a1c}
+.cbadge.prata{background:linear-gradient(180deg,#e3e7ec,#b9c0c9);color:#2a2f36;border:1px solid #aab2bd}
+/* relatório: barras horizontais de serviços */
+.relbars{display:flex;flex-direction:column;gap:9px}
+.relbar{display:grid;grid-template-columns:150px 1fr auto;gap:10px;align-items:center;font-size:12.5px}
+.relbar .rl{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.relbar .track{height:16px;background:var(--surface-2);border-radius:6px;overflow:hidden;position:relative}
+.relbar .fill{height:100%;border-radius:6px;background:var(--primary);min-width:3px}
+.relbar .rv{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600;white-space:nowrap}
+.relbar .rv b{color:var(--ink)}
+@media (max-width:560px){ .relbar{grid-template-columns:96px 1fr auto} }
+.paylist{display:flex;flex-direction:column;gap:7px}
+.payline{display:flex;align-items:center;gap:10px;font-size:13px}
+.payline .pd{width:9px;height:9px;border-radius:3px;flex:none}
+.payline .pv{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:600}
+.rel2col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:720px){ .rel2col{grid-template-columns:1fr} }
 
 /* detail */
 .det-head{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin-bottom:6px}
@@ -351,6 +376,35 @@ const nowISO = ()=> new Date().toISOString();
 const fmtDate = iso=>{ if(!iso) return '—'; const d=new Date(iso); return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'}); };
 const fmtDateTime = iso=>{ if(!iso) return '—'; const d=new Date(iso); return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); };
 const esc = s=> (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// campo de dinheiro: prefixo ¥ e VAZIO por padrão (sem o zero chato)
+function moneyField(attrs, val, mini){
+  const v=(val==null||val===''||+val===0)?'':val;
+  return `<div class="moneywrap${mini?' mini':''}"><input type="number" min="0" inputmode="decimal" placeholder="0" ${attrs} value="${v}"></div>`;
+}
+// classifica um serviço (texto livre) numa categoria, p/ o relatório
+const SERV_CATS=[
+  ['Troca de óleo',/óleo|oleo|lubrific/i],
+  ['Freios',/freio|pastilha|disco|sangria|lona/i],
+  ['Suspensão',/suspens|amortec|mola|bandeja|piv[oô]|coxim/i],
+  ['Motor',/motor|correia|vela|junta|retíf|retif|distribui|arrefec|radiador|bomba/i],
+  ['Elétrica',/el[ée]tr|bateria|alternador|farol|l[âa]mpada|chicote|sensor|injec|inje[çc]/i],
+  ['Revisão',/revis|inspe[çc]|checklist/i],
+  ['Pneus/Alinhamento',/pneu|alinha|balancea|roda|calibr/i],
+  ['Ar-condicionado',/ar.?cond|climatiz|compressor|g[áa]s.?ar/i],
+  ['Funilaria/Pintura',/funilar|pintura|lataria|polimento|amassad|martel/i],
+  ['Transmissão',/c[âa]mbio|embreagem|transmiss|diferencial/i],
+];
+function classifyService(desc){ for(const [cat,re] of SERV_CATS) if(re.test(desc||'')) return cat; return 'Outros'; }
+// estatísticas do cliente + tier (bom cliente)
+function clienteStats(cid){
+  const os=ordensDe(cid).filter(o=>o.status==='entregue');
+  const n=os.length, gasto=os.reduce((s,o)=>s+total(o),0);
+  const lucro=os.reduce((s,o)=>{ const p=pagCalc(total(o),pagOf(o)); return s+total(o)-custoOS(o)-(p.isCard&&!p.repassar?p.taxa:0); },0);
+  let tier=null;
+  if(gasto>=50000||n>=5) tier='ouro'; else if(gasto>=20000||n>=3) tier='prata';
+  return {n,gasto,lucro,tier};
+}
+function clienteBadge(tier){ return tier==='ouro'?'<span class="cbadge ouro">★ Ouro</span>':tier==='prata'?'<span class="cbadge prata">★ Prata</span>':''; }
 
 const STATUS={
   orcamento:{label:'Orçamento',color:'var(--st-orcamento)'},
@@ -397,6 +451,9 @@ function seed(){
   const p4=addPeca({nome:'Bateria 40B19L',sku:'BAT-40',preco:12800,custo:8900,qtd:3,min:3});
   // OS de exemplo em vários status
   mkOS(c1,v1,'entregue',[{tipo:'mao',desc:'Troca de óleo + filtro',qtd:1,preco:3500},{tipo:'peca',ref:p1,qtd:4},{tipo:'peca',ref:p2,qtd:1}], -12, {forma:'credito',parcelas:3,taxaPct:3.5,repassar:false,pago:true});
+  mkOS(c1,v1,'entregue',[{tipo:'mao',desc:'Troca de pastilhas de freio',qtd:1,preco:9000},{tipo:'peca',ref:p3,qtd:1}], -34, {forma:'dinheiro',parcelas:1,taxaPct:0,repassar:false,pago:true});
+  mkOS(c1,v1,'entregue',[{tipo:'mao',desc:'Revisão completa + alinhamento',qtd:1,preco:26000},{tipo:'peca',ref:p1,qtd:5}], -62, {forma:'credito',parcelas:6,taxaPct:3.5,repassar:false,pago:true});
+  mkOS(c2,v2,'entregue',[{tipo:'mao',desc:'Serviço elétrico — alternador',qtd:1,preco:14000}], -8, {forma:'pix',parcelas:1,taxaPct:0,repassar:false,pago:true});
   mkOS(c2,v2,'em_servico',[{tipo:'mao',desc:'Troca de pastilhas + sangria',qtd:1,preco:8000},{tipo:'peca',ref:p3,qtd:1}], -1, {forma:'dinheiro',parcelas:1,taxaPct:0,repassar:false,pago:false});
   mkOS(c3,v3,'aguardando',[{tipo:'mao',desc:'Revisão 60.000km',qtd:1,preco:22000},{tipo:'peca',ref:p1,qtd:6}], 0, {forma:'pix',parcelas:1,taxaPct:0,repassar:false,pago:false});
   mkOS(c1,v1,'orcamento',[{tipo:'mao',desc:'Troca de bateria',qtd:1,preco:2500},{tipo:'peca',ref:p4,qtd:1}], 0, {forma:'combinar',parcelas:1,taxaPct:0,repassar:false,pago:false});
@@ -469,9 +526,10 @@ const NAV=[
   {id:'clientes',label:'Clientes',icon:'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 .01M23 21v-2a4 4 0 0 0-3-3.87'},
   {id:'estoque',label:'Estoque',icon:'M21 8v13H3V8M1 3h22v5H1zM10 12h4'},
   {id:'financeiro',label:'Financeiro',icon:'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'},
+  {id:'relatorio',label:'Relatório',icon:'M3 3v18h18M18 17V9M13 17V5M8 17v-3'},
 ];
 let route='painel';
-let uiState={ordFilter:'todos',ordView:'lista',finPeriod:'mes',cliSearch:''};
+let uiState={ordFilter:'todos',ordView:'lista',finPeriod:'mes',relPeriod:'mes',cliSearch:''};
 
 function icon(path){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="'+path+'"/></svg>'; }
 function buildNav(){
@@ -485,7 +543,7 @@ function go(r){ route=r; closeDrawer(); render(); }
 /* =========================================================================
    RENDER
    ========================================================================= */
-const TITLES={painel:['Painel','Visão geral da oficina'],ordens:['Ordens de Serviço','Entrada e saída de serviços'],clientes:['Clientes','Cadastro e histórico'],estoque:['Estoque','Peças e disponibilidade'],financeiro:['Financeiro','Resultados em ienes (¥)']};
+const TITLES={painel:['Painel','Visão geral da oficina'],ordens:['Ordens de Serviço','Entrada e saída de serviços'],clientes:['Clientes','Cadastro e histórico'],estoque:['Estoque','Peças e disponibilidade'],financeiro:['Financeiro','Resultados em ienes (¥)'],relatorio:['Relatório','Andamento e desempenho da oficina']};
 function render(){
   buildNav();
   const [t,s]=TITLES[route]; $('#pageTitle').textContent=t; $('#pageSub').textContent=s;
@@ -496,6 +554,7 @@ function render(){
   else if(route==='clientes') v.innerHTML=viewClientes();
   else if(route==='estoque') v.innerHTML=viewEstoque();
   else if(route==='financeiro') v.innerHTML=viewFinanceiro();
+  else if(route==='relatorio') v.innerHTML=viewRelatorio();
   if(route==='ordens'&&uiState.ordView==='kanban') wireKanban();
 }
 
@@ -600,12 +659,12 @@ function viewClientes(){
   return search+`<div class="card table-wrap"><table class="tbl"><thead><tr>
     <th>Nome</th><th class="hide-sm">Telefone</th><th>Veículos</th><th class="right">OS</th><th class="right hide-sm">Gasto total</th>
   </tr></thead><tbody>${list.map(c=>{
-    const vs=veiculosDe(c.id), os=ordensDe(c.id), gasto=os.filter(o=>o.status==='entregue').reduce((s,o)=>s+total(o),0);
-    return `<tr class="click" data-cli="${c.id}"><td><b>${esc(c.nome)}</b><div class="hide-sm" style="font-size:12px;color:var(--muted-2)">${esc(c.email||'')}</div></td>
+    const vs=veiculosDe(c.id), os=ordensDe(c.id), st=clienteStats(c.id);
+    return `<tr class="click" data-cli="${c.id}"><td><b>${esc(c.nome)}</b> ${clienteBadge(st.tier)}<div class="hide-sm" style="font-size:12px;color:var(--muted-2)">${esc(c.email||'')}</div></td>
       <td class="hide-sm mono">${esc(c.telefone||'—')}</td>
       <td>${vs.length?vs.map(v=>`<span class="pill-veh">${esc(v.marca+' '+v.modelo)}</span>`).join(' '):'<span class="muted">—</span>'}</td>
       <td class="right mono">${os.length}</td>
-      <td class="right mono hide-sm"><b>${yen(gasto)}</b></td></tr>`;
+      <td class="right mono hide-sm"><b>${yen(st.gasto)}</b></td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
 
@@ -671,6 +730,57 @@ function viewFinanceiro(){
 
 function emptyBox(t,s){ return `<div class="card"><div class="empty">${icon('M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2')}<div style="font-weight:700;color:var(--ink)">${t}</div><div>${s}</div></div></div>`; }
 
+/* ---------- RELATÓRIO ---------- */
+function viewRelatorio(){
+  const per=uiState.relPeriod;
+  const perBtn=(id,lbl)=>`<button class="fchip ${per===id?'active':''}" data-relperiod="${id}">${lbl}</button>`;
+  const entregues=DB.ordens.filter(o=>o.status==='entregue'&&inPeriod(o.entregueEm,per));
+  const fat=entregues.reduce((s,o)=>s+total(o),0);
+  const custoPec=entregues.reduce((s,o)=>s+custoOS(o),0);
+  const taxas=entregues.reduce((s,o)=>{ const p=pagCalc(total(o),pagOf(o)); return s+(p.isCard&&!p.repassar?p.taxa:0); },0);
+  const custoTot=custoPec+taxas, lucro=fat-custoTot, margem=fat?Math.round(lucro/fat*100):0;
+  const kpi=(lbl,val,delta,cls)=>`<div class="card kpi"><span class="lbl">${lbl}</span><span class="val tnum" ${cls?`style="color:${cls}"`:''}>${val}</span>${delta?`<span class="delta">${delta}</span>`:''}</div>`;
+
+  // serviços por categoria (mão de obra)
+  const cats={};
+  for(const o of entregues) for(const it of o.itens) if(it.tipo==='mao'){ const c=classifyService(it.desc); (cats[c]=cats[c]||{n:0,rec:0}); cats[c].n+=it.qtd; cats[c].rec+=it.qtd*it.preco; }
+  const catArr=Object.entries(cats).map(([k,v])=>({cat:k,...v})).sort((a,b)=>b.rec-a.rec);
+  const maxRec=Math.max(1,...catArr.map(c=>c.rec));
+  const topCat=catArr[0];
+  const servHTML = catArr.length ? `<div class="relbars">${catArr.map(c=>`
+      <div class="relbar"><span class="rl">${esc(c.cat)}</span>
+        <div class="track"><div class="fill" style="width:${Math.round(c.rec/maxRec*100)}%"></div></div>
+        <span class="rv">${c.n}× · <b>${yen(c.rec)}</b></span></div>`).join('')}</div>`
+    : '<div class="hint">Nenhum serviço entregue no período.</div>';
+
+  // formas de pagamento
+  const pags={}; for(const o of entregues){ const f=pagOf(o).forma; (pags[f]=pags[f]||{n:0,v:0}); pags[f].n++; pags[f].v+=total(o); }
+  const pagCols={dinheiro:'#12996a',credito:'#d81f2b',debito:'#e0850e',pix:'#2f6bd6',paypay:'#7256e6',combinar:'#6b7280'};
+  const pagArr=Object.entries(pags).sort((a,b)=>b[1].v-a[1].v);
+  const pagHTML = pagArr.length ? `<div class="paylist">${pagArr.map(([f,d])=>`<div class="payline"><span class="pd" style="background:${pagCols[f]||'#888'}"></span>${PAG[f]||f} <span class="muted">· ${d.n} OS</span><span class="pv">${yen(d.v)}</span></div>`).join('')}</div>` : '<div class="hint">—</div>';
+
+  // top clientes (por gasto total, geral)
+  const tops=DB.clientes.map(c=>({c,st:clienteStats(c.id)})).filter(x=>x.st.n>0).sort((a,b)=>b.st.gasto-a.st.gasto).slice(0,5);
+  const topHTML = tops.length ? `<div class="card table-wrap"><table class="tbl"><thead><tr><th>Cliente</th><th class="right">OS</th><th class="right">Gasto</th><th class="right hide-sm">Lucro gerado</th></tr></thead><tbody>
+      ${tops.map(({c,st})=>`<tr class="click" data-cli="${c.id}"><td><b>${esc(c.nome)}</b> ${clienteBadge(st.tier)}</td><td class="right mono">${st.n}</td><td class="right mono"><b>${yen(st.gasto)}</b></td><td class="right mono muted hide-sm">${yen(st.lucro)}</td></tr>`).join('')}
+    </tbody></table></div>` : '<div class="hint">Nenhum cliente com OS entregue ainda.</div>';
+
+  return `<div class="filters" style="margin-bottom:14px">${perBtn('mes','Mês atual')}${perBtn('mespass','Mês passado')}${perBtn('ano','Ano')}${perBtn('tudo','Tudo')}</div>
+  <div class="grid kpis">
+    ${kpi('Faturamento',yen(fat),entregues.length+' OS entregues')}
+    ${kpi('Custos (peças + taxas)',yen(custoTot),'peças '+yen(custoPec)+' · taxas '+yen(taxas),'var(--st-recusado)')}
+    ${kpi('Lucro',yen(lucro),'margem '+margem+'%','var(--green)')}
+    ${kpi('Ticket médio',yen(entregues.length?fat/entregues.length:0))}
+  </div>
+  ${topCat?`<div class="alert info" style="margin-top:14px">${icon('M13 2L3 14h9l-1 8 10-12h-9l1-8z')}Serviço que mais gera receita no período: <b style="margin-left:4px">${esc(topCat.cat)}</b> — ${topCat.n}× · ${yen(topCat.rec)}</div>`:''}
+  <div class="section-h"><h2>Serviços mais realizados</h2></div>
+  <div class="card pad">${servHTML}</div>
+  <div class="rel2col" style="margin-top:6px">
+    <div><div class="section-h"><h2>Formas de pagamento</h2></div><div class="card pad">${pagHTML}</div></div>
+    <div><div class="section-h"><h2>Melhores clientes</h2></div>${topHTML}</div>
+  </div>`;
+}
+
 /* =========================================================================
    MODAIS — Nova/editar OS, cliente, peça, detalhe
    ========================================================================= */
@@ -696,11 +806,11 @@ function modalPeca(pid){
   <div class="modal-b">
     <div class="field"><label>Nome da peça *</label><input id="pc_nome" value="${p?esc(p.nome):''}" autofocus></div>
     <div class="frow c2"><div class="field"><label>SKU / código</label><input id="pc_sku" value="${p?esc(p.sku||''):''}"></div>
-      <div class="field"><label>Estoque atual</label><input id="pc_qtd" type="number" min="0" value="${p?p.qtd:0}"></div></div>
+      <div class="field"><label>Estoque atual</label><input id="pc_qtd" type="number" min="0" placeholder="0" value="${p&&p.qtd?p.qtd:''}"></div></div>
     <div class="frow c3">
-      <div class="field"><label>Preço venda (¥)</label><input id="pc_preco" type="number" min="0" value="${p?p.preco:''}"></div>
-      <div class="field"><label>Custo (¥)</label><input id="pc_custo" type="number" min="0" value="${p?p.custo:''}"></div>
-      <div class="field"><label>Estoque mínimo</label><input id="pc_min" type="number" min="0" value="${p?p.min:2}"></div>
+      <div class="field"><label>Preço de venda</label>${moneyField('id="pc_preco"', p?p.preco:'')}</div>
+      <div class="field"><label>Custo</label>${moneyField('id="pc_custo"', p?p.custo:'')}</div>
+      <div class="field"><label>Estoque mínimo</label><input id="pc_min" type="number" min="0" placeholder="2" value="${p&&p.min!=null?p.min:''}"></div>
     </div>
   </div>
   <div class="modal-f">${p?`<button class="btn danger" data-act="del-peca" data-id="${p.id}">Excluir</button>`:''}<div class="spacer" style="flex:1"></div><button class="btn ghost" data-modal-back>Cancelar</button><button class="btn primary" data-act="save-peca" ${p?`data-id="${p.id}"`:''}>Salvar</button></div>`,false);
@@ -723,7 +833,7 @@ function osFormHTML(){
   const itemsHTML=d.itens.map((it,ix)=>`<div class="item-row" data-ix="${ix}">
       <input data-f="desc" value="${esc(it.desc)}" placeholder="${it.tipo==='peca'?'Peça':'Serviço / mão de obra'}">
       <input data-f="qtd" type="number" min="1" value="${it.qtd}" title="Qtd">
-      <input data-f="preco" type="number" min="0" value="${it.preco}" title="Preço unit. ¥">
+      ${moneyField('data-f="preco" title="Preço unit."', it.preco, true)}
       <button class="del" data-act="rm-item" data-ix="${ix}">×</button>
     </div>`).join('');
   const subtotal=d.itens.reduce((s,i)=>s+i.qtd*i.preco,0), tot=Math.max(0,subtotal-(d.desconto||0));
@@ -745,7 +855,7 @@ function osFormHTML(){
       </div>
     </div>
     <div class="frow c2">
-      <div class="field"><label>Desconto (¥)</label><input id="os_desc" type="number" min="0" value="${d.desconto||0}"></div>
+      <div class="field"><label>Desconto</label>${moneyField('id="os_desc"', d.desconto)}</div>
       <div class="field"><label>Observações</label><input id="os_obs" value="${esc(d.obs||'')}"></div>
     </div>
     <div class="paybox">
@@ -844,13 +954,14 @@ function modalDetalhe(osId){
 function modalCliDetalhe(cid){
   const c=cliente(cid); if(!c) return;
   const vs=veiculosDe(cid), os=ordensDe(cid).sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm));
-  const gasto=os.filter(o=>o.status==='entregue').reduce((s,o)=>s+total(o),0);
-  openModal(`<div class="modal-h"><h3>${esc(c.nome)}</h3><button class="x" data-modal-back style="margin-left:auto">×</button></div>
+  const st=clienteStats(cid);
+  openModal(`<div class="modal-h"><h3>${esc(c.nome)}</h3> ${clienteBadge(st.tier)}<button class="x" data-modal-back style="margin-left:auto">×</button></div>
   <div class="modal-b">
+    ${st.tier?`<div class="alert info" style="margin-bottom:12px">${icon('M12 2l2.4 7.4H22l-6 4.3 2.3 7.3L12 16.6 5.7 21l2.3-7.3-6-4.3h7.6z')}<b>${st.tier==='ouro'?'Cliente Ouro':'Cliente Prata'}</b> — ${st.n} serviços, ${yen(st.gasto)} gastos, ${yen(st.lucro)} de lucro à oficina</div>`:''}
     <div class="det-grid"><div><div class="k">Telefone</div><div class="v mono">${esc(c.telefone||'—')}</div></div>
       <div><div class="k">E-mail</div><div class="v">${esc(c.email||'—')}</div></div>
-      <div><div class="k">Gasto total</div><div class="v mono">${yen(gasto)}</div></div>
-      <div><div class="k">OS realizadas</div><div class="v">${os.length}</div></div></div>
+      <div><div class="k">Gasto total</div><div class="v mono">${yen(st.gasto)}</div></div>
+      <div><div class="k">OS realizadas</div><div class="v">${st.n}</div></div></div>
     ${c.obs?`<div class="alert info" style="margin-bottom:12px">${esc(c.obs)}</div>`:''}
     <div class="section-h" style="margin:6px 2px 8px"><h2 style="font-size:14px">Veículos</h2><div class="spacer" style="flex:1"></div><button class="btn sm" data-act="novo-veiculo" data-cli="${c.id}">+ Veículo</button></div>
     ${vs.length?vs.map(v=>`<div class="card pad" style="margin-bottom:8px;display:flex;gap:12px;align-items:center"><div style="flex:1"><b>${esc(v.marca+' '+v.modelo)}</b> <span class="muted">${v.ano||''}</span><div class="hint">${esc(v.placa)} · ${esc(v.combustivel||'')} · ${v.km?Number(v.km).toLocaleString('en-US')+' km':''}</div></div></div>`).join(''):'<div class="hint" style="margin-bottom:10px">Nenhum veículo cadastrado.</div>'}
@@ -930,6 +1041,7 @@ document.addEventListener('click',e=>{
   const f=e.target.closest('[data-filter]'); if(f){ uiState.ordFilter=f.dataset.filter; render(); }
   const vw=e.target.closest('[data-view]'); if(vw){ uiState.ordView=vw.dataset.view; render(); }
   const pr=e.target.closest('[data-period]'); if(pr){ uiState.finPeriod=pr.dataset.period; render(); }
+  const rp=e.target.closest('[data-relperiod]'); if(rp){ uiState.relPeriod=rp.dataset.relperiod; render(); }
 });
 document.addEventListener('change',e=>{
   const ss=e.target.closest('[data-act="set-status"]'); if(ss){ const o=DB.ordens.find(x=>x.id===ss.dataset.id); if(o){ setStatus(o,e.target.value); render(); modalDetalhe(o.id); toast('Status atualizado'); } return; }
@@ -974,7 +1086,7 @@ function saveCliente(){ const nome=$('#cl_nome').value.trim(); if(!nome){ toast(
   if(osDraft){ openModal(osFormHTML(),true); osDraft.clienteId=c.id; refreshOSForm(); } else render();
 }
 function savePeca(id){ const nome=$('#pc_nome').value.trim(); if(!nome){ toast('Informe o nome'); return; }
-  const data={nome,sku:$('#pc_sku').value.trim(),qtd:+$('#pc_qtd').value||0,preco:+$('#pc_preco').value||0,custo:+$('#pc_custo').value||0,min:+$('#pc_min').value||0};
+  const data={nome,sku:$('#pc_sku').value.trim(),qtd:+$('#pc_qtd').value||0,preco:+$('#pc_preco').value||0,custo:+$('#pc_custo').value||0,min:$('#pc_min').value===''?2:(+$('#pc_min').value||0)};
   if(id){ Object.assign(peca(id),data); } else addPeca(data);
   save(); closeModal(); render(); toast('Peça salva');
 }
