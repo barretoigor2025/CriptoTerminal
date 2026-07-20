@@ -215,15 +215,15 @@ table.tbl tbody tr:hover,table.tbl tr.click:hover{background:var(--surface-2);cu
 .modal-h{position:sticky;top:0;background:var(--surface);display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--hair);z-index:2}
 .modal-h h3{margin:0;font-size:14.5px;font-weight:700}
 .modal-h .x{margin-left:auto;border:none;background:var(--surface-2);width:32px;height:32px;border-radius:8px;color:var(--muted);font-size:18px;display:grid;place-items:center}
-.modal-b{padding:18px}
+.modal-b{padding:15px 16px 13px}
 .modal-f{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--hair);padding:13px 18px;display:flex;gap:10px;justify-content:flex-end}
-.field{display:flex;flex-direction:column;gap:5px;margin-bottom:13px}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:9px}
 .field label{font-size:11.5px;font-weight:650;color:var(--muted)}
 .field input,.field select,.field textarea{
-  border:1px solid var(--hair);background:var(--surface-2);color:var(--ink);border-radius:9px;padding:10px 11px;width:100%;outline:none;transition:.12s}
+  border:1px solid var(--hair);background:var(--surface-2);color:var(--ink);border-radius:9px;padding:8px 10px;width:100%;outline:none;transition:.12s}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary);background:var(--surface);box-shadow:0 0 0 3px var(--primary-soft)}
-.field textarea{resize:vertical;min-height:64px}
-.frow{display:grid;gap:12px}
+.field textarea{resize:vertical;min-height:50px}
+.frow{display:grid;gap:10px}
 .frow.c2{grid-template-columns:1fr 1fr}
 .frow.c3{grid-template-columns:1fr 1fr 1fr}
 .hint{font-size:12px;color:var(--muted-2)}
@@ -235,8 +235,8 @@ table.tbl tbody tr:hover,table.tbl tr.click:hover{background:var(--surface-2);cu
 .item-row input{padding:8px 9px}
 .item-row .del{border:none;background:none;color:var(--muted-2);font-size:18px}
 .add-line{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
-.paybox{margin-top:14px;background:var(--surface-2);border:1px solid var(--hair);border-radius:11px;padding:12px}
-.tot-box{margin-top:14px;border-top:1px dashed var(--hair);padding-top:12px;display:flex;flex-direction:column;gap:6px}
+.paybox{margin-top:10px;background:var(--surface-2);border:1px solid var(--hair);border-radius:11px;padding:10px 11px}
+.tot-box{margin-top:11px;border-top:1px dashed var(--hair);padding-top:10px;display:flex;flex-direction:column;gap:5px}
 .tot-box .l{display:flex;justify-content:space-between;font-size:14px;gap:10px}
 .tot-box .l span:last-child{white-space:nowrap}
 .tot-box .l.big{font-size:18px;font-weight:750}
@@ -244,6 +244,19 @@ table.tbl tbody tr:hover,table.tbl tr.click:hover{background:var(--surface-2);cu
 .paytag{font-size:11px;font-weight:700;white-space:nowrap}
 .paytag.ok{color:var(--st-entregue)}
 .paytag.due{color:var(--warn)}
+.parc-list{display:flex;flex-direction:column;gap:5px;margin:8px 0 2px}
+.parc-row{display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid var(--hair);border-radius:9px;background:var(--surface-2);font-size:13px}
+.parc-row .parc-box{width:20px;height:20px;flex:none;border-radius:6px;border:2px solid var(--muted-2);display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;font-weight:800}
+.parc-row .parc-n{font-weight:700;min-width:44px}
+.parc-row .parc-venc{color:var(--muted-2);font-size:11.5px}
+.parc-row .parc-val{margin-left:auto;font-weight:700}
+.parc-row.paid{background:color-mix(in srgb,var(--green) 9%,transparent);border-color:color-mix(in srgb,var(--green) 35%,transparent)}
+.parc-row.paid .parc-box{background:var(--green);border-color:var(--green)}
+.parc-row.next{cursor:pointer;border-color:var(--primary)}
+.parc-row.next:hover{background:var(--primary-soft)}
+.parc-row.paid.last{cursor:pointer}
+.parc-row.late{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 10%,transparent)}
+.parc-row.future{opacity:.6}
 /* catálogo (config) */
 .cfg-servs{display:flex;flex-direction:column;gap:6px}
 .cfg-serv{display:flex;align-items:center;gap:8px;padding:6px 9px;background:var(--surface-2);border:1px solid var(--hair);border-radius:8px}
@@ -280,7 +293,7 @@ table.tbl tbody tr:hover,table.tbl tr.click:hover{background:var(--surface-2);cu
 
 /* detail */
 .det-head{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin-bottom:6px}
-.det-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;margin:12px 0}
+.det-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px 16px;margin:9px 0}
 .det-grid .k{font-size:12px;color:var(--muted-2);font-weight:600}
 .det-grid .v{font-weight:600}
 .timeline{display:flex;flex-direction:column;gap:0;margin-top:6px}
@@ -458,6 +471,8 @@ const STATUS={
 const KANBAN=['orcamento','aguardando','em_servico','pronto','entregue'];
 const COMB=['Gasolina','Diesel','Híbrido','Elétrico','Flex','GNV'];
 const PAG={dinheiro:'Dinheiro',credito:'Cartão de crédito',debito:'Cartão de débito',transferencia:'Transferência bancária',paypay:'PayPay / QR',combinar:'A combinar'};
+const PAG_EMO={dinheiro:'💴',credito:'💳',debito:'💳',transferencia:'🏦',paypay:'📱',combinar:'🤝'};
+const pagLabel=k=>`${PAG_EMO[k]||''} ${PAG[k]||'—'}`.trim();
 const TAXA_PADRAO=3.5;  // taxa média de cartão de crédito no Japão (%)
 // forma de pagamento padrão de uma OS
 function pagOf(o){ return o.pagamento || {forma:'dinheiro',parcelas:1,taxaPct:0,repassar:false,pago:false}; }
@@ -481,17 +496,24 @@ const CAR_STATUS={
   entregue:{label:'Entregue',color:'var(--st-entregue)'},
   cancelado:{label:'Cancelado',color:'var(--st-recusado)'},
 };
+const CAR_STATUS_EMO={estoque:'📦',reservado:'🔖',vendido:'🤝',entregue:'✅',cancelado:'✖️'};
 const CAR_ENTRADA={nenhuma:'Sem entrada',dinheiro:'Entrada em dinheiro',carro:'Carro na troca'};
+const CAR_ENTRADA_EMO={nenhuma:'—',dinheiro:'💴',carro:'🚗'};
 const CAR_FIN={avista:'À vista',cartao:'Cartão',parcelado:'Parcelado'};
+const CAR_FIN_EMO={avista:'💴',cartao:'💳',parcelado:'📆'};
+const carFinLabel=k=>`${CAR_FIN_EMO[k]||''} ${CAR_FIN[k]||'—'}`.trim();
 const carro=id=>DB.carros.find(c=>c.id===id);
 // cálculo financeiro de um negócio de carro
 function carCalc(o){
   const venda=+o.precoVenda||0, aquis=+o.precoAquisicao||0, custos=+o.custosExtras||0;
   const ent=o.entrada||{tipo:'nenhuma',valor:0};
   const entradaValor=+ent.valor||0;
-  const restante=Math.max(0, venda-entradaValor);       // a financiar após a entrada
-  const lucro=venda-aquis-custos;                        // lucro do negócio (troca não é custo)
   const fin=o.fin||{forma:'avista'};
+  const taxaPct=Math.max(0,+fin.taxaPct||0);            // taxa/imposto repassado ao cliente
+  const acrescimo=Math.round(venda*taxaPct/100);        // valor adicional cobrado pela taxa
+  const totalCliente=venda+acrescimo;                   // preço final que o cliente paga
+  const restante=Math.max(0, totalCliente-entradaValor);// a financiar após a entrada
+  const lucro=venda-aquis-custos;                        // lucro do negócio (taxa repassa, troca não é custo)
   const nParc=Math.max(1,+fin.nParcelas||1);
   const valorParcela=fin.forma==='parcelado' ? (+fin.valorParcela|| (restante/nParc)) : restante;
   const parcelasPagas=Math.max(0,Math.min(nParc,+o.parcelasPagas||0));
@@ -502,7 +524,42 @@ function carCalc(o){
   else { recebido=entradaCaixa + (o.pago?restante:0); aReceber=(o.pago?0:restante) + (ent.tipo==='dinheiro'&&!o.entradaPaga?entradaValor:0); }
   const trocaAtivo = ent.tipo==='carro' ? entradaValor : 0;   // valor do carro recebido na troca
   const vendido = o.status==='vendido'||o.status==='entregue';
-  return {venda,aquis,custos,entradaValor,restante,lucro,nParc,valorParcela,parcelasPagas,recebido,aReceber:Math.max(0,aReceber),trocaAtivo,vendido,forma:fin.forma};
+  return {venda,aquis,custos,entradaValor,acrescimo,totalCliente,taxaPct,restante,lucro,nParc,valorParcela,parcelasPagas,recebido,aReceber:Math.max(0,aReceber),trocaAtivo,vendido,forma:fin.forma};
+}
+// data de vencimento da parcela k (1-based): base da venda + k meses, no dia combinado
+function parcelaVenc(o,k){
+  const base=new Date(o.vendidoEm||o.criadoEm||Date.now());
+  const dia=Math.min(28,Math.max(1,+((o.fin||{}).diaVenc)||5));
+  return new Date(base.getFullYear(), base.getMonth()+k, dia).toISOString();
+}
+function isLate(iso){ const d=new Date(iso); d.setHours(23,59,59); return d.getTime()<Date.now(); }
+// mensagem de status para enviar ao cliente por WhatsApp
+function carWhatsMsg(o){
+  const c=cliente(o.clienteId), cc=carCalc(o);
+  const L=[];
+  L.push('🚗 *R8 Garage* — status do seu veículo');
+  L.push('');
+  L.push('*Carro:* '+(o.carro?.desc||'—'));
+  if(c) L.push('*Cliente:* '+c.nome);
+  L.push('*Preço de venda:* '+yen(o.precoVenda));
+  if(cc.acrescimo>0){ L.push('*Taxa ('+cc.taxaPct+'%):* '+yen(cc.acrescimo)); L.push('*Total:* '+yen(cc.totalCliente)); }
+  if(cc.entradaValor>0) L.push('*Entrada '+(CAR_ENTRADA_EMO[(o.entrada||{}).tipo]||'')+':* '+yen(cc.entradaValor)+((o.entrada||{}).tipo==='carro'?' (troca)':''));
+  L.push('');
+  if(cc.forma==='parcelado'){
+    L.push('*Parcelamento:* '+cc.nParc+'× de '+yen(cc.valorParcela));
+    L.push('✅ *Pagas:* '+cc.parcelasPagas+'/'+cc.nParc+'  ('+yen(cc.recebido)+')');
+    L.push('💰 *A receber:* '+yen(cc.aReceber));
+    if(cc.parcelasPagas<cc.nParc){
+      const k=cc.parcelasPagas+1, venc=parcelaVenc(o,k), late=isLate(venc);
+      if(late) L.push('⚠️ Parcela '+k+' venceu em '+fmtDate(venc)+' — pedimos a gentileza de regularizar. 🙏');
+      else L.push('📆 Próxima parcela ('+k+'): vence '+fmtDate(venc)+' — '+yen(cc.valorParcela));
+    } else { L.push('🎉 Financiamento *quitado*. Muito obrigado!'); }
+  } else {
+    L.push('*Pagamento:* '+carFinLabel(cc.forma));
+    if(cc.aReceber<=0) L.push('✅ *Quitado.* Muito obrigado!');
+    else L.push('💰 *A receber:* '+yen(cc.aReceber));
+  }
+  return L.join('\n');
 }
 
 /* ---------------- persistência ---------------- */
@@ -526,7 +583,7 @@ function seed(){
   const c3=addCliente({nome:'Auto Runner K.K.',telefone:'03-5555-0101',email:'frota@runner.jp',obs:'Frota corporativa'});
   const c4=addCliente({nome:'Yuki Sato',telefone:'090-2222-3333',email:'yuki.sato@mail.jp',obs:''});
   const c5=addCliente({nome:'Bruno Costa',telefone:'080-4444-5555',email:'',obs:''});
-  const c6=addCliente({nome:'Sakura Yamamoto',telefone:'090-6666-7777',email:'sakura@mail.jp',obs:'Prefere PIX'});
+  const c6=addCliente({nome:'Sakura Yamamoto',telefone:'090-6666-7777',email:'sakura@mail.jp',obs:'Prefere PayPay'});
   const c7=addCliente({nome:'Diego Fernández',telefone:'080-8888-9999',email:'diego.f@mail.jp',obs:''});
   const c8=addCliente({nome:'Hiroshi Nakamura',telefone:'090-1010-2020',email:'',obs:''});
   const c9=addCliente({nome:'Ana Oliveira',telefone:'080-3030-4040',email:'ana.o@mail.jp',obs:''});
@@ -953,7 +1010,7 @@ function viewConfig(){
 }
 
 /* ---------- COMPRA & VENDA DE CARROS ---------- */
-function carStatusChip(st){ const s=CAR_STATUS[st]||CAR_STATUS.estoque; return `<span class="chip cst-${st}" style="color:${s.color};background:color-mix(in srgb,${s.color} 15%,transparent)"><span class="dot" style="background:${s.color}"></span>${s.label}</span>`; }
+function carStatusChip(st){ const s=CAR_STATUS[st]||CAR_STATUS.estoque; return `<span class="chip cst-${st}" style="color:${s.color};background:color-mix(in srgb,${s.color} 15%,transparent)"><span class="dot" style="background:${s.color}"></span>${CAR_STATUS_EMO[st]||''} ${s.label}</span>`; }
 function viewCarros(){
   const f=uiState.carFilter;
   let list=[...DB.carros].sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm));
@@ -1018,7 +1075,7 @@ function viewRelatorio(){
   const pags={}; for(const o of entregues){ const f=pagOf(o).forma; (pags[f]=pags[f]||{n:0,v:0}); pags[f].n++; pags[f].v+=total(o); }
   const pagCols={dinheiro:'#12996a',credito:'#d81f2b',debito:'#e0850e',transferencia:'#2f6bd6',paypay:'#7256e6',combinar:'#6b7280'};
   const pagArr=Object.entries(pags).sort((a,b)=>b[1].v-a[1].v);
-  const pagHTML = pagArr.length ? `<div class="paylist">${pagArr.map(([f,d])=>`<div class="payline"><span class="pd" style="background:${pagCols[f]||'#888'}"></span>${PAG[f]||f} <span class="muted">· ${d.n} OS</span><span class="pv">${yen(d.v)}</span></div>`).join('')}</div>` : '<div class="hint">—</div>';
+  const pagHTML = pagArr.length ? `<div class="paylist">${pagArr.map(([f,d])=>`<div class="payline"><span class="pd" style="background:${pagCols[f]||'#888'}"></span>${PAG_EMO[f]||''} ${PAG[f]||f} <span class="muted">· ${d.n} OS</span><span class="pv">${yen(d.v)}</span></div>`).join('')}</div>` : '<div class="hint">—</div>';
 
   // top clientes (por gasto total, geral)
   const tops=DB.clientes.map(c=>({c,st:clienteStats(c.id)})).filter(x=>x.st.n>0).sort((a,b)=>b.st.gasto-a.st.gasto).slice(0,5);
@@ -1143,7 +1200,7 @@ function osFormHTML(){
     <div class="paybox">
       <div class="field" style="margin-bottom:10px"><label>Forma de pagamento</label>
         <div class="frow c2">
-          <select id="pg_forma">${Object.keys(PAG).map(k=>`<option value="${k}" ${d.pagamento.forma===k?'selected':''}>${PAG[k]}</option>`).join('')}</select>
+          <select id="pg_forma">${Object.keys(PAG).map(k=>`<option value="${k}" ${d.pagamento.forma===k?'selected':''}>${PAG_EMO[k]} ${PAG[k]}</option>`).join('')}</select>
           <select id="pg_pago"><option value="0" ${!d.pagamento.pago?'selected':''}>Pagamento pendente</option><option value="1" ${d.pagamento.pago?'selected':''}>Pago</option></select>
         </div>
       </div>
@@ -1191,7 +1248,7 @@ function pagDetalheHTML(o){
   return `<div class="card pad" style="margin:8px 0 4px">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <div style="font-size:11px;color:var(--muted-2);font-weight:700;text-transform:uppercase;letter-spacing:.03em">Pagamento</div>
-      <span class="paychip">${PAG[pg.forma]||'—'}${p.parc>1?' · '+p.parc+'×':''}</span>
+      <span class="paychip">${pagLabel(pg.forma)}${p.parc>1?' · '+p.parc+'×':''}</span>
       <div style="flex:1"></div>${pagoChip}
       <button class="btn sm ${pg.pago?'':'solid-green'}" data-act="toggle-pago" data-id="${o.id}">${pg.pago?'↺ Estornar pagamento':'✓ Registrar pagamento'}</button>
     </div>${extra}</div>`;
@@ -1295,17 +1352,22 @@ function modalServico(sid,catId){
 let carDraft=null;
 function modalCarro(carId){
   const ed=carId?carro(carId):null;
-  carDraft = ed?JSON.parse(JSON.stringify(ed)):{id:null,clienteId:'',carro:{desc:'',ano:'',km:'',placa:''},precoAquisicao:0,custosExtras:0,precoVenda:0,entrada:{tipo:'nenhuma',valor:0,trocaDesc:''},fin:{forma:'avista',modo:'parcelas',nParcelas:6,valorParcela:0,diaVenc:5,taxaPct:TAXA_PADRAO},parcelasPagas:0,entradaPaga:false,status:'estoque'};
+  carDraft = ed?JSON.parse(JSON.stringify(ed)):{id:null,clienteId:'',carro:{desc:'',ano:'',km:'',placa:''},precoAquisicao:0,custosExtras:0,precoVenda:0,entrada:{tipo:'nenhuma',valor:0,trocaDesc:''},fin:{forma:'avista',modo:'parcelas',nParcelas:6,valorParcela:0,diaVenc:5,taxaPct:0},parcelasPagas:0,entradaPaga:false,status:'estoque'};
   if(!carDraft.entrada) carDraft.entrada={tipo:'nenhuma',valor:0,trocaDesc:''};
   if(!carDraft.fin) carDraft.fin={forma:'avista',modo:'parcelas',nParcelas:6,valorParcela:0,diaVenc:5,taxaPct:TAXA_PADRAO};
   openModal(carFormHTML(),true);
 }
 function carFin(d){ // cálculo ao vivo p/ o formulário
-  const venda=+d.precoVenda||0, ent=+ (d.entrada?.valor)||0, restante=Math.max(0,venda-ent);
-  const f=d.fin||{}; let n=Math.max(1,+f.nParcelas||1), vp=+f.valorParcela||0;
+  const venda=+d.precoVenda||0, ent=+ (d.entrada?.valor)||0;
+  const f=d.fin||{};
+  const taxaPct=Math.max(0,+f.taxaPct||0);
+  const acrescimo=Math.round(venda*taxaPct/100);
+  const totalCliente=venda+acrescimo;
+  const restante=Math.max(0,totalCliente-ent);
+  let n=Math.max(1,+f.nParcelas||1), vp=+f.valorParcela||0;
   if(f.forma==='parcelado'){ if(f.modo==='valor'){ n=Math.max(1,Math.ceil(restante/(vp||restante||1))); } else { vp=n?Math.round(restante/n):restante; } }
   const lucro=venda-(+d.precoAquisicao||0)-(+d.custosExtras||0);
-  return {venda,ent,restante,n,vp,lucro};
+  return {venda,ent,acrescimo,totalCliente,taxaPct,restante,n,vp,lucro};
 }
 function carFormHTML(){
   const d=carDraft, fc=carFin(d);
@@ -1325,17 +1387,20 @@ function carFormHTML(){
     <div class="section-h" style="margin:8px 2px 8px"><h2 style="font-size:13px">Venda</h2></div>
     <div class="frow c2"><div class="field"><label>Cliente</label><select id="cr_cli" data-act="cr-cli">${cliOpts}</select></div>
       <div class="field"><label>Preço de venda</label>${moneyField('id="cr_venda"', d.precoVenda)}</div></div>
-    <div class="frow c2"><div class="field"><label>Entrada</label><select id="cr_enttipo" data-act="cr-enttipo">${Object.keys(CAR_ENTRADA).map(k=>`<option value="${k}" ${entTipo===k?'selected':''}>${CAR_ENTRADA[k]}</option>`).join('')}</select></div>
+    <div class="frow c2"><div class="field"><label>Entrada</label><select id="cr_enttipo" data-act="cr-enttipo">${Object.keys(CAR_ENTRADA).map(k=>`<option value="${k}" ${entTipo===k?'selected':''}>${CAR_ENTRADA_EMO[k]} ${CAR_ENTRADA[k]}</option>`).join('')}</select></div>
       <div class="field" ${showEntVal?'':'style="display:none"'}><label>${showTroca?'Valor avaliado da troca':'Valor da entrada'}</label>${moneyField('id="cr_entval"', d.entrada.valor)}</div></div>
     ${showTroca?`<div class="field"><label>Carro recebido na troca</label><input id="cr_troca" value="${esc(d.entrada.trocaDesc||'')}" placeholder="ex.: Honda Fit 2013"></div>`:''}
-    <div class="field"><label>Pagamento do restante</label>
-      <select id="cr_forma" data-act="cr-forma">${Object.keys(CAR_FIN).map(k=>`<option value="${k}" ${forma===k?'selected':''}>${CAR_FIN[k]}</option>`).join('')}</select></div>
+    <div class="frow c2">
+      <div class="field"><label>Pagamento do restante</label>
+        <select id="cr_forma" data-act="cr-forma">${Object.keys(CAR_FIN).map(k=>`<option value="${k}" ${forma===k?'selected':''}>${CAR_FIN_EMO[k]} ${CAR_FIN[k]}</option>`).join('')}</select></div>
+      <div class="field"><label>Taxa / imposto (%) <span class="muted" style="font-weight:400">— repassada ao cliente</span></label><input id="cr_taxa" type="number" step="0.1" min="0" placeholder="0" value="${d.fin.taxaPct||''}"></div>
+    </div>
     ${showParc?`<div class="frow c3">
       <div class="field"><label>Definir por</label><select id="cr_modo" data-act="cr-modo"><option value="parcelas" ${d.fin.modo==='parcelas'?'selected':''}>Nº de parcelas</option><option value="valor" ${d.fin.modo==='valor'?'selected':''}>Valor da parcela</option></select></div>
       ${d.fin.modo==='valor'?`<div class="field"><label>Valor da parcela</label>${moneyField('id="cr_vparc"', d.fin.valorParcela)}</div>`:`<div class="field"><label>Nº de parcelas</label><input id="cr_nparc" type="number" min="1" max="60" value="${d.fin.nParcelas||1}"></div>`}
       <div class="field"><label>Dia do vencimento</label><input id="cr_dia" type="number" min="1" max="28" value="${d.fin.diaVenc||5}"></div>
     </div>`:''}
-    <div class="field"><label>Status</label><select id="cr_status">${stOpts}</select></div>
+    <div class="field"><label>Status</label><select id="cr_status">${Object.keys(CAR_STATUS).map(k=>`<option value="${k}" ${d.status===k?'selected':''}>${CAR_STATUS_EMO[k]} ${CAR_STATUS[k].label}</option>`).join('')}</select></div>
     <div class="tot-box" id="carTot">${carTotBox(d)}</div>
   </div>
   <div class="modal-f"><button class="btn ghost" data-modal-back>Cancelar</button><button class="btn primary" data-act="save-carro">${d.id?'Salvar alterações':'Criar negócio'}</button></div>`;
@@ -1343,11 +1408,13 @@ function carFormHTML(){
 function carTotBox(d){
   const fc=carFin(d);
   let h=`<div class="l"><span class="muted">Preço de venda</span><span class="mono">${yen(fc.venda)}</span></div>`;
-  if(fc.ent>0) h+=`<div class="l"><span class="muted">Entrada (${CAR_ENTRADA[d.entrada.tipo]||''})</span><span class="mono">- ${yen(fc.ent)}</span></div>`;
+  if(fc.acrescimo>0){ h+=`<div class="l"><span class="muted">Taxa / imposto (${fc.taxaPct}%)</span><span class="mono" style="color:var(--warn)">+ ${yen(fc.acrescimo)}</span></div>`;
+    h+=`<div class="l"><span class="muted">Total ao cliente</span><span class="mono"><b>${yen(fc.totalCliente)}</b></span></div>`; }
+  if(fc.ent>0) h+=`<div class="l"><span class="muted">Entrada ${CAR_ENTRADA_EMO[d.entrada.tipo]||''} (${CAR_ENTRADA[d.entrada.tipo]||''})</span><span class="mono">- ${yen(fc.ent)}</span></div>`;
   h+=`<div class="l"><span class="muted">Restante a pagar</span><span class="mono">${yen(fc.restante)}</span></div>`;
-  if(d.fin.forma==='parcelado') h+=`<div class="l"><span class="muted">Parcelamento</span><span class="mono">${fc.n}× de ${yen(fc.vp)}</span></div>`;
+  if(d.fin.forma==='parcelado') h+=`<div class="l"><span class="muted">Parcelamento 📆</span><span class="mono">${fc.n}× de ${yen(fc.vp)}</span></div>`;
   h+=`<div class="l big"><span>Lucro estimado</span><span class="mono" style="color:var(--green)">${yen(fc.lucro)}</span></div>`;
-  h+=`<div class="l"><span class="muted" style="font-size:11.5px">venda − aquisição (${yen(d.precoAquisicao||0)}) − custos (${yen(d.custosExtras||0)})</span><span></span></div>`;
+  h+=`<div class="l"><span class="muted" style="font-size:11.5px">venda − aquisição (${yen(d.precoAquisicao||0)}) − custos (${yen(d.custosExtras||0)})${fc.acrescimo>0?' · a taxa é repassada, não muda o lucro':''}</span><span></span></div>`;
   return h;
 }
 function refreshCarForm(){ const bk=$('.modal'); if(bk) bk.innerHTML=carFormHTML(); }
@@ -1364,6 +1431,7 @@ function syncCarInputs(){
   if($('#cr_entval')) d.entrada.valor=+$('#cr_entval').value||0;
   if($('#cr_troca')) d.entrada.trocaDesc=$('#cr_troca').value;
   if($('#cr_forma')) d.fin.forma=$('#cr_forma').value;
+  if($('#cr_taxa')) d.fin.taxaPct=Math.max(0,+$('#cr_taxa').value||0);
   if($('#cr_modo')) d.fin.modo=$('#cr_modo').value;
   if($('#cr_nparc')) d.fin.nParcelas=Math.max(1,+$('#cr_nparc').value||1);
   if($('#cr_vparc')) d.fin.valorParcela=+$('#cr_vparc').value||0;
@@ -1379,16 +1447,30 @@ function modalCarDetalhe(carId){
   const ent=o.entrada||{tipo:'nenhuma',valor:0};
   const pgBox = cc.vendido ? (()=> {
     if((o.fin?.forma)==='parcelado'){
-      return `<div class="card pad" style="margin:8px 0"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <div style="font-size:11px;color:var(--muted-2);font-weight:700;text-transform:uppercase">Parcelas</div>
-        <b>${cc.parcelasPagas}/${cc.nParc}</b> pagas · ${yen(cc.valorParcela)} cada
-        <div class="spacer" style="flex:1"></div>
-        <button class="btn sm" data-act="car-parc-menos" data-id="${o.id}" ${cc.parcelasPagas<=0?'disabled':''}>− Estornar</button>
-        <button class="btn sm solid-green" data-act="car-parc-mais" data-id="${o.id}" ${cc.parcelasPagas>=cc.nParc?'disabled':''}>+ Registrar parcela</button></div></div>`;
+      let rows='';
+      for(let k=1;k<=cc.nParc;k++){
+        const paid=k<=cc.parcelasPagas, next=k===cc.parcelasPagas+1, last=k===cc.parcelasPagas;
+        const venc=parcelaVenc(o,k), late=!paid&&isLate(venc);
+        const cls=['parc-row', paid?'paid':'', paid&&last?'last':'', next?'next':'', late?'late':'', (!paid&&!next)?'future':''].filter(Boolean).join(' ');
+        const clickable = next||(paid&&last);
+        rows+=`<div class="${cls}" ${clickable?`data-act="car-parc" data-id="${o.id}" data-k="${k}"`:''} title="${clickable?(next?'Clique para registrar o pagamento':'Clique para estornar'):''}">
+          <span class="parc-box">${paid?'✓':''}</span>
+          <span class="parc-n">${k}/${cc.nParc}</span>
+          <span class="parc-venc">${paid?'paga':(late?'⚠️ venceu '+fmtDate(venc):'vence '+fmtDate(venc))}</span>
+          <span class="parc-val mono">${yen(cc.valorParcela)}</span></div>`;
+      }
+      return `<div class="card pad" style="margin:8px 0">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:2px">
+          <div style="font-size:11px;color:var(--muted-2);font-weight:700;text-transform:uppercase">📆 Parcelas</div>
+          <b>${cc.parcelasPagas}/${cc.nParc}</b> pagas · ${yen(cc.recebido)} recebido
+          <div class="spacer" style="flex:1"></div>
+          ${cc.aReceber<=0?'<span class="paytag ok">● Quitado 🎉</span>':`<span class="paytag due">● a receber ${yen(cc.aReceber)}</span>`}</div>
+        <div class="parc-list">${rows}</div>
+        <div class="hint" style="margin-top:2px">Clique na próxima parcela para dar baixa quando o cliente pagar (com confirmação).</div></div>`;
     }
     const pago=cc.aReceber<=0;
     return `<div class="card pad" style="margin:8px 0"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <div style="font-size:11px;color:var(--muted-2);font-weight:700;text-transform:uppercase">${CAR_FIN[o.fin?.forma]||'À vista'}</div>
+      <div style="font-size:11px;color:var(--muted-2);font-weight:700;text-transform:uppercase">${carFinLabel(o.fin?.forma)}</div>
       ${pago?'<span class="paytag ok">● Quitado</span>':`<span class="paytag due">● falta ${yen(cc.aReceber)}</span>`}
       <div class="spacer" style="flex:1"></div>
       <button class="btn sm ${pago?'':'solid-green'}" data-act="car-pago" data-id="${o.id}">${pago?'↺ Estornar':'✓ Registrar pagamento'}</button></div></div>`;
@@ -1406,17 +1488,22 @@ function modalCarDetalhe(carId){
       <div><div class="k">Aquisição (leilão)</div><div class="v mono">${yen(o.precoAquisicao)}</div></div>
       <div><div class="k">Custos extras</div><div class="v mono">${yen(o.custosExtras)}</div></div>
     </div>
+    ${cc.acrescimo>0?`<div class="det-grid" style="margin:0">
+      <div><div class="k">Taxa / imposto (${cc.taxaPct}%)</div><div class="v mono" style="color:var(--warn)">+ ${yen(cc.acrescimo)}</div></div>
+      <div><div class="k">Total ao cliente</div><div class="v mono"><b>${yen(cc.totalCliente)}</b></div></div>
+    </div>`:''}
     ${entLinha}
     <div class="det-grid">
       <div><div class="k">Restante a pagar</div><div class="v mono">${yen(cc.restante)}</div></div>
       <div><div class="k">Recebido (caixa)</div><div class="v mono" style="color:var(--green)">${yen(cc.recebido)}</div></div>
       <div><div class="k">A receber</div><div class="v mono" style="color:var(--warn)">${yen(cc.aReceber)}</div></div>
-      <div><div class="k">Pagamento</div><div class="v">${CAR_FIN[o.fin?.forma]||'À vista'}${(o.fin?.forma)==='parcelado'?` · ${cc.nParc}× de ${yen(cc.valorParcela)}`:''}</div></div>
+      <div><div class="k">Pagamento</div><div class="v">${carFinLabel(o.fin?.forma)}${(o.fin?.forma)==='parcelado'?` · ${cc.nParc}× de ${yen(cc.valorParcela)}`:''}</div></div>
     </div>
     ${cc.trocaAtivo>0?`<div class="alert info" style="margin:8px 0">Recebeu na troca: <b>${esc(ent.trocaDesc)}</b> avaliado em ${yen(cc.trocaAtivo)} (entra no seu estoque para revenda)</div>`:''}
     ${pgBox}
+    ${cc.vendido&&c?`<button class="btn solid-green" data-act="car-whats" data-id="${o.id}" style="width:100%;margin:2px 0 4px;justify-content:center">💬 Enviar status ao cliente por WhatsApp</button>`:''}
     <div class="frow c2" style="margin-top:6px">
-      <div class="field"><label>Mudar status</label><select data-act="car-status" data-id="${o.id}">${stepOpts}</select></div>
+      <div class="field"><label>Mudar status</label><select data-act="car-status" data-id="${o.id}">${Object.keys(CAR_STATUS).map(k=>`<option value="${k}" ${o.status===k?'selected':''}>${CAR_STATUS_EMO[k]} ${CAR_STATUS[k].label}</option>`).join('')}</select></div>
       <div class="field"><label>Ações</label><div style="display:flex;gap:8px"><button class="btn sm" data-act="edit-carro" data-id="${o.id}">Editar</button><button class="btn sm" data-act="print-os">Imprimir</button></div></div>
     </div>
     <div class="section-h" style="margin:14px 2px 6px"><h2 style="font-size:13px">Histórico</h2></div>
@@ -1533,6 +1620,20 @@ document.addEventListener('click',e=>{
       confirmAsk({title:'Estornar parcela',kind:'danger',okLabel:'Estornar',msg:`Estornar a parcela <b>${cc.parcelasPagas}/${cc.nParc}</b>?`,onOk:()=>{ o.parcelasPagas=Math.max(0,(+o.parcelasPagas||0)-1); o.hist=o.hist||[]; o.hist.push({t:nowISO(),txt:'Parcela estornada'}); save(); render(); modalCarDetalhe(o.id); toast('Parcela estornada'); }}); break; }
     case 'car-entrada': { const o=carro(id); if(!o) break; const ent=o.entrada||{};
       confirmAsk({title:'Registrar entrada',kind:'money',okLabel:'Confirmar',msg:'Confirmar o recebimento da entrada em dinheiro?',impact:`${icon('M20 6 9 17l-5-5')}<span>Soma <b>${yen(+ent.valor||0)}</b> ao recebido</span>`,onOk:()=>{ o.entradaPaga=true; o.hist=o.hist||[]; o.hist.push({t:nowISO(),txt:'Entrada recebida ('+yen(+ent.valor||0)+')'}); save(); render(); modalCarDetalhe(o.id); toast('Entrada registrada'); }}); break; }
+    case 'car-parc': { const o=carro(id); if(!o) break; const k=+t.dataset.k, cc=carCalc(o);
+      if(k===cc.parcelasPagas+1){ // dar baixa na próxima parcela
+        confirmAsk({title:'Registrar parcela',kind:'money',okLabel:'Confirmar recebimento',msg:`Registrar o pagamento da parcela <b>${k}/${cc.nParc}</b> (vence ${fmtDate(parcelaVenc(o,k))})?`,impact:`${icon('M20 6 9 17l-5-5')}<span>Soma <b>${yen(cc.valorParcela)}</b> ao recebido</span>`,onOk:()=>{ o.parcelasPagas=k; o.hist=o.hist||[]; o.hist.push({t:nowISO(),txt:'Parcela '+k+'/'+cc.nParc+' recebida ('+yen(cc.valorParcela)+')'}); save(); render(); modalCarDetalhe(o.id); toast('Parcela '+k+' registrada'); }});
+      } else if(k===cc.parcelasPagas){ // estornar a última paga
+        confirmAsk({title:'Estornar parcela',kind:'danger',okLabel:'Estornar',msg:`Estornar a parcela <b>${k}/${cc.nParc}</b>? O valor sai do recebido.`,onOk:()=>{ o.parcelasPagas=k-1; o.hist=o.hist||[]; o.hist.push({t:nowISO(),txt:'Parcela '+k+' estornada'}); save(); render(); modalCarDetalhe(o.id); toast('Parcela estornada'); }});
+      } else if(k>cc.parcelasPagas){ toast('Pague as parcelas anteriores primeiro'); }
+      else { toast('Estorne primeiro as parcelas seguintes'); }
+      break; }
+    case 'car-whats': { const o=carro(id); if(!o) break; const c=cliente(o.clienteId), msg=carWhatsMsg(o);
+      const digits=(c?.telefone||'').replace(/\D/g,''); const intl=digits?('81'+digits.replace(/^0/,'')):'';
+      const url='https://wa.me/'+intl+'?text='+encodeURIComponent(msg);
+      const done=()=>{ try{ window.open(url,'_blank'); }catch(_){} toast('Mensagem copiada — abrindo WhatsApp'); };
+      if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(msg).then(done).catch(done); } else done();
+      break; }
   }
 });
 // filtros / views / períodos / status (delegação de change + click)
