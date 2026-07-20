@@ -754,7 +754,7 @@ const NAV=[
   {id:'config',label:'Config',icon:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z'},
 ];
 let route='painel';
-let uiState={ordFilter:'todos',ordView:'lista',finPeriod:'mes',relPeriod:'mes',cliSearch:'',carFilter:'todos'};
+let uiState={ordFilter:'todos',ordView:'lista',finPeriod:'mes',finSource:'oficina',relPeriod:'mes',cliSearch:'',carFilter:'todos'};
 
 function icon(path){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="'+path+'"/></svg>'; }
 function buildNav(){
@@ -941,46 +941,104 @@ function viewEstoque(){
 }
 
 /* ---------- FINANCEIRO ---------- */
-function viewFinanceiro(){
-  const per=uiState.finPeriod;
+// ---- agregados financeiros da OFICINA (OS) para um período ----
+function finOficina(per){
   const entregues=DB.ordens.filter(o=>o.status==='entregue'&&inPeriod(o.entregueEm,per));
   const fat=entregues.reduce((s,o)=>s+total(o),0);
   const custoPec=entregues.reduce((s,o)=>s+custoOS(o),0);
   const maoObra=entregues.reduce((s,o)=>s+o.itens.filter(i=>i.tipo==='mao').reduce((a,i)=>a+i.qtd*i.preco,0),0);
-  const pecasFat=entregues.reduce((s,o)=>s+o.itens.filter(i=>i.tipo==='peca').reduce((a,i)=>a+i.qtd*i.preco,0),0);
-  // taxas de cartão ABSORVIDAS pela oficina (custo real); repassadas não contam
   const taxasCartao=entregues.reduce((s,o)=>{ const p=pagCalc(total(o),pagOf(o)); return s + (p.isCard&&!p.repassar?p.taxa:0); },0);
-  const lucro=fat-custoPec-taxasCartao, margem=fat?Math.round(lucro/fat*100):0;
-  const ticket=entregues.length?fat/entregues.length:0;
-  // Recebido = regime de CAIXA: OS pagas cujo pagamento caiu no período (por data de pagamento)
+  const lucro=fat-custoPec-taxasCartao;
   const recebido=DB.ordens.filter(o=>pagOf(o).pago&&inPeriod(pagoEmOf(o),per)).reduce((s,o)=>s+total(o),0);
-  // A receber = tudo em aberto + entregue não pago (saldo devedor, não filtrado por período)
   const aReceber=DB.ordens.filter(o=>!pagOf(o).pago&&['aguardando','em_servico','pronto','entregue'].includes(o.status)).reduce((s,o)=>s+total(o),0);
+  return {entregues,fat,custoPec,maoObra,taxasCartao,lucro,recebido,aReceber,ticket:entregues.length?fat/entregues.length:0,n:entregues.length};
+}
+// ---- agregados da LOJA (compra & venda de carros) para um período ----
+function finLoja(per){
+  const vendidos=DB.carros.filter(o=>(o.status==='vendido'||o.status==='entregue')&&inPeriod(o.vendidoEm||o.criadoEm,per));
+  const calc=vendidos.map(carCalc);
+  const vendas=calc.reduce((s,c)=>s+c.venda,0);
+  const custoAquis=vendidos.reduce((s,o)=>s+(+o.precoAquisicao||0),0);
+  const custosExtras=vendidos.reduce((s,o)=>s+(+o.custosExtras||0),0);
+  const lucro=calc.reduce((s,c)=>s+c.lucro,0);
+  const recebido=calc.reduce((s,c)=>s+c.recebido,0);
+  const aReceber=calc.reduce((s,c)=>s+c.aReceber,0);
+  const investEstoque=DB.carros.filter(o=>o.status==='estoque'||o.status==='reservado').reduce((s,o)=>s+(+o.precoAquisicao||0)+(+o.custosExtras||0),0);
+  return {vendidos,vendas,custoAquis,custosExtras,lucro,recebido,aReceber,investEstoque,ticket:vendidos.length?vendas/vendidos.length:0,n:vendidos.length};
+}
+function carTable(list){
+  const rows=list.map(o=>{ const c=cliente(o.clienteId), cc=carCalc(o);
+    const pg = cc.aReceber<=0?'<span class="paytag ok">● Quitado</span>':`<span class="paytag due">● ${yen(cc.aReceber)}</span>`;
+    return `<tr class="click" data-car="${o.id}"><td class="mono">#${String(o.numero).padStart(4,'0')}</td>
+      <td><b>${esc(o.carro?.desc||'—')}</b></td><td class="hide-sm">${c?esc(c.nome):'<span class="muted">—</span>'}</td>
+      <td class="right mono"><b>${yen(o.precoVenda)}</b></td><td class="right mono hide-sm" style="color:var(--green)">${yen(cc.lucro)}</td><td class="hide-sm">${pg}</td></tr>`; }).join('');
+  return `<div class="card table-wrap"><table class="tbl"><thead><tr><th>Nº</th><th>Carro</th><th class="hide-sm">Cliente</th><th class="right">Venda</th><th class="right hide-sm">Lucro</th><th class="hide-sm">Recebimento</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function viewFinanceiro(){
+  const per=uiState.finPeriod, src=uiState.finSource;
+  const O=finOficina(per), L=finLoja(per);
   const perBtn=(id,lbl)=>`<button class="fchip ${per===id?'active':''}" data-period="${id}">${lbl}</button>`;
+  const srcBtn=(id,lbl)=>`<button class="${src===id?'active':''}" data-finsource="${id}">${lbl}</button>`;
   const kpi=(lbl,val,delta,cls)=>`<div class="card kpi"><span class="lbl">${lbl}</span><span class="val tnum" ${cls?`style="color:${cls}"`:''}>${val}</span>${delta?`<span class="delta">${delta}</span>`:''}</div>`;
-  // gráfico: faturamento últimos 6 meses
+  // gráfico 6 meses (varia conforme a fonte selecionada)
   const months=[]; const n=new Date();
-  for(let i=5;i>=0;i--){ const d=new Date(n.getFullYear(),n.getMonth()-i,1); months.push(d); }
-  const monthFat=months.map(d=>DB.ordens.filter(o=>o.status==='entregue'&&o.entregueEm&&new Date(o.entregueEm).getMonth()===d.getMonth()&&new Date(o.entregueEm).getFullYear()===d.getFullYear()).reduce((s,o)=>s+total(o),0));
-  const maxF=Math.max(1,...monthFat);
-  const chart=`<div class="card pad"><div style="font-size:13px;font-weight:700;margin-bottom:4px">Faturamento — últimos 6 meses</div>
-    <div class="bars">${months.map((d,i)=>`<div class="b"><div class="amt">${monthFat[i]?yen(monthFat[i]):''}</div><div class="col" style="height:${Math.max(3,Math.round(monthFat[i]/maxF*104))}px;background:${i===5?'var(--primary)':'color-mix(in srgb,var(--primary) 55%,var(--hair))'}"></div><div class="cap">${d.toLocaleDateString('pt-BR',{month:'short'})}</div></div>`).join('')}</div></div>`;
-  return `<div class="filters" style="margin-bottom:14px">${perBtn('mes','Mês atual')}${perBtn('mespass','Mês passado')}${perBtn('ano','Ano')}${perBtn('tudo','Tudo')}</div>
-  <div class="grid kpis">
-    ${kpi('Faturamento',yen(fat),entregues.length+' OS entregues')}
-    ${kpi('Recebido',yen(recebido),'já pago pelos clientes','var(--green)')}
-    ${kpi('A receber',yen(aReceber),'em aberto + não pago','var(--warn)')}
-    ${kpi('Lucro bruto',yen(lucro),'margem '+margem+'%','var(--green)')}
-  </div>
-  <div class="grid kpis" style="margin-top:14px">
-    ${kpi('Custo de peças',yen(custoPec))}
-    ${kpi('Taxas de cartão',yen(taxasCartao),'absorvidas','var(--st-recusado)')}
-    ${kpi('Ticket médio',yen(ticket))}
-    ${kpi('Mão de obra',yen(maoObra))}
-  </div>
-  <div style="height:14px"></div>${chart}
-  <div class="section-h"><h2>Entregues no período</h2></div>
-  ${entregues.length?osTable([...entregues].sort((a,b)=>new Date(b.entregueEm)-new Date(a.entregueEm))):emptyBox('Sem entregas','Nenhuma OS entregue neste período.')}`;
+  for(let i=5;i>=0;i--) months.push(new Date(n.getFullYear(),n.getMonth()-i,1));
+  const sameM=(iso,d)=>iso&&new Date(iso).getMonth()===d.getMonth()&&new Date(iso).getFullYear()===d.getFullYear();
+  const mOfi=months.map(d=>DB.ordens.filter(o=>o.status==='entregue'&&sameM(o.entregueEm,d)).reduce((s,o)=>s+total(o),0));
+  const mLoja=months.map(d=>DB.carros.filter(o=>(o.status==='vendido'||o.status==='entregue')&&sameM(o.vendidoEm||o.criadoEm,d)).reduce((s,o)=>s+(+o.precoVenda||0),0));
+  const mData = src==='oficina'?mOfi : src==='loja'?mLoja : months.map((_,i)=>mOfi[i]+mLoja[i]);
+  const chartTitle = src==='oficina'?'Faturamento da oficina':src==='loja'?'Vendas de carros':'Faturamento total (oficina + loja)';
+  const maxF=Math.max(1,...mData);
+  const chart=`<div class="card pad"><div style="font-size:13px;font-weight:700;margin-bottom:4px">${chartTitle} — últimos 6 meses</div>
+    <div class="bars">${months.map((d,i)=>`<div class="b"><div class="amt">${mData[i]?yen(mData[i]):''}</div><div class="col" style="height:${Math.max(3,Math.round(mData[i]/maxF*104))}px;background:${i===5?'var(--primary)':'color-mix(in srgb,var(--primary) 55%,var(--hair))'}"></div><div class="cap">${d.toLocaleDateString('pt-BR',{month:'short'})}</div></div>`).join('')}</div></div>`;
+
+  const toggle=`<div style="display:flex;justify-content:center;margin-bottom:12px"><div class="seg">${srcBtn('oficina','🔧 Oficina')}${srcBtn('loja','🚗 Loja')}${srcBtn('ambos','Σ Ambos')}</div></div>`;
+  const periodo=`<div class="filters" style="margin-bottom:14px">${perBtn('mes','Mês atual')}${perBtn('mespass','Mês passado')}${perBtn('ano','Ano')}${perBtn('tudo','Tudo')}</div>`;
+
+  let kpis, extra, tabela;
+  if(src==='oficina'){
+    const margem=O.fat?Math.round(O.lucro/O.fat*100):0;
+    kpis=`<div class="grid kpis">
+      ${kpi('Faturamento',yen(O.fat),O.n+' OS entregues')}
+      ${kpi('Recebido',yen(O.recebido),'já pago pelos clientes','var(--green)')}
+      ${kpi('A receber',yen(O.aReceber),'em aberto + não pago','var(--warn)')}
+      ${kpi('Lucro bruto',yen(O.lucro),'margem '+margem+'%','var(--green)')}</div>
+    <div class="grid kpis" style="margin-top:14px">
+      ${kpi('Custo de peças',yen(O.custoPec))}
+      ${kpi('Taxas de cartão',yen(O.taxasCartao),'absorvidas','var(--st-recusado)')}
+      ${kpi('Ticket médio',yen(O.ticket))}
+      ${kpi('Mão de obra',yen(O.maoObra))}</div>`;
+    tabela=`<div class="section-h"><h2>Entregues no período</h2></div>${O.entregues.length?osTable([...O.entregues].sort((a,b)=>new Date(b.entregueEm)-new Date(a.entregueEm))):emptyBox('Sem entregas','Nenhuma OS entregue neste período.')}`;
+  } else if(src==='loja'){
+    const margem=L.vendas?Math.round(L.lucro/L.vendas*100):0;
+    kpis=`<div class="grid kpis">
+      ${kpi('Vendas',yen(L.vendas),L.n+' carro(s) vendido(s)')}
+      ${kpi('Recebido',yen(L.recebido),'entrada + parcelas pagas','var(--green)')}
+      ${kpi('A receber',yen(L.aReceber),'parcelas em aberto','var(--warn)')}
+      ${kpi('Lucro',yen(L.lucro),'margem '+margem+'%','var(--green)')}</div>
+    <div class="grid kpis" style="margin-top:14px">
+      ${kpi('Custo (leilão)',yen(L.custoAquis))}
+      ${kpi('Custos extras',yen(L.custosExtras))}
+      ${kpi('Ticket médio',yen(L.ticket))}
+      ${kpi('Investido em estoque',yen(L.investEstoque),'não vendidos ainda')}</div>`;
+    tabela=`<div class="section-h"><h2>Carros vendidos no período</h2></div>${L.vendidos.length?carTable([...L.vendidos].sort((a,b)=>new Date(b.vendidoEm||b.criadoEm)-new Date(a.vendidoEm||a.criadoEm))):emptyBox('Sem vendas','Nenhum carro vendido neste período.')}`;
+  } else { // AMBOS — contabilidade consolidada
+    const fatT=O.fat+L.vendas, recT=O.recebido+L.recebido, arT=O.aReceber+L.aReceber, lucroT=O.lucro+L.lucro;
+    const margem=fatT?Math.round(lucroT/fatT*100):0;
+    kpis=`<div class="grid kpis">
+      ${kpi('Faturamento total',yen(fatT),'oficina + loja')}
+      ${kpi('Recebido total',yen(recT),'entrou no caixa','var(--green)')}
+      ${kpi('A receber total',yen(arT),'oficina + loja','var(--warn)')}
+      ${kpi('Lucro total',yen(lucroT),'margem '+margem+'%','var(--green)')}</div>
+    <div class="grid kpis" style="margin-top:14px">
+      ${kpi('🔧 Oficina — faturamento',yen(O.fat),yen(O.lucro)+' de lucro')}
+      ${kpi('🚗 Loja — vendas',yen(L.vendas),yen(L.lucro)+' de lucro')}
+      ${kpi('Custos (peças + carros)',yen(O.custoPec+L.custoAquis+L.custosExtras))}
+      ${kpi('Investido em estoque',yen(L.investEstoque),'carros parados')}</div>`;
+    tabela=`<div class="section-h"><h2>🔧 Oficina — entregues no período</h2></div>${O.entregues.length?osTable([...O.entregues].sort((a,b)=>new Date(b.entregueEm)-new Date(a.entregueEm))):'<div class="hint" style="margin-bottom:12px">Nenhuma OS entregue neste período.</div>'}
+    <div class="section-h"><h2>🚗 Loja — carros vendidos no período</h2></div>${L.vendidos.length?carTable([...L.vendidos].sort((a,b)=>new Date(b.vendidoEm||b.criadoEm)-new Date(a.vendidoEm||a.criadoEm))):'<div class="hint">Nenhum carro vendido neste período.</div>'}`;
+  }
+  return toggle+periodo+kpis+`<div style="height:14px"></div>`+chart+tabela;
 }
 
 function emptyBox(t,s){ return `<div class="card"><div class="empty">${icon('M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2')}<div style="font-weight:700;color:var(--ink)">${t}</div><div>${s}</div></div></div>`; }
@@ -1667,6 +1725,7 @@ document.addEventListener('click',e=>{
   const f=e.target.closest('[data-filter]'); if(f){ uiState.ordFilter=f.dataset.filter; render(); }
   const vw=e.target.closest('[data-view]'); if(vw){ uiState.ordView=vw.dataset.view; render(); }
   const pr=e.target.closest('[data-period]'); if(pr){ uiState.finPeriod=pr.dataset.period; render(); }
+  const fs=e.target.closest('[data-finsource]'); if(fs){ uiState.finSource=fs.dataset.finsource; render(); }
   const rp=e.target.closest('[data-relperiod]'); if(rp){ uiState.relPeriod=rp.dataset.relperiod; render(); }
   const cf=e.target.closest('[data-carfilter]'); if(cf){ uiState.carFilter=cf.dataset.carfilter; render(); }
 });
