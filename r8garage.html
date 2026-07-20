@@ -244,6 +244,14 @@ table.tbl tbody tr:hover,table.tbl tr.click:hover{background:var(--surface-2);cu
 .paytag{font-size:11px;font-weight:700;white-space:nowrap}
 .paytag.ok{color:var(--st-entregue)}
 .paytag.due{color:var(--warn)}
+/* catálogo (config) */
+.cfg-servs{display:flex;flex-direction:column;gap:6px}
+.cfg-serv{display:flex;align-items:center;gap:8px;padding:6px 9px;background:var(--surface-2);border:1px solid var(--hair);border-radius:8px}
+.cfg-sname{flex:1;font-size:13px;font-weight:600}
+.cfg-sprice{font-size:12.5px;color:var(--muted)}
+.cfg-ic{border:none;background:none;color:var(--muted-2);font-size:15px;cursor:pointer;width:24px;height:24px;border-radius:6px;flex:none}
+.cfg-ic:hover{background:var(--hair);color:var(--ink)}
+.cfg-ic.del:hover{color:var(--red)}
 /* campo de dinheiro com prefixo ¥ */
 .moneywrap{position:relative;display:block}
 .moneywrap::before{content:'¥';position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted-2);font-size:13px;pointer-events:none;font-weight:600}
@@ -368,7 +376,7 @@ table.tbl tbody tr:hover,table.tbl tr.click:hover{background:var(--surface-2);cu
       <button class="btn ghost menu-btn" data-act="drawer" style="padding:8px"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
       <div><h1 id="pageTitle">Painel</h1><div class="sub" id="pageSub"></div></div>
       <div class="spacer"></div>
-      <button class="btn primary" data-act="nova-os"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg><span class="hide-sm">Nova OS</span></button>
+      <button class="btn primary" id="primaryAdd" data-act="nova-os"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg><span class="hide-sm" id="primaryAddLbl">Nova OS</span></button>
       <div class="topbar-logo" role="img" aria-label="Garage R8"></div>
     </div>
     <div class="content" id="view"></div>
@@ -449,7 +457,7 @@ const STATUS={
 };
 const KANBAN=['orcamento','aguardando','em_servico','pronto','entregue'];
 const COMB=['Gasolina','Diesel','Híbrido','Elétrico','Flex','GNV'];
-const PAG={dinheiro:'Dinheiro',credito:'Cartão de crédito',debito:'Cartão de débito',pix:'PIX / Transferência',paypay:'PayPay / QR',combinar:'A combinar'};
+const PAG={dinheiro:'Dinheiro',credito:'Cartão de crédito',debito:'Cartão de débito',transferencia:'Transferência bancária',paypay:'PayPay / QR',combinar:'A combinar'};
 const TAXA_PADRAO=3.5;  // taxa média de cartão de crédito no Japão (%)
 // forma de pagamento padrão de uma OS
 function pagOf(o){ return o.pagamento || {forma:'dinheiro',parcelas:1,taxaPct:0,repassar:false,pago:false}; }
@@ -465,16 +473,52 @@ function pagCalc(base,p){
   return {base,taxa,cliente,liquido,parc,parcela:cliente/parc,isCard,repassar:!!p.repassar,forma:p.forma||'dinheiro'};
 }
 
+/* ===== COMPRA & VENDA DE CARROS ===== */
+const CAR_STATUS={
+  estoque:{label:'Em estoque',color:'var(--st-aguardando)'},
+  reservado:{label:'Reservado',color:'var(--st-orcamento)'},
+  vendido:{label:'Vendido',color:'var(--st-pronto)'},
+  entregue:{label:'Entregue',color:'var(--st-entregue)'},
+  cancelado:{label:'Cancelado',color:'var(--st-recusado)'},
+};
+const CAR_ENTRADA={nenhuma:'Sem entrada',dinheiro:'Entrada em dinheiro',carro:'Carro na troca'};
+const CAR_FIN={avista:'À vista',cartao:'Cartão',parcelado:'Parcelado'};
+const carro=id=>DB.carros.find(c=>c.id===id);
+// cálculo financeiro de um negócio de carro
+function carCalc(o){
+  const venda=+o.precoVenda||0, aquis=+o.precoAquisicao||0, custos=+o.custosExtras||0;
+  const ent=o.entrada||{tipo:'nenhuma',valor:0};
+  const entradaValor=+ent.valor||0;
+  const restante=Math.max(0, venda-entradaValor);       // a financiar após a entrada
+  const lucro=venda-aquis-custos;                        // lucro do negócio (troca não é custo)
+  const fin=o.fin||{forma:'avista'};
+  const nParc=Math.max(1,+fin.nParcelas||1);
+  const valorParcela=fin.forma==='parcelado' ? (+fin.valorParcela|| (restante/nParc)) : restante;
+  const parcelasPagas=Math.max(0,Math.min(nParc,+o.parcelasPagas||0));
+  // recebido em DINHEIRO (troca em carro é ativo, não caixa)
+  const entradaCaixa = (ent.tipo==='dinheiro' && o.entradaPaga) ? entradaValor : 0;
+  let recebido, aReceber;
+  if(fin.forma==='parcelado'){ recebido=entradaCaixa + parcelasPagas*valorParcela; aReceber=restante - parcelasPagas*valorParcela; }
+  else { recebido=entradaCaixa + (o.pago?restante:0); aReceber=(o.pago?0:restante) + (ent.tipo==='dinheiro'&&!o.entradaPaga?entradaValor:0); }
+  const trocaAtivo = ent.tipo==='carro' ? entradaValor : 0;   // valor do carro recebido na troca
+  const vendido = o.status==='vendido'||o.status==='entregue';
+  return {venda,aquis,custos,entradaValor,restante,lucro,nParc,valorParcela,parcelasPagas,recebido,aReceber:Math.max(0,aReceber),trocaAtivo,vendido,forma:fin.forma};
+}
+
 /* ---------------- persistência ---------------- */
 const KEY='oficina_db_v1';
-const SEED_VERSION=4;   // ao subir este número, os exemplos recarregam sozinhos (sem clicar "Zerar")
-let DB={clientes:[],veiculos:[],pecas:[],ordens:[],seq:1,theme:'',seedVersion:0};
+const SEED_VERSION=5;   // ao subir este número, os exemplos recarregam sozinhos (sem clicar "Zerar")
+let DB={clientes:[],veiculos:[],pecas:[],ordens:[],categorias:[],servicos:[],carros:[],seq:1,carSeq:1,theme:'',seedVersion:0};
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){} }
-function load(){ try{ const r=localStorage.getItem(KEY); if(r){ DB=JSON.parse(r); return true; } }catch(e){} return false; }
+function load(){ try{ const r=localStorage.getItem(KEY); if(r){ DB=JSON.parse(r); migrate(); return true; } }catch(e){} return false; }
+function migrate(){
+  DB.categorias=DB.categorias||[]; DB.servicos=DB.servicos||[]; DB.carros=DB.carros||[]; DB.carSeq=DB.carSeq||1;
+  for(const o of DB.ordens||[]){ if(o.pagamento&&o.pagamento.forma==='pix') o.pagamento.forma='transferencia'; }  // PIX não existe no Japão
+}
 
 /* ---------------- dados de exemplo (rico: cobre todos os status/pagamentos) ---------------- */
 function seed(){
-  DB={clientes:[],veiculos:[],pecas:[],ordens:[],seq:1,theme:''};
+  DB={clientes:[],veiculos:[],pecas:[],ordens:[],categorias:[],servicos:[],carros:[],seq:1,carSeq:1,theme:''};
   const PG=(forma,parc,pago,rep)=>({forma,parcelas:parc||1,taxaPct:forma==='credito'?3.5:forma==='debito'?1.5:0,repassar:!!rep,pago:!!pago});
   // clientes
   const c1=addCliente({nome:'Kenji Tanaka',telefone:'090-1234-5678',email:'kenji@mail.jp',obs:'Sempre pontual'});
@@ -514,22 +558,22 @@ function seed(){
   mkOS(c1,v1,'entregue',[{tipo:'mao',desc:'Troca de óleo + filtro',qtd:1,preco:3500},{tipo:'peca',ref:p_oil,qtd:4},{tipo:'peca',ref:p_foil,qtd:1}], -12, PG('credito',3,true));
   mkOS(c1,v1,'entregue',[{tipo:'mao',desc:'Troca de pastilhas de freio',qtd:1,preco:9000},{tipo:'peca',ref:p_pad,qtd:1}], -34, PG('dinheiro',1,true));
   mkOS(c1,v1,'entregue',[{tipo:'mao',desc:'Revisão completa + alinhamento',qtd:1,preco:26000},{tipo:'peca',ref:p_oil,qtd:5}], -62, PG('credito',6,true));
-  mkOS(c3,v3,'entregue',[{tipo:'mao',desc:'Revisão de frota + correia dentada',qtd:1,preco:19000},{tipo:'peca',ref:p_belt,qtd:1},{tipo:'peca',ref:p_oil,qtd:4}], -20, PG('pix',1,true));
+  mkOS(c3,v3,'entregue',[{tipo:'mao',desc:'Revisão de frota + correia dentada',qtd:1,preco:19000},{tipo:'peca',ref:p_belt,qtd:1},{tipo:'peca',ref:p_oil,qtd:4}], -20, PG('transferencia',1,true));
   mkOS(c3,v3b,'entregue',[{tipo:'mao',desc:'Freios completos (disco + pastilha)',qtd:1,preco:16000},{tipo:'peca',ref:p_pad,qtd:2},{tipo:'peca',ref:p_disc,qtd:2}], -48, PG('credito',4,true));
   mkOS(c3,v3,'entregue',[{tipo:'mao',desc:'Suspensão dianteira',qtd:1,preco:18000},{tipo:'peca',ref:p_shock,qtd:2}], -95, PG('dinheiro',1,true));
   mkOS(c4,v4,'entregue',[{tipo:'mao',desc:'Troca de velas + filtro de ar',qtd:1,preco:7000},{tipo:'peca',ref:p_spark,qtd:1},{tipo:'peca',ref:p_fair,qtd:1}], -15, PG('debito',1,true));
   mkOS(c5,v5,'entregue',[{tipo:'mao',desc:'Serviço elétrico — troca de alternador',qtd:1,preco:12000},{tipo:'peca',ref:p_alt,qtd:1}], -72, PG('credito',3,true));
-  mkOS(c6,v6,'entregue',[{tipo:'mao',desc:'Ar-condicionado — recarga de gás',qtd:1,preco:9800}], -25, PG('pix',1,true));
+  mkOS(c6,v6,'entregue',[{tipo:'mao',desc:'Ar-condicionado — recarga de gás',qtd:1,preco:9800}], -25, PG('transferencia',1,true));
   mkOS(c7,v7,'entregue',[{tipo:'mao',desc:'Troca de 4 pneus + alinhamento e balanceamento',qtd:1,preco:8000},{tipo:'peca',ref:p_tire,qtd:4}], -40, PG('credito',5,true));
   mkOS(c8,v8,'entregue',[{tipo:'mao',desc:'Troca de óleo',qtd:1,preco:3500},{tipo:'peca',ref:p_oil,qtd:4},{tipo:'peca',ref:p_foil,qtd:1}], -5, PG('dinheiro',1,false)); // A RECEBER
-  mkOS(c2,v2,'entregue',[{tipo:'mao',desc:'Serviço elétrico — alternador',qtd:1,preco:14000}], -8, PG('pix',1,true));
+  mkOS(c2,v2,'entregue',[{tipo:'mao',desc:'Serviço elétrico — alternador',qtd:1,preco:14000}], -8, PG('transferencia',1,true));
   mkOS(c9,v9,'entregue',[{tipo:'mao',desc:'Funilaria — reparo de para-choque',qtd:1,preco:16500}], -55, PG('dinheiro',1,true));
   mkOS(c6,v6,'entregue',[{tipo:'mao',desc:'Motor — troca de correia dentada',qtd:1,preco:15000},{tipo:'peca',ref:p_belt,qtd:1}], -115, PG('credito',6,true));
   // em serviço
   mkOS(c2,v2,'em_servico',[{tipo:'mao',desc:'Troca de pastilhas + sangria de freio',qtd:1,preco:8000},{tipo:'peca',ref:p_pad,qtd:1}], -1, PG('dinheiro',1,false));
   mkOS(c4,v4,'em_servico',[{tipo:'mao',desc:'Suspensão dianteira — amortecedores',qtd:1,preco:12000},{tipo:'peca',ref:p_shock,qtd:2}], -2, PG('credito',3,false));
   // aguardando
-  mkOS(c3,v3b,'aguardando',[{tipo:'mao',desc:'Revisão 60.000 km',qtd:1,preco:22000},{tipo:'peca',ref:p_oil,qtd:6}], 0, PG('pix',1,false));
+  mkOS(c3,v3b,'aguardando',[{tipo:'mao',desc:'Revisão 60.000 km',qtd:1,preco:22000},{tipo:'peca',ref:p_oil,qtd:6}], 0, PG('transferencia',1,false));
   mkOS(c8,v8,'aguardando',[{tipo:'mao',desc:'Diagnóstico elétrico',qtd:1,preco:4000}], 0, PG('combinar',1,false));
   // pronto p/ retirada
   mkOS(c5,v5,'pronto',[{tipo:'mao',desc:'Troca de bateria',qtd:1,preco:2500},{tipo:'peca',ref:p_bat,qtd:1}], -1, PG('debito',1,true));
@@ -538,7 +582,44 @@ function seed(){
   mkOS(c7,v7,'orcamento',[{tipo:'mao',desc:'Transmissão — troca de embreagem',qtd:1,preco:38000}], -2, PG('combinar',1,false));
   // recusado (orçamento não aprovado)
   mkOS(c9,v9,'recusado',[{tipo:'mao',desc:'Motor — retífica completa',qtd:1,preco:120000}], -6, PG('combinar',1,false));
+
+  // ---- catálogo de serviços (categorias + serviços selecionáveis) ----
+  const catM=addCategoria('Manutenção'), catF=addCategoria('Funilaria e Pintura'), catT=addCategoria('Transmissão'), catP=addCategoria('Pneus e Rodas');
+  [['Troca de óleo + filtro',3500],['Freios (pastilhas)',9000],['Freios completo (disco+pastilha)',16000],['Suspensão dianteira',12000],['Revisão completa',22000],['Serviço elétrico',14000],['Ar-condicionado (recarga)',9800],['Troca de bateria',2500],['Troca de velas',6000]].forEach(([n,p])=>addServico(catM.id,n,p));
+  [['Reparo de para-choque',16500],['Pintura (peça)',25000],['Polimento',8000]].forEach(([n,p])=>addServico(catF.id,n,p));
+  [['Troca de embreagem',38000],['Revisão de câmbio',45000]].forEach(([n,p])=>addServico(catT.id,n,p));
+  [['Troca de 4 pneus',9500],['Alinhamento e balanceamento',5000]].forEach(([n,p])=>addServico(catP.id,n,p));
+
+  // ---- compra & venda de carros (exemplos) ----
+  mkCarro(c1,{desc:'Toyota Aqua 2018',ano:2018,km:62000,placa:'品川 500 あ 33-21'}, 620000, 30000, 890000,
+    {tipo:'carro',valor:120000,trocaDesc:'Honda Fit 2013 (troca)'}, {forma:'parcelado',modo:'parcelas',nParcelas:12,diaVenc:5}, 'entregue', 4, -40);
+  mkCarro(c4,{desc:'Nissan Note 2019',ano:2019,km:38000,placa:'練馬 300 か 77-08'}, 780000, 0, 1050000,
+    {tipo:'dinheiro',valor:200000,trocaDesc:''}, {forma:'avista'}, 'vendido', 0, -10);
+  mkCarro(c6,{desc:'Toyota Prius 2020',ano:2020,km:29000,placa:'横浜 330 ら 11-90'}, 1250000, 60000, 1690000,
+    {tipo:'nenhuma',valor:0,trocaDesc:''}, {forma:'cartao'}, 'reservado', 0, -3);
+  mkCarro(null,{desc:'Suzuki Hustler 2017',ano:2017,km:71000,placa:'—'}, 540000, 15000, 0,
+    {tipo:'nenhuma',valor:0,trocaDesc:''}, {forma:'avista'}, 'estoque', 0, -6);
+  mkCarro(c8,{desc:'Mazda Demio 2016',ano:2016,km:88000,placa:'大宮 500 は 45-12'}, 430000, 20000, 650000,
+    {tipo:'carro',valor:90000,trocaDesc:'Daihatsu Move 2011 (troca)'}, {forma:'parcelado',modo:'valor',valorParcela:40000,diaVenc:10}, 'entregue', 6, -70);
+
   DB.seedVersion=SEED_VERSION; DB.theme=DB.theme||''; save();
+}
+/* helpers de catálogo e carros */
+function addCategoria(nome){ const c={id:uid(),nome}; DB.categorias.push(c); return c; }
+function addServico(categoriaId,nome,preco){ const s={id:uid(),categoriaId,nome,preco:+preco||0}; DB.servicos.push(s); return s; }
+const categoria=id=>DB.categorias.find(c=>c.id===id);
+const servicosDe=cid=>DB.servicos.filter(s=>s.categoriaId===cid);
+function mkCarro(cli,carro,aquisicao,custos,venda,entrada,fin,status,parcelasPagas,daysAgo){
+  const criado=new Date(Date.now()+(daysAgo*86400000)).toISOString();
+  const vendido=(status==='vendido'||status==='entregue')?criado:null;
+  const restante=Math.max(0,venda-(entrada.valor||0));
+  fin=Object.assign({forma:'avista',modo:'parcelas',nParcelas:1,valorParcela:0,diaVenc:5,taxaPct:fin&&fin.forma==='cartao'?3.5:0},fin);
+  if(fin.forma==='parcelado'){ if(fin.modo==='valor'){ fin.nParcelas=Math.max(1,Math.ceil(restante/(fin.valorParcela||restante))); } else { fin.valorParcela=fin.nParcelas?Math.round(restante/fin.nParcelas):restante; } }
+  const o={id:uid(),numero:DB.carSeq++,clienteId:cli?cli.id:null,carro,precoAquisicao:+aquisicao||0,custosExtras:+custos||0,
+    precoVenda:+venda||0,entrada:Object.assign({tipo:'nenhuma',valor:0,trocaDesc:''},entrada),fin,
+    parcelasPagas:+parcelasPagas||0,entradaPaga:status!=='estoque',status,criadoEm:criado,vendidoEm:vendido,
+    hist:[{t:criado,txt:status==='estoque'?'Carro comprado no leilão':'Negócio criado'}]};
+  DB.carros.push(o); return o;
 }
 function mkOS(c,v,status,rawItems,daysAgo,pagamento){
   const itens=rawItems.map(it=> it.tipo==='peca'
@@ -605,33 +686,44 @@ function inPeriod(iso,period){
    NAVEGAÇÃO / ROTEADOR
    ========================================================================= */
 const NAV=[
-  {id:'painel',label:'Painel',icon:'M3 12l9-9 9 9M5 10v10h14V10'},
-  {id:'ordens',label:'Ordens',icon:'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 12h6M9 16h4'},
-  {id:'clientes',label:'Clientes',icon:'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 .01M23 21v-2a4 4 0 0 0-3-3.87'},
+  {id:'painel',label:'Painel',mob:1,icon:'M3 12l9-9 9 9M5 10v10h14V10'},
+  {id:'ordens',label:'Ordens',mob:1,icon:'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 12h6M9 16h4'},
+  {id:'carros',label:'Carros',mob:1,icon:'M3 13l2-5a2 2 0 0 1 1.9-1.4h10.2A2 2 0 0 1 19 8l2 5v5h-2v-2H5v2H3v-5zM6.5 15.5h.01M17.5 15.5h.01'},
+  {id:'clientes',label:'Clientes',mob:1,icon:'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 .01M23 21v-2a4 4 0 0 0-3-3.87'},
   {id:'estoque',label:'Estoque',icon:'M21 8v13H3V8M1 3h22v5H1zM10 12h4'},
-  {id:'financeiro',label:'Financeiro',icon:'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'},
+  {id:'financeiro',label:'Financeiro',mob:1,icon:'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'},
   {id:'relatorio',label:'Relatório',icon:'M3 3v18h18M18 17V9M13 17V5M8 17v-3'},
+  {id:'config',label:'Config',icon:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z'},
 ];
 let route='painel';
-let uiState={ordFilter:'todos',ordView:'lista',finPeriod:'mes',relPeriod:'mes',cliSearch:''};
+let uiState={ordFilter:'todos',ordView:'lista',finPeriod:'mes',relPeriod:'mes',cliSearch:'',carFilter:'todos'};
 
 function icon(path){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="'+path+'"/></svg>'; }
 function buildNav(){
   const pend = DB.ordens.filter(o=>o.status==='orcamento').length;
   const deskHTML = NAV.map(n=>`<button data-nav="${n.id}" class="${route===n.id?'active':''}">${icon(n.icon)}<span>${n.label}</span>${n.id==='ordens'&&pend?`<span class="badge">${pend}</span>`:''}</button>`).join('');
   $('#navDesk').innerHTML=deskHTML; $('#navDrawer').innerHTML=deskHTML;
-  $('#navMob').innerHTML = NAV.map(n=>`<button data-nav="${n.id}" class="${route===n.id?'active':''}">${icon(n.icon)}<span>${n.label}</span></button>`).join('');
+  $('#navMob').innerHTML = NAV.filter(n=>n.mob).map(n=>`<button data-nav="${n.id}" class="${route===n.id?'active':''}">${icon(n.icon)}<span>${n.label}</span></button>`).join('');
 }
 function go(r){ route=r; closeDrawer(); render(); }
 
 /* =========================================================================
    RENDER
    ========================================================================= */
-const TITLES={painel:['Painel','Visão geral da oficina'],ordens:['Ordens de Serviço','Entrada e saída de serviços'],clientes:['Clientes','Cadastro e histórico'],estoque:['Estoque','Peças e disponibilidade'],financeiro:['Financeiro','Resultados em ienes (¥)'],relatorio:['Relatório','Andamento e desempenho da oficina']};
+const TITLES={painel:['Painel','Visão geral da oficina'],ordens:['Ordens de Serviço','Entrada e saída de serviços'],carros:['Compra & Venda de Carros','Estoque, negócios e recebimentos'],clientes:['Clientes','Cadastro e histórico'],estoque:['Estoque','Peças e disponibilidade'],financeiro:['Financeiro','Resultados em ienes (¥)'],relatorio:['Relatório','Andamento e desempenho da oficina'],config:['Configurações','Categorias e serviços do catálogo']};
 function render(){
   buildNav();
   const [t,s]=TITLES[route]; $('#pageTitle').textContent=t; $('#pageSub').textContent=s;
-  $('.fab')?.classList.toggle('show', route!=='painel');
+  // botão de ação principal muda conforme a aba
+  const addBtn=$('#primaryAdd'), addLbl=$('#primaryAddLbl'), fab=$('.fab');
+  let addAct='nova-os', addTxt='Nova OS', showAdd=true;
+  if(route==='carros'){ addAct='novo-carro'; addTxt='Novo negócio'; }
+  else if(route==='config'){ showAdd=false; }
+  else if(route==='clientes'){ addAct='novo-cliente'; addTxt='Novo cliente'; }
+  else if(route==='estoque'){ addAct='nova-peca'; addTxt='Nova peça'; }
+  else if(['financeiro','relatorio','painel'].includes(route)){ addAct='nova-os'; addTxt='Nova OS'; }
+  if(addBtn){ addBtn.dataset.act=addAct; addBtn.style.display=showAdd?'':'none'; if(addLbl) addLbl.textContent=addTxt; }
+  if(fab){ fab.dataset.act=addAct; fab.classList.toggle('show', showAdd && route!=='painel'); }
   const v=$('#view');
   if(route==='painel') v.innerHTML=viewPainel();
   else if(route==='ordens') v.innerHTML=viewOrdens();
@@ -639,6 +731,8 @@ function render(){
   else if(route==='estoque') v.innerHTML=viewEstoque();
   else if(route==='financeiro') v.innerHTML=viewFinanceiro();
   else if(route==='relatorio') v.innerHTML=viewRelatorio();
+  else if(route==='carros') v.innerHTML=viewCarros();
+  else if(route==='config') v.innerHTML=viewConfig();
   if(route==='ordens'&&uiState.ordView==='kanban') wireKanban();
 }
 
@@ -833,6 +927,70 @@ function viewFinanceiro(){
 
 function emptyBox(t,s){ return `<div class="card"><div class="empty">${icon('M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2')}<div style="font-weight:700;color:var(--ink)">${t}</div><div>${s}</div></div></div>`; }
 
+/* ---------- CONFIGURAÇÕES: catálogo de categorias + serviços ---------- */
+function viewConfig(){
+  const head=`<div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
+    <div class="muted" style="font-size:12.5px">Categorias e serviços que aparecem para <b>selecionar</b> na OS (em vez de digitar)</div>
+    <div class="spacer" style="flex:1"></div>
+    <button class="btn primary" data-act="nova-categoria"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg><span class="hide-sm">Categoria</span></button></div>`;
+  if(!DB.categorias.length) return head+emptyBox('Sem categorias','Crie uma categoria (ex.: Manutenção) e depois adicione os serviços dela.');
+  return head+DB.categorias.map(cat=>{
+    const servs=servicosDe(cat.id);
+    return `<div class="card pad" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <b style="font-size:14px">${esc(cat.nome)}</b><span class="muted" style="font-size:11px">${servs.length} serviço(s)</span>
+        <div class="spacer" style="flex:1"></div>
+        <button class="btn sm ghost" data-act="edit-categoria" data-id="${cat.id}">Editar</button>
+        <button class="btn sm danger" data-act="del-categoria" data-id="${cat.id}">Excluir</button>
+      </div>
+      <div class="cfg-servs">${servs.length?servs.map(s=>`<div class="cfg-serv">
+        <span class="cfg-sname">${esc(s.nome)}</span><span class="cfg-sprice mono">${yen(s.preco)}</span>
+        <button class="cfg-ic" data-act="edit-servico" data-id="${s.id}" title="Editar">✎</button>
+        <button class="cfg-ic del" data-act="del-servico" data-id="${s.id}" title="Excluir">×</button></div>`).join(''):'<div class="hint">Nenhum serviço aqui ainda.</div>'}</div>
+      <button class="btn sm" data-act="novo-servico" data-cat="${cat.id}" style="margin-top:9px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 5v14M5 12h14"/></svg>Serviço</button>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- COMPRA & VENDA DE CARROS ---------- */
+function carStatusChip(st){ const s=CAR_STATUS[st]||CAR_STATUS.estoque; return `<span class="chip cst-${st}" style="color:${s.color};background:color-mix(in srgb,${s.color} 15%,transparent)"><span class="dot" style="background:${s.color}"></span>${s.label}</span>`; }
+function viewCarros(){
+  const f=uiState.carFilter;
+  let list=[...DB.carros].sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm));
+  if(f!=='todos') list=list.filter(o=>o.status===f);
+  const estoque=DB.carros.filter(o=>['estoque','reservado'].includes(o.status));
+  const invest=estoque.reduce((s,o)=>s+(+o.precoAquisicao||0)+(+o.custosExtras||0),0);
+  const vendidos=DB.carros.filter(o=>['vendido','entregue'].includes(o.status));
+  const lucro=vendidos.reduce((s,o)=>s+carCalc(o).lucro,0);
+  const aReceber=vendidos.reduce((s,o)=>s+carCalc(o).aReceber,0);
+  const recebido=vendidos.reduce((s,o)=>s+carCalc(o).recebido,0);
+  const kpi=(l,v,d,c)=>`<div class="card kpi"><span class="lbl">${l}</span><span class="val tnum" ${c?`style="color:${c}"`:''}>${v}</span>${d?`<span class="delta">${d}</span>`:''}</div>`;
+  const counts={}; DB.carros.forEach(o=>counts[o.status]=(counts[o.status]||0)+1);
+  const fchip=(id,lbl)=>`<button class="fchip ${f===id?'active':''}" data-carfilter="${id}">${lbl}${counts[id]?` · ${counts[id]}`:''}</button>`;
+  const kpis=`<div class="grid kpis">
+    ${kpi('Em estoque',estoque.length,yen(invest)+' investido')}
+    ${kpi('Vendidos',vendidos.length,'no total')}
+    ${kpi('Lucro (vendas)',yen(lucro),'preço − aquisição','var(--green)')}
+    ${kpi('A receber',yen(aReceber),yen(recebido)+' já recebido','var(--warn)')}
+  </div>`;
+  const filters=`<div class="filters" style="margin:14px 0"><button class="fchip ${f==='todos'?'active':''}" data-carfilter="todos">Todos · ${DB.carros.length}</button>${Object.keys(CAR_STATUS).map(k=>fchip(k,CAR_STATUS[k].label)).join('')}</div>`;
+  if(!list.length) return kpis+filters+emptyBox('Nenhum carro','Cadastre um carro/negócio no botão “Novo negócio”.');
+  const rows=list.map(o=>{ const c=cliente(o.clienteId), cc=carCalc(o);
+    const pg = ['vendido','entregue'].includes(o.status) ? (cc.aReceber<=0?'<span class="paytag ok">● Quitado</span>':`<span class="paytag due">● ${yen(cc.aReceber)}</span>`) : '<span class="muted" style="font-size:11px">—</span>';
+    return `<tr class="click" data-car="${o.id}">
+      <td class="mono">#${String(o.numero).padStart(4,'0')}</td>
+      <td><b>${esc(o.carro?.desc||'—')}</b><div class="hide-sm" style="font-size:11px;color:var(--muted-2)">${o.carro?.ano||''} · ${o.carro?.km?Number(o.carro.km).toLocaleString('en-US')+' km':''}</div></td>
+      <td class="hide-sm">${c?esc(c.nome):'<span class="muted">—</span>'}</td>
+      <td>${carStatusChip(o.status)}</td>
+      <td class="right mono"><b>${yen(o.precoVenda)}</b></td>
+      <td class="right mono hide-sm" style="color:var(--green)">${cc.vendido?yen(cc.lucro):'—'}</td>
+      <td class="hide-sm">${pg}</td>
+    </tr>`; }).join('');
+  return kpis+filters+`<div class="card table-wrap"><table class="tbl"><thead><tr>
+    <th>Nº</th><th>Carro</th><th class="hide-sm">Cliente</th><th>Status</th><th class="right">Venda</th><th class="right hide-sm">Lucro</th><th class="hide-sm">Recebimento</th>
+  </tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
 /* ---------- RELATÓRIO ---------- */
 function viewRelatorio(){
   const per=uiState.relPeriod;
@@ -858,7 +1016,7 @@ function viewRelatorio(){
 
   // formas de pagamento
   const pags={}; for(const o of entregues){ const f=pagOf(o).forma; (pags[f]=pags[f]||{n:0,v:0}); pags[f].n++; pags[f].v+=total(o); }
-  const pagCols={dinheiro:'#12996a',credito:'#d81f2b',debito:'#e0850e',pix:'#2f6bd6',paypay:'#7256e6',combinar:'#6b7280'};
+  const pagCols={dinheiro:'#12996a',credito:'#d81f2b',debito:'#e0850e',transferencia:'#2f6bd6',paypay:'#7256e6',combinar:'#6b7280'};
   const pagArr=Object.entries(pags).sort((a,b)=>b[1].v-a[1].v);
   const pagHTML = pagArr.length ? `<div class="paylist">${pagArr.map(([f,d])=>`<div class="payline"><span class="pd" style="background:${pagCols[f]||'#888'}"></span>${PAG[f]||f} <span class="muted">· ${d.n} OS</span><span class="pv">${yen(d.v)}</span></div>`).join('')}</div>` : '<div class="hint">—</div>';
 
@@ -908,15 +1066,16 @@ function confirmAsk({title,msg,impact,okLabel,kind,onOk,onCancel}){
 }
 
 /* ---- cliente ---- */
-function modalCliente(){
-  openModal(`<div class="modal-h"><h3>Novo cliente</h3><button class="x" data-modal-back>×</button></div>
+function modalCliente(cid){
+  const c=cid?cliente(cid):null;
+  openModal(`<div class="modal-h"><h3>${c?'Editar cliente':'Novo cliente'}</h3><button class="x" data-modal-back>×</button></div>
   <div class="modal-b">
-    <div class="field"><label>Nome *</label><input id="cl_nome" autofocus></div>
-    <div class="frow c2"><div class="field"><label>Telefone</label><input id="cl_tel" placeholder="090-0000-0000"></div>
-      <div class="field"><label>E-mail</label><input id="cl_email"></div></div>
-    <div class="field"><label>Observações</label><textarea id="cl_obs"></textarea></div>
+    <div class="field"><label>Nome *</label><input id="cl_nome" value="${c?esc(c.nome):''}" autofocus></div>
+    <div class="frow c2"><div class="field"><label>Telefone</label><input id="cl_tel" value="${c?esc(c.telefone||''):''}" placeholder="090-0000-0000"></div>
+      <div class="field"><label>E-mail</label><input id="cl_email" value="${c?esc(c.email||''):''}"></div></div>
+    <div class="field"><label>Observações</label><textarea id="cl_obs">${c?esc(c.obs||''):''}</textarea></div>
   </div>
-  <div class="modal-f"><button class="btn ghost" data-modal-back>Cancelar</button><button class="btn primary" data-act="save-cliente">Salvar</button></div>`);
+  <div class="modal-f"><button class="btn ghost" data-modal-back>Cancelar</button><button class="btn primary" data-act="save-cliente" ${c?`data-id="${c.id}"`:''}>${c?'Salvar alterações':'Salvar'}</button></div>`);
 }
 
 /* ---- peça ---- */
@@ -950,6 +1109,7 @@ function osFormHTML(){
   const vlist=d.clienteId?veiculosDe(d.clienteId):[];
   const vehOpts=vlist.map(v=>`<option value="${v.id}" ${v.id===d.veiculoId?'selected':''}>${esc(v.marca+' '+v.modelo+' · '+v.placa)}</option>`).join('');
   const pecaOpts=DB.pecas.map(p=>`<option value="${p.id}">${esc(p.nome)} — ${yen(p.preco)} (disp ${disponivel(p)})</option>`).join('');
+  const servOpts=DB.categorias.map(cat=>{ const ss=servicosDe(cat.id); if(!ss.length) return ''; return `<optgroup label="${esc(cat.nome)}">${ss.map(s=>`<option value="${s.id}">${esc(s.nome)} — ${yen(s.preco)}</option>`).join('')}</optgroup>`; }).join('');
   const itemsHTML=d.itens.map((it,ix)=>`<div class="item-row" data-ix="${ix}">
       <input data-f="desc" value="${esc(it.desc)}" placeholder="${it.tipo==='peca'?'Peça':'Serviço / mão de obra'}">
       <input data-f="qtd" type="number" min="1" value="${it.qtd}" title="Qtd">
@@ -970,9 +1130,11 @@ function osFormHTML(){
     </div>
     <div class="field"><label>Itens (serviços + peças)</label><div class="items" id="itemsBox">${itemsHTML||'<div class="hint">Nenhum item ainda. Adicione abaixo.</div>'}</div>
       <div class="add-line">
+        ${servOpts?`<select class="btn sm" id="servPick" style="max-width:230px"><option value="">+ Serviço do catálogo…</option>${servOpts}</select>`:''}
         <button class="btn sm" data-act="add-mao"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 5v14M5 12h14"/></svg>Mão de obra</button>
         <select class="btn sm" id="pecaPick" style="max-width:230px"><option value="">+ Adicionar peça do estoque…</option>${pecaOpts}</select>
       </div>
+      ${servOpts?'':'<div class="hint" style="margin-top:6px">Cadastre serviços em <b>Config</b> para selecioná-los aqui.</div>'}
     </div>
     <div class="frow c2">
       <div class="field"><label>Desconto</label>${moneyField('id="os_desc"', d.desconto)}</div>
@@ -1076,7 +1238,7 @@ function modalCliDetalhe(cid){
   const c=cliente(cid); if(!c) return;
   const vs=veiculosDe(cid), os=ordensDe(cid).sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm));
   const st=clienteStats(cid);
-  openModal(`<div class="modal-h"><h3>${esc(c.nome)}</h3> ${clienteBadge(st.tier)}<button class="x" data-modal-back style="margin-left:auto">×</button></div>
+  openModal(`<div class="modal-h"><h3>${esc(c.nome)}</h3> ${clienteBadge(st.tier)}<div class="spacer" style="flex:1"></div><button class="btn sm ghost" data-act="edit-cliente" data-id="${c.id}">✎ Editar</button><button class="x" data-modal-back>×</button></div>
   <div class="modal-b">
     ${st.tier?`<div class="alert info" style="margin-bottom:12px">${icon('M12 2l2.4 7.4H22l-6 4.3 2.3 7.3L12 16.6 5.7 21l2.3-7.3-6-4.3h7.6z')}<b>${st.tier==='ouro'?'Cliente Ouro':'Cliente Prata'}</b> — ${st.n} serviços, ${yen(st.gasto)} gastos, ${yen(st.lucro)} de lucro à oficina</div>`:''}
     <div class="det-grid"><div><div class="k">Telefone</div><div class="v mono">${esc(c.telefone||'—')}</div></div>
@@ -1085,7 +1247,7 @@ function modalCliDetalhe(cid){
       <div><div class="k">OS realizadas</div><div class="v">${st.n}</div></div></div>
     ${c.obs?`<div class="alert info" style="margin-bottom:12px">${esc(c.obs)}</div>`:''}
     <div class="section-h" style="margin:6px 2px 8px"><h2 style="font-size:14px">Veículos</h2><div class="spacer" style="flex:1"></div><button class="btn sm" data-act="novo-veiculo" data-cli="${c.id}">+ Veículo</button></div>
-    ${vs.length?vs.map(v=>`<div class="card pad" style="margin-bottom:8px;display:flex;gap:12px;align-items:center"><div style="flex:1"><b>${esc(v.marca+' '+v.modelo)}</b> <span class="muted">${v.ano||''}</span><div class="hint">${esc(v.placa)} · ${esc(v.combustivel||'')} · ${v.km?Number(v.km).toLocaleString('en-US')+' km':''}</div></div></div>`).join(''):'<div class="hint" style="margin-bottom:10px">Nenhum veículo cadastrado.</div>'}
+    ${vs.length?vs.map(v=>`<div class="card pad" style="margin-bottom:8px;display:flex;gap:12px;align-items:center"><div style="flex:1"><b>${esc(v.marca+' '+v.modelo)}</b> <span class="muted">${v.ano||''}</span><div class="hint">${esc(v.placa)} · ${esc(v.combustivel||'')} · ${v.km?Number(v.km).toLocaleString('en-US')+' km':''}</div></div><button class="cfg-ic" data-act="edit-veiculo" data-id="${v.id}" title="Editar">✎</button><button class="cfg-ic del" data-act="del-veiculo" data-id="${v.id}" title="Excluir">×</button></div>`).join(''):'<div class="hint" style="margin-bottom:10px">Nenhum veículo cadastrado.</div>'}
     <div class="section-h" style="margin:14px 2px 8px"><h2 style="font-size:14px">Histórico de OS</h2></div>
     ${os.length?osTable(os):'<div class="hint">Nenhuma OS ainda.</div>'}
   </div>
@@ -1093,20 +1255,175 @@ function modalCliDetalhe(cid){
 }
 
 /* ---- veículo ---- */
-function modalVeiculo(cid,back){
-  openModal(`<div class="modal-h"><h3>Novo veículo</h3><button class="x" data-act="${back||'close'}">×</button></div>
+function modalVeiculo(cid,back,vid){
+  const v=vid?veiculo(vid):null;
+  openModal(`<div class="modal-h"><h3>${v?'Editar veículo':'Novo veículo'}</h3><button class="x" data-act="${back||'close'}">×</button></div>
   <div class="modal-b">
-    <div class="frow c2"><div class="field"><label>Placa *</label><input id="vh_placa" autofocus placeholder="品川 300 あ 12-34"></div>
-      <div class="field"><label>Combustível</label><select id="vh_comb">${COMB.map(x=>`<option>${x}</option>`).join('')}</select></div></div>
-    <div class="frow c3"><div class="field"><label>Marca</label><input id="vh_marca"></div>
-      <div class="field"><label>Modelo</label><input id="vh_modelo"></div>
-      <div class="field"><label>Ano</label><input id="vh_ano" type="number"></div></div>
-    <div class="field"><label>KM atual</label><input id="vh_km" type="number"></div>
+    <div class="frow c2"><div class="field"><label>Placa *</label><input id="vh_placa" value="${v?esc(v.placa):''}" autofocus placeholder="品川 300 あ 12-34"></div>
+      <div class="field"><label>Combustível</label><select id="vh_comb">${COMB.map(x=>`<option ${v&&v.combustivel===x?'selected':''}>${x}</option>`).join('')}</select></div></div>
+    <div class="frow c3"><div class="field"><label>Marca</label><input id="vh_marca" value="${v?esc(v.marca||''):''}"></div>
+      <div class="field"><label>Modelo</label><input id="vh_modelo" value="${v?esc(v.modelo||''):''}"></div>
+      <div class="field"><label>Ano</label><input id="vh_ano" type="number" value="${v&&v.ano?v.ano:''}"></div></div>
+    <div class="field"><label>KM atual</label><input id="vh_km" type="number" placeholder="0" value="${v&&v.km?v.km:''}"></div>
   </div>
-  <div class="modal-f"><button class="btn ghost" data-act="${back||'close'}">Cancelar</button><button class="btn primary" data-act="save-veiculo" data-cli="${cid}" data-back="${back||''}">Salvar</button></div>`);
+  <div class="modal-f"><button class="btn ghost" data-act="${back||'close'}">Cancelar</button><button class="btn primary" data-act="save-veiculo" data-cli="${cid||(v?v.clienteId:'')}" data-back="${back||''}" ${v?`data-id="${v.id}"`:''}>${v?'Salvar alterações':'Salvar'}</button></div>`);
   osFormBack = back==='reopen-os';
 }
 let osFormBack=false;
+
+/* ---- categoria / serviço (config) ---- */
+function modalCategoria(cid){
+  const c=cid?categoria(cid):null;
+  openModal(`<div class="modal-h"><h3>${c?'Editar categoria':'Nova categoria'}</h3><button class="x" data-modal-back>×</button></div>
+  <div class="modal-b"><div class="field"><label>Nome da categoria *</label><input id="cat_nome" value="${c?esc(c.nome):''}" autofocus placeholder="ex.: Manutenção"></div></div>
+  <div class="modal-f"><button class="btn ghost" data-modal-back>Cancelar</button><button class="btn primary" data-act="save-categoria" ${c?`data-id="${c.id}"`:''}>Salvar</button></div>`);
+}
+function modalServico(sid,catId){
+  const s=sid?DB.servicos.find(x=>x.id===sid):null;
+  const cat=catId||(s&&s.categoriaId)||'';
+  openModal(`<div class="modal-h"><h3>${s?'Editar serviço':'Novo serviço'}</h3><button class="x" data-modal-back>×</button></div>
+  <div class="modal-b">
+    <div class="field"><label>Categoria</label><select id="sv_cat">${DB.categorias.map(c=>`<option value="${c.id}" ${c.id===cat?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></div>
+    <div class="frow c2"><div class="field"><label>Nome do serviço *</label><input id="sv_nome" value="${s?esc(s.nome):''}" autofocus placeholder="ex.: Freios (pastilhas)"></div>
+      <div class="field"><label>Preço padrão</label>${moneyField('id="sv_preco"', s?s.preco:'')}</div></div>
+    <p class="hint">O preço é só uma sugestão — dá pra ajustar na hora de montar a OS.</p>
+  </div>
+  <div class="modal-f"><button class="btn ghost" data-modal-back>Cancelar</button><button class="btn primary" data-act="save-servico" ${s?`data-id="${s.id}"`:''}>Salvar</button></div>`);
+}
+
+/* ---- carro: formulário do negócio ---- */
+let carDraft=null;
+function modalCarro(carId){
+  const ed=carId?carro(carId):null;
+  carDraft = ed?JSON.parse(JSON.stringify(ed)):{id:null,clienteId:'',carro:{desc:'',ano:'',km:'',placa:''},precoAquisicao:0,custosExtras:0,precoVenda:0,entrada:{tipo:'nenhuma',valor:0,trocaDesc:''},fin:{forma:'avista',modo:'parcelas',nParcelas:6,valorParcela:0,diaVenc:5,taxaPct:TAXA_PADRAO},parcelasPagas:0,entradaPaga:false,status:'estoque'};
+  if(!carDraft.entrada) carDraft.entrada={tipo:'nenhuma',valor:0,trocaDesc:''};
+  if(!carDraft.fin) carDraft.fin={forma:'avista',modo:'parcelas',nParcelas:6,valorParcela:0,diaVenc:5,taxaPct:TAXA_PADRAO};
+  openModal(carFormHTML(),true);
+}
+function carFin(d){ // cálculo ao vivo p/ o formulário
+  const venda=+d.precoVenda||0, ent=+ (d.entrada?.valor)||0, restante=Math.max(0,venda-ent);
+  const f=d.fin||{}; let n=Math.max(1,+f.nParcelas||1), vp=+f.valorParcela||0;
+  if(f.forma==='parcelado'){ if(f.modo==='valor'){ n=Math.max(1,Math.ceil(restante/(vp||restante||1))); } else { vp=n?Math.round(restante/n):restante; } }
+  const lucro=venda-(+d.precoAquisicao||0)-(+d.custosExtras||0);
+  return {venda,ent,restante,n,vp,lucro};
+}
+function carFormHTML(){
+  const d=carDraft, fc=carFin(d);
+  const cliOpts=`<option value="">— sem cliente (em estoque) —</option>`+DB.clientes.map(c=>`<option value="${c.id}" ${c.id===d.clienteId?'selected':''}>${esc(c.nome)}</option>`).join('');
+  const entTipo=d.entrada.tipo, showEntVal=entTipo!=='nenhuma', showTroca=entTipo==='carro';
+  const forma=d.fin.forma, showParc=forma==='parcelado';
+  const stOpts=Object.keys(CAR_STATUS).map(k=>`<option value="${k}" ${d.status===k?'selected':''}>${CAR_STATUS[k].label}</option>`).join('');
+  return `<div class="modal-h"><h3>${d.id?'Editar negócio #'+String(carro(d.id)?.numero||'').padStart(4,'0'):'Novo negócio (carro)'}</h3><button class="x" data-modal-back>×</button></div>
+  <div class="modal-b">
+    <div class="section-h" style="margin:0 2px 8px"><h2 style="font-size:13px">Carro</h2></div>
+    <div class="field"><label>Descrição do carro *</label><input id="cr_desc" value="${esc(d.carro.desc||'')}" placeholder="ex.: Toyota Aqua 2018"></div>
+    <div class="frow c3"><div class="field"><label>Ano</label><input id="cr_ano" type="number" placeholder="0" value="${d.carro.ano||''}"></div>
+      <div class="field"><label>KM</label><input id="cr_km" type="number" placeholder="0" value="${d.carro.km||''}"></div>
+      <div class="field"><label>Placa</label><input id="cr_placa" value="${esc(d.carro.placa||'')}"></div></div>
+    <div class="frow c2"><div class="field"><label>Preço de aquisição (leilão)</label>${moneyField('id="cr_aquis"', d.precoAquisicao)}</div>
+      <div class="field"><label>Custos extras (reparos etc.)</label>${moneyField('id="cr_custos"', d.custosExtras)}</div></div>
+    <div class="section-h" style="margin:8px 2px 8px"><h2 style="font-size:13px">Venda</h2></div>
+    <div class="frow c2"><div class="field"><label>Cliente</label><select id="cr_cli" data-act="cr-cli">${cliOpts}</select></div>
+      <div class="field"><label>Preço de venda</label>${moneyField('id="cr_venda"', d.precoVenda)}</div></div>
+    <div class="frow c2"><div class="field"><label>Entrada</label><select id="cr_enttipo" data-act="cr-enttipo">${Object.keys(CAR_ENTRADA).map(k=>`<option value="${k}" ${entTipo===k?'selected':''}>${CAR_ENTRADA[k]}</option>`).join('')}</select></div>
+      <div class="field" ${showEntVal?'':'style="display:none"'}><label>${showTroca?'Valor avaliado da troca':'Valor da entrada'}</label>${moneyField('id="cr_entval"', d.entrada.valor)}</div></div>
+    ${showTroca?`<div class="field"><label>Carro recebido na troca</label><input id="cr_troca" value="${esc(d.entrada.trocaDesc||'')}" placeholder="ex.: Honda Fit 2013"></div>`:''}
+    <div class="field"><label>Pagamento do restante</label>
+      <select id="cr_forma" data-act="cr-forma">${Object.keys(CAR_FIN).map(k=>`<option value="${k}" ${forma===k?'selected':''}>${CAR_FIN[k]}</option>`).join('')}</select></div>
+    ${showParc?`<div class="frow c3">
+      <div class="field"><label>Definir por</label><select id="cr_modo" data-act="cr-modo"><option value="parcelas" ${d.fin.modo==='parcelas'?'selected':''}>Nº de parcelas</option><option value="valor" ${d.fin.modo==='valor'?'selected':''}>Valor da parcela</option></select></div>
+      ${d.fin.modo==='valor'?`<div class="field"><label>Valor da parcela</label>${moneyField('id="cr_vparc"', d.fin.valorParcela)}</div>`:`<div class="field"><label>Nº de parcelas</label><input id="cr_nparc" type="number" min="1" max="60" value="${d.fin.nParcelas||1}"></div>`}
+      <div class="field"><label>Dia do vencimento</label><input id="cr_dia" type="number" min="1" max="28" value="${d.fin.diaVenc||5}"></div>
+    </div>`:''}
+    <div class="field"><label>Status</label><select id="cr_status">${stOpts}</select></div>
+    <div class="tot-box" id="carTot">${carTotBox(d)}</div>
+  </div>
+  <div class="modal-f"><button class="btn ghost" data-modal-back>Cancelar</button><button class="btn primary" data-act="save-carro">${d.id?'Salvar alterações':'Criar negócio'}</button></div>`;
+}
+function carTotBox(d){
+  const fc=carFin(d);
+  let h=`<div class="l"><span class="muted">Preço de venda</span><span class="mono">${yen(fc.venda)}</span></div>`;
+  if(fc.ent>0) h+=`<div class="l"><span class="muted">Entrada (${CAR_ENTRADA[d.entrada.tipo]||''})</span><span class="mono">- ${yen(fc.ent)}</span></div>`;
+  h+=`<div class="l"><span class="muted">Restante a pagar</span><span class="mono">${yen(fc.restante)}</span></div>`;
+  if(d.fin.forma==='parcelado') h+=`<div class="l"><span class="muted">Parcelamento</span><span class="mono">${fc.n}× de ${yen(fc.vp)}</span></div>`;
+  h+=`<div class="l big"><span>Lucro estimado</span><span class="mono" style="color:var(--green)">${yen(fc.lucro)}</span></div>`;
+  h+=`<div class="l"><span class="muted" style="font-size:11.5px">venda − aquisição (${yen(d.precoAquisicao||0)}) − custos (${yen(d.custosExtras||0)})</span><span></span></div>`;
+  return h;
+}
+function refreshCarForm(){ const bk=$('.modal'); if(bk) bk.innerHTML=carFormHTML(); }
+function carRecalc(){ if($('#carTot')) $('#carTot').innerHTML=carTotBox(carDraft); }
+function syncCarInputs(){
+  const d=carDraft; if(!d) return;
+  const g=id=>$(id)?$(id).value:undefined;
+  if($('#cr_desc')) d.carro.desc=$('#cr_desc').value;
+  if($('#cr_ano')) d.carro.ano=$('#cr_ano').value; if($('#cr_km')) d.carro.km=$('#cr_km').value; if($('#cr_placa')) d.carro.placa=$('#cr_placa').value;
+  if($('#cr_aquis')) d.precoAquisicao=+$('#cr_aquis').value||0; if($('#cr_custos')) d.custosExtras=+$('#cr_custos').value||0;
+  if($('#cr_venda')) d.precoVenda=+$('#cr_venda').value||0;
+  if($('#cr_cli')) d.clienteId=$('#cr_cli').value;
+  if($('#cr_enttipo')) d.entrada.tipo=$('#cr_enttipo').value;
+  if($('#cr_entval')) d.entrada.valor=+$('#cr_entval').value||0;
+  if($('#cr_troca')) d.entrada.trocaDesc=$('#cr_troca').value;
+  if($('#cr_forma')) d.fin.forma=$('#cr_forma').value;
+  if($('#cr_modo')) d.fin.modo=$('#cr_modo').value;
+  if($('#cr_nparc')) d.fin.nParcelas=Math.max(1,+$('#cr_nparc').value||1);
+  if($('#cr_vparc')) d.fin.valorParcela=+$('#cr_vparc').value||0;
+  if($('#cr_dia')) d.fin.diaVenc=+$('#cr_dia').value||5;
+  if($('#cr_status')) d.status=$('#cr_status').value;
+}
+
+/* ---- carro: detalhe do negócio ---- */
+function modalCarDetalhe(carId){
+  const o=carro(carId); if(!o) return;
+  const c=cliente(o.clienteId), cc=carCalc(o);
+  const stepOpts=Object.keys(CAR_STATUS).map(k=>`<option value="${k}" ${o.status===k?'selected':''}>${CAR_STATUS[k].label}</option>`).join('');
+  const ent=o.entrada||{tipo:'nenhuma',valor:0};
+  const pgBox = cc.vendido ? (()=> {
+    if((o.fin?.forma)==='parcelado'){
+      return `<div class="card pad" style="margin:8px 0"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="font-size:11px;color:var(--muted-2);font-weight:700;text-transform:uppercase">Parcelas</div>
+        <b>${cc.parcelasPagas}/${cc.nParc}</b> pagas · ${yen(cc.valorParcela)} cada
+        <div class="spacer" style="flex:1"></div>
+        <button class="btn sm" data-act="car-parc-menos" data-id="${o.id}" ${cc.parcelasPagas<=0?'disabled':''}>− Estornar</button>
+        <button class="btn sm solid-green" data-act="car-parc-mais" data-id="${o.id}" ${cc.parcelasPagas>=cc.nParc?'disabled':''}>+ Registrar parcela</button></div></div>`;
+    }
+    const pago=cc.aReceber<=0;
+    return `<div class="card pad" style="margin:8px 0"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="font-size:11px;color:var(--muted-2);font-weight:700;text-transform:uppercase">${CAR_FIN[o.fin?.forma]||'À vista'}</div>
+      ${pago?'<span class="paytag ok">● Quitado</span>':`<span class="paytag due">● falta ${yen(cc.aReceber)}</span>`}
+      <div class="spacer" style="flex:1"></div>
+      <button class="btn sm ${pago?'':'solid-green'}" data-act="car-pago" data-id="${o.id}">${pago?'↺ Estornar':'✓ Registrar pagamento'}</button></div></div>`;
+  })() : '';
+  const entLinha = ent.tipo==='dinheiro' ? `<div class="det-grid" style="margin:0"><div><div class="k">Entrada em dinheiro</div><div class="v mono">${yen(ent.valor)} ${o.entradaPaga?'<span class="paytag ok">recebida</span>':`<button class="btn sm" data-act="car-entrada" data-id="${o.id}" style="margin-left:6px">Registrar entrada</button>`}</div></div></div>`
+    : ent.tipo==='carro' ? `<div class="det-grid" style="margin:0"><div><div class="k">Carro na troca</div><div class="v">${esc(ent.trocaDesc||'—')} · <span class="mono">${yen(ent.valor)}</span></div></div></div>` : '';
+  openModal(`<div class="modal-h"><h3>Negócio #${String(o.numero).padStart(4,'0')}</h3>${carStatusChip(o.status)}<div class="spacer" style="flex:1"></div><button class="btn sm ghost" data-act="edit-carro" data-id="${o.id}">✎ Editar</button><button class="x" data-modal-back>×</button></div>
+  <div class="modal-b">
+    <div class="det-head"><div><div style="font-size:11px;color:var(--muted-2)">Carro</div><div style="font-size:15px;font-weight:700">${esc(o.carro?.desc||'—')}</div><div class="muted" style="font-size:12px">${o.carro?.ano||''} · ${o.carro?.km?Number(o.carro.km).toLocaleString('en-US')+' km':''} · ${esc(o.carro?.placa||'')}</div></div>
+      <div class="spacer" style="flex:1"></div>
+      <div style="text-align:right"><div style="font-size:11px;color:var(--muted-2)">Lucro</div><div style="font-size:20px;font-weight:750" class="mono" style="color:var(--green)">${yen(cc.lucro)}</div></div></div>
+    <div class="det-grid">
+      <div><div class="k">Cliente</div><div class="v">${esc(c?.nome||'—')}</div></div>
+      <div><div class="k">Preço de venda</div><div class="v mono">${yen(o.precoVenda)}</div></div>
+      <div><div class="k">Aquisição (leilão)</div><div class="v mono">${yen(o.precoAquisicao)}</div></div>
+      <div><div class="k">Custos extras</div><div class="v mono">${yen(o.custosExtras)}</div></div>
+    </div>
+    ${entLinha}
+    <div class="det-grid">
+      <div><div class="k">Restante a pagar</div><div class="v mono">${yen(cc.restante)}</div></div>
+      <div><div class="k">Recebido (caixa)</div><div class="v mono" style="color:var(--green)">${yen(cc.recebido)}</div></div>
+      <div><div class="k">A receber</div><div class="v mono" style="color:var(--warn)">${yen(cc.aReceber)}</div></div>
+      <div><div class="k">Pagamento</div><div class="v">${CAR_FIN[o.fin?.forma]||'À vista'}${(o.fin?.forma)==='parcelado'?` · ${cc.nParc}× de ${yen(cc.valorParcela)}`:''}</div></div>
+    </div>
+    ${cc.trocaAtivo>0?`<div class="alert info" style="margin:8px 0">Recebeu na troca: <b>${esc(ent.trocaDesc)}</b> avaliado em ${yen(cc.trocaAtivo)} (entra no seu estoque para revenda)</div>`:''}
+    ${pgBox}
+    <div class="frow c2" style="margin-top:6px">
+      <div class="field"><label>Mudar status</label><select data-act="car-status" data-id="${o.id}">${stepOpts}</select></div>
+      <div class="field"><label>Ações</label><div style="display:flex;gap:8px"><button class="btn sm" data-act="edit-carro" data-id="${o.id}">Editar</button><button class="btn sm" data-act="print-os">Imprimir</button></div></div>
+    </div>
+    <div class="section-h" style="margin:14px 2px 6px"><h2 style="font-size:13px">Histórico</h2></div>
+    <div class="timeline">${[...(o.hist||[])].reverse().map(h=>`<div class="tl"><span class="tdot"></span><div>${esc(h.txt)}<div class="tt">${fmtDateTime(h.t)}</div></div></div>`).join('')}</div>
+  </div>
+  <div class="modal-f"><button class="btn danger" data-act="del-carro" data-id="${o.id}">Excluir negócio</button><div class="spacer" style="flex:1"></div><button class="btn primary" data-modal-back>Fechar</button></div>`,true);
+}
 
 /* =========================================================================
    EVENTOS
@@ -1143,6 +1460,7 @@ document.addEventListener('click',e=>{
   const osRow=e.target.closest('[data-os]'); if(osRow && !t){ modalDetalhe(osRow.dataset.os); return; }
   const cliRow=e.target.closest('[data-cli]'); if(cliRow && !t && !e.target.closest('.modal')){ modalCliDetalhe(cliRow.dataset.cli); return; }
   const pcRow=e.target.closest('[data-peca]'); if(pcRow && !t){ modalPeca(pcRow.dataset.peca); return; }
+  const carRow=e.target.closest('[data-car]'); if(carRow && !t){ modalCarDetalhe(carRow.dataset.car); return; }
 
   if(!t) return;
   const act=t.dataset.act, id=t.dataset.id;
@@ -1154,7 +1472,7 @@ document.addEventListener('click',e=>{
     case 'nova-os': modalOS(); break;
     case 'novo-cliente': modalCliente(); break;
     case 'nova-peca': modalPeca(); break;
-    case 'save-cliente': saveCliente(); break;
+    case 'save-cliente': saveCliente(id); break;
     case 'save-peca': savePeca(id); break;
     case 'del-peca': confirmAsk({title:'Excluir peça',kind:'danger',okLabel:'Excluir',msg:'Tem certeza que deseja excluir esta peça do estoque?',onOk:()=>{ DB.pecas=DB.pecas.filter(p=>p.id!==id); save(); closeModal(); render(); toast('Peça excluída'); }}); break;
     case 'save-os': saveOS(); break;
@@ -1181,9 +1499,40 @@ document.addEventListener('click',e=>{
     case 'del-cliente': confirmAsk({title:'Excluir cliente',kind:'danger',okLabel:'Excluir',msg:'Excluir este cliente e seus veículos? As OS dele permanecem no histórico.',onOk:()=>{ DB.clientes=DB.clientes.filter(c=>c.id!==id); DB.veiculos=DB.veiculos.filter(v=>v.clienteId!==id); save(); closeModal(); render(); toast('Cliente excluído'); }}); break;
     case 'nova-os-cli': closeModal(); modalOS(); osDraft.clienteId=t.dataset.cli; refreshOSForm(); break;
     case 'novo-veiculo': syncDraftInputs&&syncDraftInputs(); modalVeiculo(t.dataset.cli||osDraft?.clienteId||'', osDraft?'reopen-os':'close'); break;
-    case 'save-veiculo': saveVeiculo(t.dataset.cli, t.dataset.back); break;
+    case 'save-veiculo': saveVeiculo(t.dataset.cli, t.dataset.back, id); break;
     case 'close': closeModal(); if(osFormBack){ openModal(osFormHTML(),true); osFormBack=false; } break;
     case 'reopen-os': closeModal(); openModal(osFormHTML(),true); break;
+    /* ---- editar cliente / veículo ---- */
+    case 'edit-cliente': closeModal(); modalCliente(id); break;
+    case 'edit-veiculo': { const v=veiculo(id); if(v){ closeModal(); modalVeiculo(v.clienteId,'',id); } break; }
+    case 'del-veiculo': confirmAsk({title:'Excluir veículo',kind:'danger',okLabel:'Excluir',msg:'Tem certeza que deseja excluir este veículo do cliente?',onOk:()=>{ const v=veiculo(id); const cid=v?v.clienteId:null; DB.veiculos=DB.veiculos.filter(x=>x.id!==id); save(); closeModal(); if(cid) modalCliDetalhe(cid); else render(); toast('Veículo excluído'); }}); break;
+    /* ---- configurações: categorias e serviços ---- */
+    case 'nova-categoria': modalCategoria(); break;
+    case 'edit-categoria': modalCategoria(id); break;
+    case 'save-categoria': saveCategoria(id); break;
+    case 'del-categoria': { const cat=categoria(id); const n=servicosDe(id).length;
+      confirmAsk({title:'Excluir categoria',kind:'danger',okLabel:'Excluir',msg:`Excluir a categoria <b>${esc(cat?.nome||'')}</b>?${n?` Isso também remove <b>${n} serviço(s)</b> dela.`:''}`,onOk:()=>{ DB.categorias=DB.categorias.filter(c=>c.id!==id); DB.servicos=DB.servicos.filter(s=>s.categoriaId!==id); save(); closeModal(); render(); toast('Categoria excluída'); }}); break; }
+    case 'novo-servico': modalServico(null, t.dataset.cat); break;
+    case 'edit-servico': modalServico(id); break;
+    case 'save-servico': saveServico(id); break;
+    case 'del-servico': { const s=DB.servicos.find(x=>x.id===id);
+      confirmAsk({title:'Excluir serviço',kind:'danger',okLabel:'Excluir',msg:`Excluir o serviço <b>${esc(s?.nome||'')}</b> do catálogo?`,onOk:()=>{ DB.servicos=DB.servicos.filter(x=>x.id!==id); save(); closeModal(); render(); toast('Serviço excluído'); }}); break; }
+    /* ---- compra & venda de carros ---- */
+    case 'novo-carro': modalCarro(); break;
+    case 'save-carro': saveCarro(); break;
+    case 'edit-carro': closeModal(); modalCarro(id); break;
+    case 'del-carro': { const o=carro(id);
+      confirmAsk({title:'Excluir negócio',kind:'danger',okLabel:'Excluir',msg:`Tem certeza que deseja excluir o negócio do carro <b>${esc(o?.carro?.desc||'')}</b>? Isso remove o valor dele dos relatórios.`,onOk:()=>{ DB.carros=DB.carros.filter(x=>x.id!==id); save(); closeModal(); render(); toast('Negócio excluído'); }}); break; }
+    case 'car-pago': { const o=carro(id); if(!o) break; const cc=carCalc(o), pago=cc.aReceber<=0;
+      if(!pago){ confirmAsk({title:'Registrar pagamento',kind:'money',okLabel:'Confirmar',msg:'Confirmar o recebimento do restante deste negócio? Registrado com a data de <b>hoje</b>.',impact:`${icon('M20 6 9 17l-5-5')}<span>Soma <b>${yen(cc.aReceber)}</b> ao recebido</span>`,onOk:()=>{ o.pago=true; o.pagoEm=nowISO(); o.hist=o.hist||[]; o.hist.push({t:nowISO(),txt:'Pagamento recebido ('+yen(cc.restante)+')'}); save(); render(); modalCarDetalhe(o.id); toast('Pagamento registrado'); }}); }
+      else { confirmAsk({title:'Estornar pagamento',kind:'danger',okLabel:'Estornar',msg:'Tem certeza que deseja <b>estornar</b> o pagamento deste negócio?',onOk:()=>{ o.pago=false; o.pagoEm=null; o.hist=o.hist||[]; o.hist.push({t:nowISO(),txt:'Pagamento estornado'}); save(); render(); modalCarDetalhe(o.id); toast('Pagamento estornado'); }}); }
+      break; }
+    case 'car-parc-mais': { const o=carro(id); if(!o) break; const cc=carCalc(o);
+      confirmAsk({title:'Registrar parcela',kind:'money',okLabel:'Confirmar',msg:`Registrar o recebimento da parcela <b>${cc.parcelasPagas+1}/${cc.nParc}</b>?`,impact:`${icon('M20 6 9 17l-5-5')}<span>Soma <b>${yen(cc.valorParcela)}</b> ao recebido</span>`,onOk:()=>{ o.parcelasPagas=Math.min(cc.nParc,(+o.parcelasPagas||0)+1); o.hist=o.hist||[]; o.hist.push({t:nowISO(),txt:'Parcela '+o.parcelasPagas+'/'+cc.nParc+' recebida ('+yen(cc.valorParcela)+')'}); save(); render(); modalCarDetalhe(o.id); toast('Parcela registrada'); }}); break; }
+    case 'car-parc-menos': { const o=carro(id); if(!o) break; const cc=carCalc(o);
+      confirmAsk({title:'Estornar parcela',kind:'danger',okLabel:'Estornar',msg:`Estornar a parcela <b>${cc.parcelasPagas}/${cc.nParc}</b>?`,onOk:()=>{ o.parcelasPagas=Math.max(0,(+o.parcelasPagas||0)-1); o.hist=o.hist||[]; o.hist.push({t:nowISO(),txt:'Parcela estornada'}); save(); render(); modalCarDetalhe(o.id); toast('Parcela estornada'); }}); break; }
+    case 'car-entrada': { const o=carro(id); if(!o) break; const ent=o.entrada||{};
+      confirmAsk({title:'Registrar entrada',kind:'money',okLabel:'Confirmar',msg:'Confirmar o recebimento da entrada em dinheiro?',impact:`${icon('M20 6 9 17l-5-5')}<span>Soma <b>${yen(+ent.valor||0)}</b> ao recebido</span>`,onOk:()=>{ o.entradaPaga=true; o.hist=o.hist||[]; o.hist.push({t:nowISO(),txt:'Entrada recebida ('+yen(+ent.valor||0)+')'}); save(); render(); modalCarDetalhe(o.id); toast('Entrada registrada'); }}); break; }
   }
 });
 // filtros / views / períodos / status (delegação de change + click)
@@ -1192,6 +1541,7 @@ document.addEventListener('click',e=>{
   const vw=e.target.closest('[data-view]'); if(vw){ uiState.ordView=vw.dataset.view; render(); }
   const pr=e.target.closest('[data-period]'); if(pr){ uiState.finPeriod=pr.dataset.period; render(); }
   const rp=e.target.closest('[data-relperiod]'); if(rp){ uiState.relPeriod=rp.dataset.relperiod; render(); }
+  const cf=e.target.closest('[data-carfilter]'); if(cf){ uiState.carFilter=cf.dataset.carfilter; render(); }
 });
 document.addEventListener('change',e=>{
   const ss=e.target.closest('[data-act="set-status"]'); if(ss){ const o=DB.ordens.find(x=>x.id===ss.dataset.id), novo=e.target.value;
@@ -1200,9 +1550,23 @@ document.addEventListener('change',e=>{
       onOk:()=>{ setStatus(o,novo); render(); modalDetalhe(o.id); toast('Status atualizado'); },
       onCancel:()=>modalDetalhe(o.id) }); }  // cancelar reabre o detalhe e reseta o seletor
     return; }
+  // mudar status de um negócio de carro (no detalhe)
+  const cs=e.target.closest('[data-act="car-status"]'); if(cs){ const o=carro(cs.dataset.id), novo=e.target.value;
+    if(o){ confirmAsk({ title:'Mudar status', okLabel:'Confirmar',
+      msg:`Mudar o status deste negócio para <b>${CAR_STATUS[novo].label}</b>?`,
+      onOk:()=>{ o.status=novo; if((novo==='vendido'||novo==='entregue')&&!o.vendidoEm) o.vendidoEm=nowISO(); o.hist=o.hist||[]; o.hist.push({t:nowISO(),txt:'Status → '+CAR_STATUS[novo].label}); save(); render(); modalCarDetalhe(o.id); toast('Status atualizado'); },
+      onCancel:()=>modalCarDetalhe(o.id) }); }
+    return; }
+  // selects do formulário de carro
+  if(e.target.id==='cr_cli'){ syncCarInputs(); carDraft.clienteId=e.target.value; carRecalc(); return; }
+  if(e.target.id==='cr_enttipo'){ syncCarInputs(); carDraft.entrada.tipo=e.target.value; if(e.target.value==='nenhuma') carDraft.entrada.valor=0; refreshCarForm(); return; }
+  if(e.target.id==='cr_forma'){ syncCarInputs(); carDraft.fin.forma=e.target.value; refreshCarForm(); return; }
+  if(e.target.id==='cr_modo'){ syncCarInputs(); carDraft.fin.modo=e.target.value; refreshCarForm(); return; }
+  if(e.target.id==='cr_status'){ carDraft.status=e.target.value; return; }
   if(e.target.id==='os_cli'){ syncDraftInputs(); osDraft.clienteId=e.target.value; osDraft.veiculoId=''; refreshOSForm(); return; }
   if(e.target.id==='os_veh'){ osDraft.veiculoId=e.target.value; const v=veiculo(e.target.value); if(v&&$('#os_km')&&!$('#os_km').value) $('#os_km').value=v.km||''; return; }
   if(e.target.id==='pecaPick'){ const p=peca(e.target.value); if(p){ syncDraftInputs(); osDraft.itens.push({id:uid(),tipo:'peca',pecaId:p.id,desc:p.nome,qtd:1,preco:p.preco,custo:p.custo}); refreshOSForm(); } return; }
+  if(e.target.id==='servPick'){ const s=DB.servicos.find(x=>x.id===e.target.value); if(s){ syncDraftInputs(); osDraft.itens.push({id:uid(),tipo:'mao',desc:s.nome,qtd:1,preco:+s.preco||0,custo:0}); refreshOSForm(); } return; }
   if(e.target.id==='pg_forma'){ syncDraftInputs(); osDraft.pagamento.forma=e.target.value; refreshOSForm(); return; }  // mostra/esconde bloco do cartão
   if(e.target.id==='pg_pago'){ osDraft.pagamento.pago=e.target.value==='1'; return; }
   if(e.target.id==='pg_rep'){ osDraft.pagamento.repassar=e.target.value==='1'; recalcOS(); return; }
@@ -1215,6 +1579,8 @@ document.addEventListener('input',e=>{
   if(e.target.id==='os_desc'){ osDraft.desconto=Math.max(0,+e.target.value||0); recalcOS(); }
   if(e.target.id==='pg_parc'){ osDraft.pagamento.parcelas=Math.max(1,Math.min(24,+e.target.value||1)); recalcOS(); }
   if(e.target.id==='pg_taxa'){ osDraft.pagamento.taxaPct=Math.max(0,+e.target.value||0); recalcOS(); }
+  // formulário de carro: atualiza a caixa de totais ao vivo
+  if(carDraft && $('#carTot') && /^cr_/.test(e.target.id||'')){ syncCarInputs(); carRecalc(); }
 });
 function syncDraftInputs(){ // captura o que está digitado antes de re-render do form
   if(!osDraft) return;
@@ -1235,8 +1601,10 @@ function syncDraftInputs(){ // captura o que está digitado antes de re-render d
 }
 
 /* ---- saves ---- */
-function saveCliente(){ const nome=$('#cl_nome').value.trim(); if(!nome){ toast('Informe o nome'); return; }
-  const c=addCliente({nome,telefone:$('#cl_tel').value.trim(),email:$('#cl_email').value.trim(),obs:$('#cl_obs').value.trim()});
+function saveCliente(id){ const nome=$('#cl_nome').value.trim(); if(!nome){ toast('Informe o nome'); return; }
+  const data={nome,telefone:$('#cl_tel').value.trim(),email:$('#cl_email').value.trim(),obs:$('#cl_obs').value.trim()};
+  if(id){ const c=cliente(id); if(c) Object.assign(c,data); save(); closeModal(); render(); toast('Cliente atualizado'); return; }
+  const c=addCliente(data);
   save(); closeModal(); toast('Cliente cadastrado');
   if(osDraft){ openModal(osFormHTML(),true); osDraft.clienteId=c.id; refreshOSForm(); } else render();
 }
@@ -1245,8 +1613,10 @@ function savePeca(id){ const nome=$('#pc_nome').value.trim(); if(!nome){ toast('
   if(id){ Object.assign(peca(id),data); } else addPeca(data);
   save(); closeModal(); render(); toast('Peça salva');
 }
-function saveVeiculo(cid,back){ const placa=$('#vh_placa').value.trim(); if(!placa){ toast('Informe a placa'); return; }
-  const v=addVeiculo({clienteId:cid,placa,marca:$('#vh_marca').value.trim(),modelo:$('#vh_modelo').value.trim(),ano:+$('#vh_ano').value||'',combustivel:$('#vh_comb').value,km:+$('#vh_km').value||0});
+function saveVeiculo(cid,back,id){ const placa=$('#vh_placa').value.trim(); if(!placa){ toast('Informe a placa'); return; }
+  const data={placa,marca:$('#vh_marca').value.trim(),modelo:$('#vh_modelo').value.trim(),ano:+$('#vh_ano').value||'',combustivel:$('#vh_comb').value,km:+$('#vh_km').value||0};
+  if(id){ const v=veiculo(id); if(v) Object.assign(v,data); save(); closeModal(); modalCliDetalhe(cid||(v?v.clienteId:'')); toast('Veículo atualizado'); return; }
+  const v=addVeiculo({clienteId:cid,...data});
   save(); closeModal(); toast('Veículo cadastrado');
   if(back==='reopen-os'&&osDraft){ osDraft.veiculoId=v.id; openModal(osFormHTML(),true); refreshOSForm(); }
   else render();
@@ -1264,6 +1634,35 @@ function saveOS(){ syncDraftInputs(); const d=osDraft;
     DB.ordens.push(o); toast(d.tipo==='orcamento'?'Orçamento criado':'OS criada');
   }
   osDraft=null; save(); closeModal(); render();
+}
+function saveCategoria(id){ const nome=$('#cat_nome').value.trim(); if(!nome){ toast('Informe o nome'); return; }
+  if(id){ const c=categoria(id); if(c) c.nome=nome; toast('Categoria atualizada'); } else { addCategoria(nome); toast('Categoria criada'); }
+  save(); closeModal(); render();
+}
+function saveServico(id){ const nome=$('#sv_nome').value.trim(); if(!nome){ toast('Informe o nome'); return; }
+  const catId=$('#sv_cat').value, preco=+$('#sv_preco').value||0;
+  if(!catId){ toast('Selecione a categoria'); return; }
+  if(id){ const s=DB.servicos.find(x=>x.id===id); if(s){ s.nome=nome; s.categoriaId=catId; s.preco=preco; } toast('Serviço atualizado'); }
+  else { addServico(catId,nome,preco); toast('Serviço criado'); }
+  save(); closeModal(); render();
+}
+function saveCarro(){ syncCarInputs(); const d=carDraft;
+  if(!d.carro.desc.trim()){ toast('Descreva o carro'); return; }
+  const fc=carFin(d);
+  // consolida o parcelamento calculado
+  if(d.fin.forma==='parcelado'){ d.fin.nParcelas=fc.n; d.fin.valorParcela=fc.vp; }
+  if(d.id){ const o=carro(d.id); const wasVend=(o.status==='vendido'||o.status==='entregue');
+    Object.assign(o,{clienteId:d.clienteId||null,carro:d.carro,precoAquisicao:+d.precoAquisicao||0,custosExtras:+d.custosExtras||0,precoVenda:+d.precoVenda||0,entrada:d.entrada,fin:d.fin,status:d.status});
+    if((d.status==='vendido'||d.status==='entregue')&&!o.vendidoEm) o.vendidoEm=nowISO();
+    o.hist=o.hist||[]; o.hist.push({t:nowISO(),txt:'Negócio editado'}); toast('Negócio atualizado');
+  } else {
+    const vend=(d.status==='vendido'||d.status==='entregue');
+    const o={id:uid(),numero:DB.carSeq++,clienteId:d.clienteId||null,carro:d.carro,precoAquisicao:+d.precoAquisicao||0,custosExtras:+d.custosExtras||0,
+      precoVenda:+d.precoVenda||0,entrada:d.entrada,fin:d.fin,parcelasPagas:0,entradaPaga:false,pago:false,status:d.status,
+      criadoEm:nowISO(),vendidoEm:vend?nowISO():null,hist:[{t:nowISO(),txt:d.status==='estoque'?'Carro comprado no leilão':'Negócio criado'}]};
+    DB.carros.push(o); toast('Negócio criado');
+  }
+  carDraft=null; save(); closeModal(); render();
 }
 
 /* =========================================================================
