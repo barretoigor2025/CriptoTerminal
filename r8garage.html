@@ -210,6 +210,9 @@ table.tbl tbody tr:hover,table.tbl tr.click:hover{background:var(--surface-2);cu
 .tot-box .l span:last-child{white-space:nowrap}
 .tot-box .l.big{font-size:18px;font-weight:750}
 .paychip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--surface-2);border:1px solid var(--hair);color:var(--muted)}
+.paytag{font-size:11px;font-weight:700;white-space:nowrap}
+.paytag.ok{color:var(--st-entregue)}
+.paytag.due{color:var(--st-em_servico)}
 /* campo de dinheiro com prefixo ¥ */
 .moneywrap{position:relative;display:block}
 .moneywrap::before{content:'¥';position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted-2);font-size:13px;pointer-events:none;font-weight:600}
@@ -612,22 +615,27 @@ function render(){
 function viewPainel(){
   const ord=DB.ordens;
   const abertas=ord.filter(o=>['aguardando','em_servico','pronto'].includes(o.status));
+  const abertasTot=abertas.reduce((s,o)=>s+total(o),0);
   const entregMes=ord.filter(o=>o.status==='entregue'&&inPeriod(o.entregueEm,'mes'));
   const fatMes=entregMes.reduce((s,o)=>s+total(o),0);
-  const ticket=entregMes.length?fatMes/entregMes.length:0;
+  const recebMes=entregMes.filter(o=>pagOf(o).pago).reduce((s,o)=>s+total(o),0);
+  const pendentes=ord.filter(o=>o.status==='entregue'&&!pagOf(o).pago);
+  const pendTot=pendentes.reduce((s,o)=>s+total(o),0);
+  const aReceber=pendTot+abertasTot;                 // já entregue e não pago + serviços em aberto
   const orc=ord.filter(o=>o.status==='orcamento');
   const baixo=DB.pecas.filter(p=>disponivel(p)<=p.min);
   const recent=[...ord].sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm)).slice(0,6);
-  const kpi=(lbl,val,ic,delta)=>`<div class="card kpi"><span class="lbl">${lbl}</span><span class="val tnum">${val}</span>${delta?`<span class="delta">${delta}</span>`:''}<span class="ic">${icon(ic)}</span></div>`;
+  const kpi=(lbl,val,ic,delta,cls)=>`<div class="card kpi"><span class="lbl">${lbl}</span><span class="val tnum" ${cls?`style="color:${cls}"`:''}>${val}</span>${delta?`<span class="delta">${delta}</span>`:''}<span class="ic">${icon(ic)}</span></div>`;
   let alerts='';
+  if(pendentes.length) alerts+=`<div class="alert warn" data-nav="financeiro" style="cursor:pointer">${icon('M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6')}${pendentes.length} OS entregue(s) aguardando pagamento — ${yen(pendTot)} a receber</div>`;
   if(orc.length) alerts+=`<div class="alert info" data-nav="ordens" style="cursor:pointer">${icon('M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zM12 8v4M12 16h.01')}${orc.length} orçamento(s) aguardando aprovação do cliente</div>`;
   if(baixo.length) alerts+=`<div class="alert warn" data-nav="estoque" style="cursor:pointer">${icon('M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01')}Estoque baixo: ${baixo.map(p=>esc(p.nome)).join(', ')}</div>`;
   return `
   <div class="grid kpis">
-    ${kpi('Faturamento (mês)',yen(fatMes),'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6')}
-    ${kpi('OS em aberto',abertas.length,'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2')}
-    ${kpi('Entregues (mês)',entregMes.length,'M20 6 9 17l-5-5')}
-    ${kpi('Ticket médio',yen(ticket),'M3 3v18h18M7 14l3-3 3 3 5-6')}
+    ${kpi('Recebido (mês)',yen(recebMes),'M20 6 9 17l-5-5','já pago pelos clientes','var(--green)')}
+    ${kpi('A receber',yen(aReceber),'M12 8v4l3 3M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z','pendente + em aberto','var(--st-em_servico)')}
+    ${kpi('Faturamento (mês)',yen(fatMes),'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6',entregMes.length+' entregues')}
+    ${kpi('OS em aberto',abertas.length,'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2',yen(abertasTot))}
   </div>
   ${alerts?`<div class="grid" style="margin-top:14px">${alerts}</div>`:''}
   <div class="section-h"><h2>Ordens recentes</h2><div class="spacer"></div><button class="btn sm ghost" data-nav="ordens">Ver todas</button></div>
@@ -639,15 +647,19 @@ function viewPainel(){
 function statusChip(st){ return `<span class="chip st-${st}"><span class="dot" style="background:${STATUS[st].color}"></span>${STATUS[st].label}</span>`; }
 function osTable(list){
   return `<div class="card table-wrap"><table class="tbl"><thead><tr>
-    <th>OS</th><th>Cliente</th><th class="hide-sm">Veículo</th><th>Status</th><th class="right">Total</th><th class="right hide-sm">Entrada</th>
+    <th>OS</th><th>Cliente</th><th class="hide-sm">Veículo</th><th>Status</th><th class="right">Total</th><th class="hide-sm">Pgto</th><th class="right hide-sm">Entrada</th>
   </tr></thead><tbody>
-  ${list.map(o=>{ const c=cliente(o.clienteId), v=veiculo(o.veiculoId);
+  ${list.map(o=>{ const c=cliente(o.clienteId), v=veiculo(o.veiculoId), pg=pagOf(o);
+    const pgTag = o.status==='entregue'
+      ? (pg.pago ? '<span class="paytag ok">● Pago</span>' : '<span class="paytag due">● A receber</span>')
+      : '<span class="muted" style="font-size:11px">—</span>';
     return `<tr class="click" data-os="${o.id}">
       <td class="mono">#${String(o.numero).padStart(4,'0')}</td>
       <td><b>${esc(c?.nome||'—')}</b></td>
       <td class="hide-sm"><span class="pill-veh">${esc(v?(v.marca+' '+v.modelo):'—')}</span></td>
       <td>${statusChip(o.status)}</td>
       <td class="right mono"><b>${yen(total(o))}</b></td>
+      <td class="hide-sm">${pgTag}</td>
       <td class="right mono muted hide-sm">${fmtDate(o.criadoEm)}</td>
     </tr>`; }).join('')}
   </tbody></table></div>`;
