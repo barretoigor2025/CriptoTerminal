@@ -703,6 +703,7 @@ const veiculo = id=> DB.veiculos.find(v=>v.id===id);
 const peca = id=> DB.pecas.find(p=>p.id===id);
 const veiculosDe = cid=> DB.veiculos.filter(v=>v.clienteId===cid);
 const ordensDe = cid=> DB.ordens.filter(o=>o.clienteId===cid);
+const carrosDe = cid=> DB.carros.filter(o=>o.clienteId===cid);
 
 /* ---------------- cálculos ---------------- */
 const totalItens = o=> o.itens.reduce((s,i)=>s + (i.qtd*i.preco),0);
@@ -1294,7 +1295,18 @@ function modalDetalhe(osId){
 function modalCliDetalhe(cid){
   const c=cliente(cid); if(!c) return;
   const vs=veiculosDe(cid), os=ordensDe(cid).sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm));
+  const cars=carrosDe(cid).sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm));
   const st=clienteStats(cid);
+  const carsHTML = cars.map(o=>{ const cc=carCalc(o);
+    let pg;
+    if(cc.forma==='parcelado' && (cc.vendido||o.status==='reservado')) pg=`<span class="paytag ${cc.aReceber<=0?'ok':'due'}">📆 ${cc.parcelasPagas}/${cc.nParc} parcelas · ${cc.aReceber<=0?'quitado':'falta '+yen(cc.aReceber)}</span>`;
+    else if(cc.vendido) pg=`<span class="paytag ${cc.aReceber<=0?'ok':'due'}">${cc.aReceber<=0?'● Quitado':'● falta '+yen(cc.aReceber)}</span>`;
+    else pg=`<span class="muted" style="font-size:11px">${CAR_STATUS_EMO[o.status]||''} ${CAR_STATUS[o.status]?.label||''}</span>`;
+    return `<div class="card pad click" data-car="${o.id}" style="margin-bottom:8px;display:flex;gap:12px;align-items:center;cursor:pointer">
+      <div style="flex:1"><b>${esc(o.carro?.desc||'—')}</b> <span class="muted">${o.carro?.ano||''}</span>
+        <div class="hint">${carFinLabel(o.fin?.forma)} · venda ${yen(o.precoVenda)}${cc.acrescimo>0?' (+'+cc.taxaPct+'% taxa)':''}</div></div>
+      <div style="text-align:right">${pg}<div class="hint" style="margin-top:2px">toque p/ ver parcelas ›</div></div></div>`;
+  }).join('');
   openModal(`<div class="modal-h"><h3>${esc(c.nome)}</h3> ${clienteBadge(st.tier)}<div class="spacer" style="flex:1"></div><button class="btn sm ghost" data-act="edit-cliente" data-id="${c.id}">✎ Editar</button><button class="x" data-modal-back>×</button></div>
   <div class="modal-b">
     ${st.tier?`<div class="alert info" style="margin-bottom:12px">${icon('M12 2l2.4 7.4H22l-6 4.3 2.3 7.3L12 16.6 5.7 21l2.3-7.3-6-4.3h7.6z')}<b>${st.tier==='ouro'?'Cliente Ouro':'Cliente Prata'}</b> — ${st.n} serviços, ${yen(st.gasto)} gastos, ${yen(st.lucro)} de lucro à oficina</div>`:''}
@@ -1305,6 +1317,8 @@ function modalCliDetalhe(cid){
     ${c.obs?`<div class="alert info" style="margin-bottom:12px">${esc(c.obs)}</div>`:''}
     <div class="section-h" style="margin:6px 2px 8px"><h2 style="font-size:14px">Veículos</h2><div class="spacer" style="flex:1"></div><button class="btn sm" data-act="novo-veiculo" data-cli="${c.id}">+ Veículo</button></div>
     ${vs.length?vs.map(v=>`<div class="card pad" style="margin-bottom:8px;display:flex;gap:12px;align-items:center"><div style="flex:1"><b>${esc(v.marca+' '+v.modelo)}</b> <span class="muted">${v.ano||''}</span><div class="hint">${esc(v.placa)} · ${esc(v.combustivel||'')} · ${v.km?Number(v.km).toLocaleString('en-US')+' km':''}</div></div><button class="cfg-ic" data-act="edit-veiculo" data-id="${v.id}" title="Editar">✎</button><button class="cfg-ic del" data-act="del-veiculo" data-id="${v.id}" title="Excluir">×</button></div>`).join(''):'<div class="hint" style="margin-bottom:10px">Nenhum veículo cadastrado.</div>'}
+    <div class="section-h" style="margin:14px 2px 8px"><h2 style="font-size:14px">🚗 Carros / Negócios</h2><div class="spacer" style="flex:1"></div><button class="btn sm" data-act="novo-carro-cli" data-cli="${c.id}">+ Negócio</button></div>
+    ${cars.length?carsHTML:'<div class="hint" style="margin-bottom:10px">Nenhuma compra de carro. Use “+ Negócio” para registrar uma venda com parcelas.</div>'}
     <div class="section-h" style="margin:14px 2px 8px"><h2 style="font-size:14px">Histórico de OS</h2></div>
     ${os.length?osTable(os):'<div class="hint">Nenhuma OS ainda.</div>'}
   </div>
@@ -1445,7 +1459,18 @@ function modalCarDetalhe(carId){
   const c=cliente(o.clienteId), cc=carCalc(o);
   const stepOpts=Object.keys(CAR_STATUS).map(k=>`<option value="${k}" ${o.status===k?'selected':''}>${CAR_STATUS[k].label}</option>`).join('');
   const ent=o.entrada||{tipo:'nenhuma',valor:0};
-  const pgBox = cc.vendido ? (()=> {
+  // controle de pagamento aparece quando já há um comprador/venda em andamento (reservado, vendido ou entregue)
+  const emVenda = cc.venda>0 && (cc.vendido || o.status==='reservado');
+  const pgBox = emVenda ? (()=> {
+    // cartão de crédito: quem cobra as parcelas é o banco do cliente — a oficina recebe do cartão
+    if((o.fin?.forma)==='cartao'){
+      return `<div class="card pad" style="margin:8px 0"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="font-size:11px;color:var(--muted-2);font-weight:700;text-transform:uppercase">💳 Cartão</div>
+        <span class="muted" style="font-size:12px">As parcelas do cliente ficam com o banco/cartão. Registre aqui quando o valor cair pra você.</span>
+        <div class="spacer" style="flex:1"></div>
+        ${cc.aReceber<=0?'<span class="paytag ok">● Recebido</span>':`<span class="paytag due">● falta ${yen(cc.aReceber)}</span>`}
+        <button class="btn sm ${cc.aReceber<=0?'':'solid-green'}" data-act="car-pago" data-id="${o.id}">${cc.aReceber<=0?'↺ Estornar':'✓ Registrar recebimento'}</button></div></div>`;
+    }
     if((o.fin?.forma)==='parcelado'){
       let rows='';
       for(let k=1;k<=cc.nParc;k++){
@@ -1501,7 +1526,7 @@ function modalCarDetalhe(carId){
     </div>
     ${cc.trocaAtivo>0?`<div class="alert info" style="margin:8px 0">Recebeu na troca: <b>${esc(ent.trocaDesc)}</b> avaliado em ${yen(cc.trocaAtivo)} (entra no seu estoque para revenda)</div>`:''}
     ${pgBox}
-    ${cc.vendido&&c?`<button class="btn solid-green" data-act="car-whats" data-id="${o.id}" style="width:100%;margin:2px 0 4px;justify-content:center">💬 Enviar status ao cliente por WhatsApp</button>`:''}
+    ${emVenda&&c?`<button class="btn solid-green" data-act="car-whats" data-id="${o.id}" style="width:100%;margin:2px 0 4px;justify-content:center">💬 Enviar status ao cliente por WhatsApp</button>`:''}
     <div class="frow c2" style="margin-top:6px">
       <div class="field"><label>Mudar status</label><select data-act="car-status" data-id="${o.id}">${Object.keys(CAR_STATUS).map(k=>`<option value="${k}" ${o.status===k?'selected':''}>${CAR_STATUS_EMO[k]} ${CAR_STATUS[k].label}</option>`).join('')}</select></div>
       <div class="field"><label>Ações</label><div style="display:flex;gap:8px"><button class="btn sm" data-act="edit-carro" data-id="${o.id}">Editar</button><button class="btn sm" data-act="print-os">Imprimir</button></div></div>
@@ -1585,6 +1610,7 @@ document.addEventListener('click',e=>{
       break; }
     case 'del-cliente': confirmAsk({title:'Excluir cliente',kind:'danger',okLabel:'Excluir',msg:'Excluir este cliente e seus veículos? As OS dele permanecem no histórico.',onOk:()=>{ DB.clientes=DB.clientes.filter(c=>c.id!==id); DB.veiculos=DB.veiculos.filter(v=>v.clienteId!==id); save(); closeModal(); render(); toast('Cliente excluído'); }}); break;
     case 'nova-os-cli': closeModal(); modalOS(); osDraft.clienteId=t.dataset.cli; refreshOSForm(); break;
+    case 'novo-carro-cli': closeModal(); modalCarro(); carDraft.clienteId=t.dataset.cli; carDraft.status='reservado'; refreshCarForm(); break;
     case 'novo-veiculo': syncDraftInputs&&syncDraftInputs(); modalVeiculo(t.dataset.cli||osDraft?.clienteId||'', osDraft?'reopen-os':'close'); break;
     case 'save-veiculo': saveVeiculo(t.dataset.cli, t.dataset.back, id); break;
     case 'close': closeModal(); if(osFormBack){ openModal(osFormHTML(),true); osFormBack=false; } break;
