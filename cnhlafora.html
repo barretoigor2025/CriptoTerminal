@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carta Aberta — conversão de habilitação entre países</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Public+Sans:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#E7ECF2;
+  --paper-2:#F6F8FB;
+  --ink:#0F1724;
+  --ink-soft:#4A576B;
+  --line:#C3CEDB;
+  --eu:#1F3C88;
+  --pink:#C77A92;
+  --gold:#E8B62C;
+  --ok:#146B45;
+  --warn:#9A5C0C;
+  --stop:#95232B;
+  --r:4px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"Public Sans",system-ui,sans-serif;
+  font-size:16px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+/* guilloche de fundo, como o fundo de segurança de uma carta */
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.16;
+  background:
+    repeating-radial-gradient(circle at 18% 12%, transparent 0 9px, var(--eu) 9px 9.6px),
+    repeating-radial-gradient(circle at 84% 78%, transparent 0 11px, var(--pink) 11px 11.7px);
+  mask-image:linear-gradient(180deg,#000 0%,transparent 62%);
+  -webkit-mask-image:linear-gradient(180deg,#000 0%,transparent 62%);
+}
+.wrap{position:relative;z-index:1;max-width:940px;margin:0 auto;padding:0 18px 72px}
+
+/* ---------- cabeçalho ---------- */
+header{border-bottom:2px solid var(--eu);padding:26px 0 16px;margin-bottom:26px}
+.eyebrow{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--eu);margin:0 0 6px
+}
+h1{
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:800;
+  font-size:clamp(30px,7vw,52px);line-height:.98;letter-spacing:-.02em;margin:0 0 10px
+}
+h1 em{font-style:normal;color:var(--eu)}
+.sub{margin:0;max-width:56ch;color:var(--ink-soft);font-size:15px}
+
+/* ---------- seletor ---------- */
+.picker{
+  background:var(--paper-2);border:1px solid var(--line);border-radius:var(--r);
+  padding:18px;margin-bottom:22px;
+  box-shadow:0 1px 0 #fff inset, 0 8px 24px -20px #0F172440;
+}
+.picker-grid{display:grid;grid-template-columns:1fr 46px 1fr;gap:12px;align-items:end}
+label{
+  display:block;font-family:"IBM Plex Mono",monospace;font-size:10.5px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px
+}
+select{
+  width:100%;appearance:none;background:#fff;border:1px solid var(--line);border-radius:var(--r);
+  padding:12px 34px 12px 12px;font:600 16px "Public Sans",sans-serif;color:var(--ink);
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' fill='none' stroke='%234A576B' stroke-width='1.6'/></svg>");
+  background-repeat:no-repeat;background-position:right 12px center;
+}
+select:focus-visible,button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+#swap{
+  height:46px;border:1px solid var(--line);background:#fff;border-radius:var(--r);
+  font-size:17px;cursor:pointer;color:var(--eu)
+}
+#swap:hover{background:var(--eu);color:#fff}
+.cat-row{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+.cat-hint{margin:7px 0 0;font-size:13px;color:var(--ink-soft);line-height:1.45}
+
+/* bloco de equivalência de categoria — o coração do app */
+.equiv{
+  margin:0 0 18px;border:2px solid var(--eu);border-radius:6px;background:#fff;overflow:hidden
+}
+.equiv-h{
+  background:var(--eu);color:#fff;padding:7px 13px;
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase
+}
+.equiv-b{padding:14px 13px}
+.equiv-map{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.chip{
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:23px;line-height:1;
+  border:2px solid var(--ink);border-radius:5px;padding:8px 11px;background:var(--paper-2)
+}
+.chip.out{border-color:var(--eu);color:var(--eu);background:#1F3C880e}
+.chip.none{border-color:var(--stop);color:var(--stop);font-size:15px;font-weight:600;font-family:"Public Sans",sans-serif}
+.arrow{font-size:20px;color:var(--ink-soft)}
+.equiv-desc{margin:11px 0 0;font-size:14px;color:var(--ink-soft);line-height:1.5}
+.equiv-desc b{color:var(--ink)}
+.equiv-warn{
+  margin:12px 0 0;padding:9px 11px;background:#95232B12;border-left:3px solid var(--stop);
+  font-size:13.5px;line-height:1.5
+}
+
+/* ---------- cartão de resultado (elemento assinatura) ---------- */
+.card{
+  position:relative;overflow:hidden;margin-top:26px;
+  background:linear-gradient(160deg,#FDFDFE 0%,#EEF1F6 48%,#F7EDF1 100%);
+  border:1px solid var(--line);border-radius:10px;
+  box-shadow:0 18px 40px -28px #0F172490;
+}
+.card::after{ /* faixa holográfica */
+  content:"";position:absolute;top:-40%;right:-12%;width:52%;height:180%;
+  background:linear-gradient(105deg,transparent,#ffffffb0 42%,#C77A9240 58%,transparent);
+  transform:rotate(12deg);pointer-events:none
+}
+.card-top{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  background:var(--eu);color:#fff;padding:9px 16px;
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.13em;text-transform:uppercase
+}
+.card-top .stars{color:var(--gold);letter-spacing:.05em}
+.card-body{padding:22px 18px 6px;position:relative;z-index:2}
+.route{
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:800;
+  font-size:clamp(22px,5.2vw,34px);line-height:1.05;letter-spacing:-.02em;margin:0 0 4px
+}
+.route span{color:var(--ink-soft);font-weight:600}
+.verdict-line{font-size:15px;color:var(--ink-soft);margin:0 0 18px;max-width:60ch}
+
+/* carimbo */
+.stamp{
+  position:absolute;top:14px;right:14px;z-index:3;
+  border:3px double currentColor;border-radius:6px;padding:6px 11px;
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:13px;
+  letter-spacing:.06em;text-transform:uppercase;text-align:center;line-height:1.05;
+  transform:rotate(-9deg);opacity:.9;max-width:46%
+}
+.stamp small{display:block;font-family:"IBM Plex Mono",monospace;font-weight:400;font-size:9px;letter-spacing:.1em;opacity:.75;margin-top:3px}
+.s-ok{color:var(--ok)} .s-warn{color:var(--warn)} .s-stop{color:var(--stop)}
+@media (prefers-reduced-motion:no-preference){
+  .stamp{animation:thump .38s cubic-bezier(.2,1.4,.4,1) both}
+  @keyframes thump{from{transform:rotate(-9deg) scale(2.1);opacity:0}to{transform:rotate(-9deg) scale(1);opacity:.9}}
+}
+
+/* campos numerados — a numeração é a da própria carta de condução europeia */
+.fields{border-top:1px solid var(--line);margin-top:6px}
+.field{display:grid;grid-template-columns:34px 1fr;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}
+.fnum{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--eu);font-weight:600;padding-top:2px}
+.fkey{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:3px}
+.fval{font-size:15.5px}
+.fval strong{font-weight:600}
+.fval ul{margin:6px 0 0;padding-left:18px}
+.fval li{margin-bottom:5px}
+.tag{
+  display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
+  padding:2px 7px;border-radius:3px;letter-spacing:.05em;text-transform:uppercase;margin-right:6px
+}
+.t-ok{background:#146B4518;color:var(--ok)}
+.t-warn{background:#9A5C0C18;color:var(--warn)}
+.t-stop{background:#95232B18;color:var(--stop)}
+
+/* MRZ */
+.mrz{
+  background:#fff;border-top:1px solid var(--line);padding:10px 16px;
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.08em;
+  color:var(--ink-soft);overflow-x:auto;white-space:nowrap
+}
+.source{padding:0 18px 12px;font-size:13px}
+.source a{color:var(--eu)}
+
+/* selo de verificação — a data em que a regra foi conferida na fonte */
+.verified{
+  margin:0 18px 14px;padding:10px 12px;border-left:3px solid var(--gold);
+  background:#E8B62C14;font-size:12.5px;line-height:1.5;color:var(--ink-soft)
+}
+.verified strong{color:var(--ink)}
+
+/* ações */
+.actions{display:flex;flex-wrap:wrap;gap:8px;padding:0 18px 18px}
+.act{
+  flex:1 1 160px;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  border:1px solid var(--eu);background:#fff;color:var(--eu);border-radius:var(--r);
+  padding:12px 14px;font:600 14px "Public Sans",sans-serif;cursor:pointer;text-decoration:none
+}
+.act:hover{background:var(--eu);color:#fff}
+.act.wa{border-color:var(--ok);color:var(--ok)}
+.act.wa:hover{background:var(--ok);color:#fff}
+.act[data-done="1"]{background:var(--ok);border-color:var(--ok);color:#fff}
+
+/* ---------- matriz ---------- */
+.matrix-wrap{margin-top:34px}
+.toggle{
+  background:none;border:1px solid var(--eu);color:var(--eu);border-radius:var(--r);
+  padding:9px 14px;font:600 13px "Public Sans",sans-serif;cursor:pointer
+}
+.toggle:hover{background:var(--eu);color:#fff}
+.matrix{margin-top:16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;font-family:"IBM Plex Mono",monospace;font-size:11px;background:var(--paper-2)}
+th,td{border:1px solid var(--line);padding:6px 5px;text-align:center;min-width:38px}
+th{background:#fff;font-weight:600;color:var(--eu)}
+th.rowh{text-align:left;position:sticky;left:0;background:#fff;z-index:1;min-width:56px}
+td[data-s]{cursor:pointer}
+td[data-s="direto"]{background:#146B4522;color:var(--ok)}
+td[data-s="parcial"]{background:#9A5C0C22;color:var(--warn)}
+td[data-s="exame"]{background:#95232B1c;color:var(--stop)}
+td.self{background:#0F17240c;color:#94A0B0}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12.5px;color:var(--ink-soft)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-soft)}
+footer p{margin:0 0 8px;max-width:70ch}
+
+@media(max-width:560px){
+  .picker-grid{grid-template-columns:1fr;gap:10px}
+  #swap{width:100%;height:40px}
+  .stamp{position:static;transform:rotate(-2deg);max-width:none;display:inline-block;margin-bottom:14px}
+  @media (prefers-reduced-motion:no-preference){.stamp{animation:none}}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Habilitação · 11 países · regras de troca</p>
+  <h1>Minha carteira<br>vale <em>lá fora?</em></h1>
+  <p class="sub">Escolha onde você tirou a habilitação e para onde vai. O app diz se a troca é direta, se cai prova teórica, prova prática, ou se não existe acordo nenhum.</p>
+</header>
+
+<section class="picker">
+  <div class="picker-grid">
+    <div>
+      <label for="from">Habilitação emitida em</label>
+      <select id="from"></select>
+    </div>
+    <button id="swap" type="button" title="Inverter origem e destino" aria-label="Inverter origem e destino">⇄</button>
+    <div>
+      <label for="to">Quero dirigir em</label>
+      <select id="to"></select>
+    </div>
+  </div>
+  <div class="cat-row">
+    <label for="cat">Categoria que eu tenho</label>
+    <select id="cat"></select>
+    <p class="cat-hint" id="catHint"></p>
+  </div>
+</section>
+
+<div id="result" aria-live="polite"></div>
+
+<section class="matrix-wrap">
+  <button class="toggle" id="toggleMatrix" type="button">Ver matriz completa (11 × 11)</button>
+  <div class="matrix" id="matrix" hidden></div>
+  <div class="legend" id="legend" hidden>
+    <span><i class="dot" style="background:#146B45"></i>Troca direta, sem prova</span>
+    <span><i class="dot" style="background:#9A5C0C"></i>Depende do estado / categoria</span>
+    <span><i class="dot" style="background:#95232B"></i>Prova teórica e/ou prática</span>
+  </div>
+</section>
+
+<footer>
+  <p><strong>Aviso.</strong> Este app é um guia de orientação, não é documento oficial. Regras de troca mudam por decreto, por acordo bilateral e — no Canadá, Austrália e Estados Unidos — por província ou estado. Antes de gastar dinheiro com tradução ou taxa, confirme na autoridade do país de destino (o link está em cada resultado, campo 9).</p>
+  <p><strong>Informação retirada e verificada em 20 de julho de 2026.</strong> Fontes: IMT / gov.pt (Portugal), DGT (Espanha), MIT (Itália), Anlage 11 da FeV (Alemanha), RSA + NDLS (Irlanda), Agência Nacional de Polícia — 外免切替 (Japão), NZTA Waka Kotahi factsheet 72 e formulário DL5 (Nova Zelândia), Resolução CONTRAN 933/2022 e DETRAN (Brasil).</p>
+</footer>
+
+</div>
+
+<script>
+/* =========================================================================
+   DADOS
+   ========================================================================= */
+const C = {
+  PT:{n:"Portugal",       f:"🇵🇹", auth:"IMT — Instituto da Mobilidade e dos Transportes", url:"https://www.imt-ip.pt/condutores/reconhecimento/troca-de-titulo-de-conducao-estrangeiro/"},
+  ES:{n:"Espanha",        f:"🇪🇸", auth:"DGT — Dirección General de Tráfico",              url:"https://sede.dgt.gob.es/es/permisos-de-conducir/canjes-de-permisos/"},
+  IT:{n:"Itália",         f:"🇮🇹", auth:"MIT — Ministero delle Infrastrutture e dei Trasporti", url:"https://www.mit.gov.it/conversione-patente-estera"},
+  DE:{n:"Alemanha",       f:"🇩🇪", auth:"Führerscheinstelle local (Anlage 11 da FeV)",     url:"https://www.gesetze-im-internet.de/fev_2010/anlage_11.html"},
+  IE:{n:"Irlanda",        f:"🇮🇪", auth:"NDLS / RSA",                                      url:"https://www.ndls.ie/licensed-driver/exchange-my-foreign-driving-licence.html"},
+  JP:{n:"Japão",          f:"🇯🇵", auth:"Centro de habilitação da província (外免切替)",     url:"https://www.npa.go.jp/policies/application/license_renewal/index.html"},
+  NZ:{n:"Nova Zelândia",  f:"🇳🇿", auth:"NZTA Waka Kotahi (via AA ou VTNZ)",                url:"https://www.nzta.govt.nz/driver-licences/new-residents-and-visitors/converting-to-nz-driver-licence/"},
+  AU:{n:"Austrália",      f:"🇦🇺", auth:"Autoridade do estado (Service NSW, VicRoads, TMR…)", url:"https://www.servicensw.gov.au/transaction/convert-interstate-or-overseas-drivers-licence"},
+  CA:{n:"Canadá",         f:"🇨🇦", auth:"Autoridade da província (ServiceOntario, SAAQ…)",  url:"https://www.ontario.ca/page/exchange-out-province-drivers-licence"},
+  US:{n:"Estados Unidos", f:"🇺🇸", auth:"DMV do estado (não existe regra federal)",         url:"https://www.usa.gov/motor-vehicle-services"},
+  BR:{n:"Brasil",         f:"🇧🇷", auth:"DETRAN do estado / SENATRAN",                      url:"https://www.gov.br/pt-br/servicos/converter-carteira-de-habilitacao-estrangeira-em-cnh"}
+};
+const ORDER = ["BR","PT","ES","IT","DE","IE","JP","NZ","AU","CA","US"];
+
+const EU = ["PT","ES","IT","DE","IE"];
+const has = (arr,x)=>arr.indexOf(x)>-1;
+
+/* Cada destino define blocos de casos. O primeiro bloco que contém a origem vence. */
+const RULES = {
+
+/* ---------------------------------------------------------------- PORTUGAL */
+PT:{ cases:[
+  { when:EU, status:"direto", stamp:"Reconhecida",
+    line:"Carta da UE. Portugal reconhece automaticamente — você pode conduzir sem trocar nada.",
+    theory:"Não", practical:"Não", trad:"Não é necessária",
+    deadline:"Sem prazo para trocar. Mas, se você fixa residência, deve registar a morada no IMT em 60 dias. A troca vira obrigatória quando a carta caduca, é perdida ou você quer acrescentar categorias.",
+    steps:["Registar morada no Portal de Serviços do IMT (gratuito, online).",
+           "Conduzir normalmente com a carta do seu país enquanto ela for válida.",
+           "Quando quiser (ou quando caducar), pedir a troca online no Portal do IMT."],
+    docs:["Carta de condução original","Documento de identificação","Comprovativo de residência em Portugal"],
+    notes:["O código 95 (CAM/CQM) não passa na troca: o certificado de motorista profissional é pedido à parte."] },
+
+  { when:["BR","AU","CA","US","JP","NZ"], status:"direto", stamp:"Troca direta",
+    line:"Portugal troca sem exames as cartas de países da OCDE e da CPLP signatários das convenções de trânsito — é o caso do seu.",
+    theory:"Não (categorias ligeiras A e B)", practical:"Não (categorias ligeiras A e B)",
+    trad:"Sim, se a carta não estiver em português — tradução certificada / juramentada",
+    deadline:"Residente: até 2 anos depois de fixar residência. Não residente: pode conduzir 185 dias com a carta estrangeira.",
+    steps:["Criar conta no Portal de Serviços do IMT.",
+           "Selecionar “Troca de Carta Estrangeira” e preencher o formulário.",
+           "Pagar a taxa e enviar os documentos pedidos por e-mail/upload.",
+           "Aguardar a validação do IMT junto da autoridade emissora — é a fase mais demorada."],
+    docs:["Carta original válida","Tradução certificada (se não for em português)","Atestado médico / ficha de avaliação médica","Documento de identificação e título de residência","Comprovativo de morada","Taxa ~30 € (10% de desconto online)"],
+    notes:["Desde 21 de janeiro de 2026 o pedido é 100% online — acabou o atendimento presencial para troca.",
+           "Categorias C, D e reboques podem exigir avaliação médica reforçada e não são automáticas em todos os casos.",
+           "Para transporte internacional, além da carta portuguesa você precisa do certificado de motorista de país terceiro."] }
+]},
+
+/* ---------------------------------------------------------------- ESPANHA */
+ES:{ cases:[
+  { when:["PT","IT","DE","IE"], status:"direto", stamp:"Canje direto",
+    line:"Carta da UE/EEE. O canje é administrativo e sem qualquer exame.",
+    theory:"Não", practical:"Não", trad:"Não é necessária",
+    deadline:"Pode conduzir com a carta da UE enquanto for válida. O canje é obrigatório em casos como caducidade, perda de pontos ou renovação em Espanha.",
+    steps:["Pedir cita previa na sede eletrónica da DGT.",
+           "Fazer o psicotécnico num centro de reconocimiento de conductores.",
+           "Entregar o permiso original na Jefatura de Tráfico."],
+    docs:["Permiso original","NIE / TIE ou certificado de registo de cidadão UE","Informe de aptitud psicofísica","Taxa DGT"],
+    notes:[] },
+
+  { when:["BR","JP","NZ"], status:"parcial", stamp:"Canje com ressalva",
+    line:"Existe convênio de canje com a Espanha. Moto e carro saem sem exame; caminhão e ônibus exigem provas de aptidão.",
+    theory:"Não para A/B. Sim para C e D.", practical:"Não para A/B. Sim para C e D.",
+    trad:"Sim, se o permiso não estiver em espanhol — tradução oficial",
+    deadline:"O permiso estrangeiro só vale 6 meses a contar da data em que você passa a residir em Espanha.",
+    steps:["Verificar o país na tabela de convênios da DGT (ela muda).",
+           "Solicitar o canje na sede eletrónica da DGT e pedir cita previa.",
+           "Fazer o psicotécnico.",
+           "Se pedir C ou D: agendar e pagar as pruebas de aptitud adicionais.",
+           "Entregar o permiso original na Jefatura — ele fica retido."],
+    docs:["Permiso original válido","NIE / TIE","Tradução oficial","Informe de aptitud psicofísica","Taxa DGT (maior quando há provas)"],
+    notes:["Regra que reprova muita gente: o permiso não é canjeável se você o tirou já sendo residente legal em Espanha.",
+           "O canje transfere todas as categorias de uma vez — não se faz um pedido por categoria."] },
+
+  { when:["AU","CA","US"], status:"exame", stamp:"Sem convênio",
+    line:"A Espanha não tem convênio de canje com este país. A carta não é trocável — é preciso tirar o permiso espanhol do zero.",
+    theory:"Sim", practical:"Sim", trad:"Irrelevante para efeito de canje",
+    deadline:"Você pode conduzir 6 meses após fixar residência; depois disso, só com permiso espanhol.",
+    steps:["Matricular-se numa autoescola.",
+           "Passar o exame teórico da DGT (disponível em vários idiomas).",
+           "Passar o exame prático (circulação)."],
+    docs:["NIE / TIE","Informe de aptitud psicofísica","Taxas DGT de exame"],
+    notes:["Sua experiência de direção não reduz o processo formalmente, mas costuma reduzir muito o número de aulas necessárias."] }
+]},
+
+/* ---------------------------------------------------------------- ITÁLIA */
+IT:{ cases:[
+  { when:["PT","ES","DE","IE"], status:"direto", stamp:"Reconhecida",
+    line:"Carta da UE. Vale na Itália enquanto for válida; a conversão é um trâmite simples, sem exames.",
+    theory:"Não", practical:"Não", trad:"Não é necessária",
+    deadline:"Sem prazo enquanto a carta for válida. Convertida quando caduca ou quando você precisa de duplicata.",
+    steps:["Pedir a conversão na Motorizzazione Civile ou numa agência de práticas automobilísticas."],
+    docs:["Patente original","Documento de identidade","Codice fiscale","Residência anagráfica"],
+    notes:[] },
+
+  { when:["JP","BR"], status:"parcial", stamp:"Conversão por acordo",
+    line:"A Itália tem acordo de reciprocidade com este país: conversão sem exame, mas com prazo curto e condições estritas.",
+    theory:"Não", practical:"Não",
+    trad:"Sim — tradução oficial/juramentada e legalizada da patente",
+    deadline:"Um ano a contar da residência anagráfica. Passado o prazo, você perde o direito à conversão e cai no exame completo.",
+    steps:["Confirmar que o acordo com o seu país está vigente na data do pedido (a lista do MIT tem datas de validade).",
+           "Reunir tradução legalizada + certificado médico.",
+           "Apresentar o pedido na Motorizzazione Civile.",
+           "Entregar a patente original — ela é retida e devolvida ao país emissor."],
+    docs:["Patente original válida","Tradução oficial legalizada","Certificado médico","Permesso di soggiorno","Codice fiscale","Fotos e taxas (~90 € no total)"],
+    notes:["A patente tem de ter sido obtida ANTES de você fixar residência na Itália.",
+           "Não se converte uma patente que já foi obtida por conversão de outra não convertível na Itália.",
+           "O acordo com o Brasil já esteve suspenso no passado — confirme a vigência antes de pagar tradução."] },
+
+  { when:["AU","CA","NZ","US"], status:"exame", stamp:"Sem reciprocidade",
+    line:"A Itália não converte cartas deste país (as exceções valem só para pessoal diplomático e consular). É preciso tirar a patente italiana.",
+    theory:"Sim", practical:"Sim", trad:"Só serve para dirigir no primeiro ano, não para converter",
+    deadline:"Você dirige até 1 ano após a residência com a patente + tradução oficial ou permesso internazionale. Depois, só com patente italiana.",
+    steps:["Inscrever-se numa autoscuola ou apresentar-se como privatista.",
+           "Passar o exame de teoria.",
+           "Fazer o foglio rosa e passar o exame prático."],
+    docs:["Documento de identidade","Codice fiscale","Certificado médico","Taxas de exame"],
+    notes:[] }
+]},
+
+/* ---------------------------------------------------------------- ALEMANHA */
+DE:{ cases:[
+  { when:["PT","ES","IT","IE"], status:"direto", stamp:"Reconhecida",
+    line:"Carta da UE/EEE. Reconhecida na Alemanha sem qualquer formalidade enquanto for válida.",
+    theory:"Não", practical:"Não", trad:"Não é necessária",
+    deadline:"Sem prazo. A troca (Umschreibung) só é necessária quando a carta caduca ou é perdida.",
+    steps:["Nada a fazer para dirigir. Para trocar, pedir na Führerscheinstelle do seu município."],
+    docs:["Führerschein original","Anmeldung (registo de morada)","Documento de identidade"],
+    notes:[] },
+
+  { when:["JP","NZ"], status:"direto", stamp:"Anlage 11",
+    line:"Este país está na Anlage 11 da FeV com isenção total: a Umschreibung é feita sem prova teórica nem prática.",
+    theory:"Não", practical:"Não",
+    trad:"Sim, se não estiver em alemão ou inglês — tradutor juramentado, ADAC ou consulado, com classificação das categorias",
+    deadline:"Sua carta vale 6 meses após você fixar residência (prorrogável a 12 meses em casos específicos). Peça a troca ANTES de esgotar esse prazo.",
+    steps:["Fazer a Anmeldung no Bürgeramt.",
+           "Encomendar a tradução com classificação das categorias alemãs (A, B, BE, C…).",
+           "Fazer o exame de vista e o curso de primeiros socorros (Erste-Hilfe-Kurs).",
+           "Dar entrada na Führerscheinstelle e entregar a carta original."],
+    docs:["Führerschein original","Tradução classificada","Sehtest (exame de vista)","Certificado de primeiros socorros","Anmeldung / Meldebescheinigung","Foto biométrica","Taxa ~37,50 €"],
+    notes:["O processo demora bem mais de 4 semanas: a autoridade consulta o país emissor para validar a carta.",
+           "A isenção pode não cobrir C, CE, D e DE — categorias pesadas frequentemente exigem exame e exame médico."] },
+
+  { when:["AU","CA"], status:"parcial", stamp:"Depende do estado",
+    line:"A Anlage 11 lista este país estado a estado (ou província a província). Alguns têm isenção total, outros exigem teórica, prática ou ambas.",
+    theory:"Depende da província/estado emissor", practical:"Depende da província/estado emissor",
+    trad:"Sim, se não estiver em alemão ou inglês",
+    deadline:"6 meses após fixar residência (prorrogável a 12 em casos específicos).",
+    steps:["Localizar seu estado/província na lista da Anlage 11 antes de qualquer coisa.",
+           "Fazer Anmeldung, exame de vista e curso de primeiros socorros.",
+           "Dar entrada na Führerscheinstelle e, se for o caso, indicar a autoescola e o centro de exame."],
+    docs:["Führerschein original","Anmeldung","Sehtest","Erste-Hilfe-Kurs","Taxa 37,50 € (sem prova) ou 45,10 € (com prova)"],
+    notes:["Alberta, British Columbia, Manitoba, Ontário, Quebec e Saskatchewan aparecem com condições próprias; confirme a redação atual.",
+           "Categorias de caminhão e ônibus raramente entram na isenção."] },
+
+  { when:["US"], status:"parcial", stamp:"Depende do estado",
+    line:"Não existe acordo com os EUA como país: a Anlage 11 trata cada estado separadamente. Há estados com isenção total, estados que só exigem teoria e estados sem acordo nenhum.",
+    theory:"Depende do estado emissor (ex.: Flórida exige teoria)", practical:"Depende do estado emissor",
+    trad:"Normalmente sim — tradução classificada por tradutor juramentado ou ADAC",
+    deadline:"6 meses após fixar residência (prorrogável a 12 em casos específicos).",
+    steps:["Localizar seu estado na Anlage 11 e ver qual das três colunas se aplica.",
+           "Fazer Anmeldung, Sehtest e Erste-Hilfe-Kurs.",
+           "Dar entrada na Führerscheinstelle."],
+    docs:["Driver license original","Tradução classificada","Anmeldung","Sehtest","Erste-Hilfe-Kurs","Taxa 37,50 € ou 45,10 €"],
+    notes:["Alguns estados só têm o acordo para a categoria de carro — CDL não se converte."] },
+
+  { when:["BR"], status:"exame", stamp:"Fora da Anlage 11",
+    line:"O Brasil não consta da Anlage 11. A CNH não dá isenção: é preciso passar na prova teórica e na prova prática alemãs.",
+    theory:"Sim", practical:"Sim",
+    trad:"Sim — tradução juramentada com classificação das categorias",
+    deadline:"A CNH vale 6 meses após você fixar residência. Depois disso, dirigir com ela é dirigir sem habilitação.",
+    steps:["Fazer Anmeldung.",
+           "Encomendar a tradução classificada da CNH.",
+           "Fazer exame de vista e curso de primeiros socorros.",
+           "Dar entrada na Führerscheinstelle indicando autoescola e centro de exame (TÜV ou DEKRA).",
+           "Passar na teórica (pode ser feita em português) e depois na prática."],
+    docs:["CNH original válida","Tradução juramentada classificada","Anmeldung","Sehtest","Erste-Hilfe-Kurs","Foto biométrica","Taxa 45,10 € + ~22 € teórica + ~140 € prática"],
+    notes:["A teórica alemã tem versão em português — isso ajuda muito.",
+           "Como você já é habilitado, não precisa cumprir o número mínimo de aulas obrigatórias de um iniciante, mas a autoescola vai exigir aulas de familiarização."] }
+]},
+
+/* ---------------------------------------------------------------- IRLANDA */
+IE:{ cases:[
+  { when:["PT","ES","IT","DE"], status:"direto", stamp:"Troca online",
+    line:"Carta da UE/EEE. Troca direta no NDLS, feita pela internet, sem exame.",
+    theory:"Não", practical:"Não", trad:"Não é necessária",
+    deadline:"Pode dirigir enquanto a carta for válida. A troca pode ser pedida até 10 anos depois de a carta ter caducado.",
+    steps:["Fazer o pedido online no NDLS com Public Services Card e MyGovID verificado.",
+           "Enviar a carta original pelo correio."],
+    docs:["Carta original","PPS number","Public Services Card + MyGovID","Taxa €55"],
+    notes:["O código 95 (CPC) não é transferido — a certificação de motorista profissional é pedida separadamente à RSA."] },
+
+  { when:["JP","AU","NZ"], status:"direto", stamp:"Estado reconhecido",
+    line:"A Irlanda tem acordo de troca com este país (recognised state). Troca direta, sem teórica e sem prática.",
+    theory:"Não", practical:"Não",
+    trad:"Sim, se a carta não estiver em inglês — tradução oficial ou certificado do consulado",
+    deadline:"Você dirige 1 ano com a carta estrangeira. A carta tem de estar válida ou ter caducado há menos de 1 ano no momento do pedido.",
+    steps:["Confirmar seu país na lista oficial de recognised states da RSA.",
+           "Fazer o pedido de troca online no NDLS (ou num centro NDLS).",
+           "Entregar a carta original — ela é devolvida ao país emissor."],
+    docs:["Carta original","Tradução, se aplicável","PPS number","Comprovativo de residência","Taxa €55","Relatório médico se pedir categorias pesadas ou tiver mais de 70 anos"],
+    notes:["Regra que pega gente desprevenida: se a sua carta já foi obtida por troca de uma carta de país sem acordo com a Irlanda, a Irlanda não troca."] },
+
+  { when:["CA"], status:"parcial", stamp:"Depende da província",
+    line:"O acordo com o Canadá é negociado província a província, e cada um cobre categorias diferentes.",
+    theory:"Não, se sua província estiver na lista", practical:"Não, se sua província estiver na lista",
+    trad:"Não (documento em inglês ou francês; francês pode exigir tradução)",
+    deadline:"1 ano de residência; carta válida ou caducada há menos de 1 ano.",
+    steps:["Ver na lista de recognised states quais províncias canadianas estão cobertas e para quais categorias.",
+           "Fazer o pedido no NDLS.",
+           "Entregar a carta original."],
+    docs:["Carta original","PPS number","Comprovativo de residência","Taxa €55"],
+    notes:["Se sua província não estiver coberta, o caminho é o mesmo dos países não reconhecidos: processo de aprendiz com EDT reduzido."] },
+
+  { when:["BR","US"], status:"exame", stamp:"Sem acordo",
+    line:"A Irlanda não tem acordo de troca com este país. Não existe conversão — você entra no processo irlandês de habilitação, com desconto de aulas por já ser habilitado.",
+    theory:"Sim (Driver Theory Test)", practical:"Sim",
+    trad:"Não serve para trocar; serve só para dirigir no primeiro ano",
+    deadline:"1 ano dirigindo com a carta estrangeira a partir da residência.",
+    steps:["Passar no Driver Theory Test.",
+           "Tirar a Learner Permit.",
+           "Fazer o EDT reduzido — quem já é habilitado no exterior faz 6 aulas em vez de 12.",
+           "Marcar e passar no teste prático."],
+    docs:["Carta estrangeira (para provar a experiência e liberar o EDT reduzido)","PPS number","Eyesight report","Taxas de teoria, permit e teste prático"],
+    notes:["O EDT reduzido é o principal benefício de já ter carteira: exige comprovar a habilitação estrangeira."] }
+]},
+
+/* ---------------------------------------------------------------- JAPÃO */
+JP:{ cases:[
+  { when:["PT","ES","IT","DE","IE","AU","CA","NZ"], status:"direto", stamp:"Isento de provas",
+    line:"Seu país está na lista de isenção do 外免切替 (gaimen kirikae): só análise documental e exame de vista. Nada de prova escrita nem de baliza.",
+    theory:"Não", practical:"Não",
+    trad:"Sim — tradução da JAF (Japan Automobile Federation) ou da sua embaixada. ~¥4.000, pedido online, 5 a 7 dias",
+    deadline:"Sem prazo fixo para converter, mas você precisa ser residente legal com jūminhyō. A permissão internacional (IDP) vale só 1 ano.",
+    steps:["Pedir a tradução da carta à JAF (online, desde março de 2025).",
+           "Reservar horário no centro de habilitação da sua província — em muitos lugares só por telefone, com 1 a 2 meses de antecedência.",
+           "Comparecer com todos os documentos para a triagem (適性検査) e o exame de vista.",
+           "Receber a carta japonesa no mesmo dia, se a documentação estiver correta."],
+    docs:["Carta original válida","Tradução JAF","Zairyū card (cartão de residência)","Jūminhyō com nacionalidade","Passaportes atuais E antigos","Foto 3×2,4 cm","Taxas ~¥11.650"],
+    notes:["Regra de outubro de 2025, a que mais derruba pedidos: você tem de provar que morou no país emissor por pelo menos 3 meses DEPOIS de tirar a carta — por isso levam-se todos os passaportes.",
+           "Se sua carta foi renovada, reemitida ou teve categoria acrescentada depois de você já morar no Japão, o centro pode tratá-la como carta nova e recusar.",
+           "Estados Unidos são exceção: só alguns estados entram na isenção."] },
+
+  { when:["US"], status:"parcial", stamp:"Depende do estado",
+    line:"Os EUA não entram inteiros na isenção. Só alguns estados dispensam as provas; todos os outros exigem escrita e prática.",
+    theory:"Isento em Colorado, Havaí, Maryland, Ohio, Oregon, Virgínia e Washington. Nos demais, sim.",
+    practical:"Mesma regra: isento nesses estados, obrigatório nos demais.",
+    trad:"Sim — tradução JAF",
+    deadline:"IDP vale 1 ano. Residentes permanentes precisam da carta japonesa.",
+    steps:["Confirmar se o seu estado está na lista de isenção do ano corrente.",
+           "Pedir a tradução JAF.",
+           "Reservar horário no centro de habilitação da província.",
+           "Se o estado não for isento: fazer a prova escrita (50 questões desde outubro de 2025) e depois a prova prática."],
+    docs:["Driver license original","Tradução JAF","Zairyū card","Jūminhyō","Passaportes atuais e antigos","Taxas ~¥14.150 quando há prova"],
+    notes:["Comprovação de 3 meses de residência no estado emissor após a emissão da carta é obrigatória."] },
+
+  { when:["BR"], status:"exame", stamp:"Provas obrigatórias",
+    line:"O Brasil não está na lista de isenção. A CNH é aceita como base do pedido, mas você faz prova escrita e prova prática de direção.",
+    theory:"Sim — 50 questões (regra nova desde outubro de 2025; antes eram 10)",
+    practical:"Sim — no circuito do centro de habilitação, com critério igual ao do karimen",
+    trad:"Sim — tradução JAF ou do consulado brasileiro",
+    deadline:"Sem prazo, mas é preciso ser residente legal com jūminhyō. Turistas e quem está nos 90 dias de isenção não podem mais aplicar.",
+    steps:["Pedir a tradução da CNH à JAF.",
+           "Reservar horário no centro de habilitação da província (telefone, com semanas de antecedência).",
+           "Dia 1: triagem documental + exame de vista + prova escrita.",
+           "Dia 2 (marcado depois, às vezes semanas): prova prática. Reprovou, remarca e paga de novo.",
+           "Aprovado, a carta sai no mesmo dia."],
+    docs:["CNH original válida","Tradução JAF","Zairyū card","Jūminhyō com nacionalidade","Passaportes atuais e antigos","Foto 3×2,4 cm","Taxas ~¥14.150 na primeira tentativa"],
+    notes:["Você precisa comprovar 3 meses de residência no Brasil DEPOIS da data de emissão da CNH — leve todos os passaportes, inclusive os vencidos.",
+           "A prova prática começa com 100 pontos e reprova abaixo de 70. Desde outubro de 2025 o critério é o mesmo do exame de licença provisória, bem mais rígido.",
+           "Vale muito a pena pagar uma ou duas aulas no próprio circuito antes do exame — a taxa de reprovação na primeira tentativa é alta."] }
+]},
+
+/* ---------------------------------------------------- NOVA ZELÂNDIA */
+NZ:{ cases:[
+  { when:["PT","ES","IT","DE","IE","JP","AU","CA","US"], status:"direto", stamp:"País isento",
+    line:"Seu país está na lista de exempt countries da NZTA. Com carteira definitiva há 2 anos ou mais, a conversão é direta.",
+    theory:"Não (se tiver a carteira definitiva há 2 anos ou mais)",
+    practical:"Não — mas com menos de 2 anos de carteira, sim",
+    trad:"Sim, se não estiver em inglês — tradutor aprovado pela NZTA, embaixada ou tradutor NAATI",
+    deadline:"Você dirige até 18 meses desde a última entrada no país (12 meses para moto e veículos pesados). Sair e voltar reinicia a contagem.",
+    steps:["Localizar um specialist overseas conversion site — AA ou VTNZ. Agência comum não faz.",
+           "Preencher o formulário DL5 no local.",
+           "Fazer a triagem de visão ali mesmo.",
+           "Pagar a taxa e aguardar o processamento da NZTA (10 a 20 dias úteis)."],
+    docs:["Carteira original válida (ou vencida há menos de 12 meses)","Tradução aprovada, se aplicável","Comprovativo de identidade","Comprovativo de endereço na NZ","Taxa de aplicação"],
+    notes:["Se a carteira não indicar claramente a data de emissão de 2 anos ou mais, peça um documento à autoridade emissora — senão você cai no teste prático.",
+           "Classes 2 a 5 (caminhão) têm caminho próprio: atestado médico, teórica no computador e curso aprovado pela NZTA ou teste prático.",
+           "A NZTA audita conversões e já cancelou centenas de habilitações de pesados por fraude documental — não improvise com documentos."] },
+
+  { when:["BR"], status:"exame", stamp:"País não isento",
+    line:"O Brasil é non-exempt country para a NZTA. A CNH serve de base, mas você faz o teórico e o prático neozelandeses.",
+    theory:"Sim — 35 questões sobre o NZ Road Code, com aproveitamento alto exigido",
+    practical:"Sim",
+    trad:"Sim — tradução aprovada pela NZTA, consulado brasileiro ou tradutor NAATI",
+    deadline:"18 meses desde a última entrada para carro; 12 meses para moto e pesados.",
+    steps:["Ir a um specialist overseas conversion site (AA ou VTNZ) com o DL5.",
+           "Passar no teste teórico. Você recebe uma carteira neozelandesa com supervisor condition.",
+           "Praticar dirigindo sempre com um supervisor habilitado ao lado.",
+           "Marcar e passar no teste prático para tirar a condição de supervisão."],
+    docs:["CNH original","Tradução aprovada","Identidade e comprovativo de endereço","Taxa de aplicação + taxa por teste"],
+    notes:["Assim que você recebe a carteira neozelandesa com supervisor condition, ela SUBSTITUI a CNH: dirigir sozinho passa a ser infração, mesmo com a CNH válida no bolso.",
+           "Cada tentativa de teste é paga de novo em caso de reprovação ou falta."] }
+]},
+
+/* ---------------------------------------------------------------- AUSTRÁLIA */
+AU:{ cases:[
+  { when:["NZ"], status:"direto", stamp:"Acordo Trans-Tasman",
+    line:"Nova Zelândia e Austrália reconhecem as habilitações uma da outra. Troca administrativa, sem prova.",
+    theory:"Não", practical:"Não", trad:"Não é necessária",
+    deadline:"Varia por estado — em geral até 3 meses depois de você virar residente permanente do estado.",
+    steps:["Ir a um balcão da autoridade de trânsito do estado (Service NSW, VicRoads, TMR, Service SA…).",
+           "Fazer teste de visão e entregar a carteira original."],
+    docs:["Carteira original","Prova de identidade (regra dos 100 pontos)","Comprovativo de endereço no estado"],
+    notes:[] },
+
+  { when:["PT","ES","IT","DE","IE","JP","CA","US"], status:"parcial", stamp:"Reconhecida (varia)",
+    line:"Não existe regra federal: cada estado publica sua própria lista de recognised countries. Este país costuma estar na lista da maioria dos estados — troca sem prova, mas confirme no seu estado.",
+    theory:"Em geral não, se o país estiver na lista do seu estado",
+    practical:"Em geral não; alguns estados exigem se você tiver a carteira há pouco tempo",
+    trad:"Sim, se não estiver em inglês — tradutor NAATI ou IDP",
+    deadline:"Em geral 3 meses depois de fixar residência no estado (varia).",
+    steps:["Confirmar a lista de recognised countries da autoridade do SEU estado.",
+           "Agendar atendimento e levar documentos de identidade (100 points check).",
+           "Fazer teste de visão.",
+           "Entregar a carteira original."],
+    docs:["Carteira original válida","Tradução NAATI ou IDP","Prova de identidade (100 pontos)","Comprovativo de endereço","Taxa estadual"],
+    notes:["Categorias pesadas (HR, HC, MC) quase nunca entram na troca automática: normalmente exigem curso e avaliação local.",
+           "NSW, Victoria e Queensland têm listas parecidas mas não idênticas — mudar de estado depois não refaz o processo, mas o pedido inicial segue a regra do estado onde você mora."] },
+
+  { when:["BR"], status:"exame", stamp:"Não reconhecida",
+    line:"O Brasil não costuma constar das listas de recognised countries dos estados australianos. O caminho é o processo local, com abatimento por experiência em alguns estados.",
+    theory:"Sim (Driver Knowledge Test)", practical:"Sim (Driving Test / Hazard Perception, conforme o estado)",
+    trad:"Sim — tradução NAATI, para dirigir no período inicial e para comprovar experiência",
+    deadline:"Em geral 3 meses após fixar residência no estado.",
+    steps:["Passar no teste de conhecimento (DKT).",
+           "Tirar a learner ou provisional licence conforme o estado.",
+           "Apresentar a CNH traduzida para comprovar experiência — alguns estados reduzem o tempo mínimo de estágio.",
+           "Passar no teste prático."],
+    docs:["CNH original","Tradução NAATI","Prova de identidade (100 pontos)","Comprovativo de endereço","Taxas de teste"],
+    notes:["Vale checar caso a caso: as listas estaduais mudam e já houve inclusões de novos países."] }
+]},
+
+/* ---------------------------------------------------------------- CANADÁ */
+CA:{ cases:[
+  { when:["US"], status:"direto", stamp:"Troca direta",
+    line:"Carteiras dos EUA são trocadas diretamente em praticamente todas as províncias, sem prova.",
+    theory:"Não", practical:"Não", trad:"Não é necessária",
+    deadline:"Em geral 60 a 90 dias após fixar residência na província.",
+    steps:["Ir a um balcão da província (ServiceOntario, SAAQ, ICBC…) com a carteira original."],
+    docs:["Carteira original","Identidade","Comprovativo de residência na província"],
+    notes:["Comprovar tempo de experiência (driving abstract do seu DMV) evita cair no sistema graduado."] },
+
+  { when:["JP","DE","IE","AU","NZ"], status:"parcial", stamp:"Depende da província",
+    line:"O acordo é provincial, não federal. Este país tem acordo de troca com várias províncias (Ontário, por exemplo) — mas nem todas, e nem para todas as categorias.",
+    theory:"Não, se sua província de destino tiver acordo com o país emissor",
+    practical:"Não, nesse caso — teste de visão apenas",
+    trad:"Sim, se não estiver em inglês ou francês — tradução certificada",
+    deadline:"60 a 90 dias após fixar residência (varia por província).",
+    steps:["Ver a lista de reciprocal exchange agreements da SUA província.",
+           "Pedir à autoridade emissora um comprovativo do tempo de habilitação (driving record).",
+           "Ir ao balcão provincial, fazer teste de visão e entregar a carteira original."],
+    docs:["Carteira original","Tradução certificada, se aplicável","Driving record / abstract do país emissor","Identidade e comprovativo de residência","Taxa provincial"],
+    notes:["Sem acordo, o driving record ainda serve: comprovar 2+ anos de experiência costuma pular etapas do sistema graduado (G1/G2 em Ontário).",
+           "Carteiras comerciais (Class 1 / AZ) praticamente nunca são trocadas diretamente — exigem exame local."] },
+
+  { when:["PT","ES","IT","BR"], status:"exame", stamp:"Sem acordo (na maioria)",
+    line:"A maioria das províncias não tem acordo de troca com este país. Você entra no sistema graduado local, mas comprovar experiência acelera bastante.",
+    theory:"Sim", practical:"Sim (pode ser uma só etapa se você comprovar 2+ anos de experiência)",
+    trad:"Sim — tradução certificada da carteira",
+    deadline:"60 a 90 dias após fixar residência.",
+    steps:["Conseguir um driving record/abstract oficial do país emissor, traduzido.",
+           "Passar no teste escrito da província.",
+           "Apresentar a comprovação de experiência para pular níveis do sistema graduado.",
+           "Passar no teste de estrada."],
+    docs:["Carteira original","Tradução certificada","Driving record oficial traduzido","Identidade e residência","Taxas de exame"],
+    notes:["Confirme na sua província: Quebec, por exemplo, tem acordos diferentes dos de Ontário.",
+           "Sem o comprovativo de experiência você começa do zero, com período obrigatório de aprendiz."] }
+]},
+
+/* ---------------------------------------------------------------- EUA */
+US:{ cases:[
+  { when:["CA"], status:"parcial", stamp:"Varia por estado",
+    line:"Vários estados trocam carteiras canadenses sem teste de estrada, mas quase todos ainda pedem o teste escrito. Não há regra nacional.",
+    theory:"Normalmente sim (written knowledge test)",
+    practical:"Frequentemente dispensado",
+    trad:"Não é necessária",
+    deadline:"Entre 10 e 90 dias após estabelecer residência no estado — varia muito.",
+    steps:["Ver as regras do DMV do estado onde você vai morar.",
+           "Agendar atendimento e apresentar prova de residência e status migratório.",
+           "Fazer o teste de visão e, se exigido, o teste escrito."],
+    docs:["Carteira original","Prova de identidade e status migratório","Social Security Number ou declaração de inelegibilidade","Dois comprovativos de residência no estado"],
+    notes:[] },
+
+  { when:["PT","ES","IT","DE","IE","JP","NZ","AU","BR"], status:"parcial", stamp:"Varia por estado",
+    line:"Os EUA não têm tratado de reciprocidade como país. Cada DMV estadual decide. A regra mais comum: teste escrito obrigatório, teste de estrada frequentemente dispensado para quem já tem carteira estrangeira válida.",
+    theory:"Quase sempre sim", practical:"Depende do estado — muitos dispensam, alguns exigem",
+    trad:"Sim — tradução certificada ou permissão internacional (IDP) acompanhando a carteira original",
+    deadline:"Varia muito: de 10 dias (alguns estados) a 90 dias após estabelecer residência.",
+    steps:["Consultar o DMV do estado — é o único que vale, e não vale o de outro estado.",
+           "Estudar o driver's handbook do estado (muitos têm versão em espanhol e alguns em português).",
+           "Agendar atendimento e passar no teste escrito e no de visão.",
+           "Fazer o teste de estrada, se o estado exigir."],
+    docs:["Carteira original válida","Tradução certificada ou IDP","Passaporte e documento de status migratório (visto, I-94, green card)","SSN ou carta de inelegibilidade","Dois comprovativos de residência no estado","Taxas do DMV"],
+    notes:["Alguns estados mantêm acordos bilaterais pontuais (por exemplo com a Alemanha, França, Coreia do Sul e Taiwan) que dispensam um dos testes — sempre estado a estado.",
+           "CDL (caminhão comercial) não se converte: exige processo completo, incluindo exame médico DOT."] }
+]},
+
+/* ---------------------------------------------------------------- BRASIL */
+BR:{ cases:[
+  { when:["PT","ES","IT","DE","IE","JP","NZ","AU","CA","US"], status:"direto", stamp:"Convalidação",
+    line:"O Brasil convalida habilitação estrangeira sem prova teórica nem prática. O que pega é a documentação — e a tradução juramentada é o centro de tudo.",
+    theory:"Não", practical:"Não",
+    trad:"Sim — tradução juramentada impressa, por tradutor público inscrito em Junta Comercial. Tradução digital ou simples não é aceita",
+    deadline:"Você dirige com a habilitação estrangeira até 180 dias contados da entrada no país. Depois disso, é preciso ter a CNH.",
+    steps:["Encomendar a tradução juramentada impressa — ela precisa mostrar data da primeira habilitação, validade e categorias.",
+           "Agendar atendimento no DETRAN do seu estado (em SP, pelo Poupatempo).",
+           "Fazer o exame médico (e o psicológico, se pedir C, D ou E).",
+           "Entregar a habilitação estrangeira original — ela fica retida.",
+           "Aguardar a autorização da SENATRAN e retirar a CNH."],
+    docs:["Habilitação estrangeira original e válida","Tradução juramentada impressa","RNM / CRNM ou documento de identidade","CPF","Comprovante de residência recente (até 90 dias)","Exame médico e, se for o caso, psicológico"],
+    notes:["Resolução CONTRAN 933/2022: se você é brasileiro e se habilitou no exterior, tem de comprovar residência de pelo menos 6 meses no país emissor na época da emissão — atestado ou declaração consular.",
+           "Habilitados na Itália ou na Espanha entregam o documento original na unidade do DETRAN, o que libera a autorização da SENATRAN.",
+           "Divergência de nome, sigla de categoria mal traduzida ou data ilegível trava o processo — a qualidade da tradução importa mais do que o preço.",
+           "A CNH sai com as categorias equivalentes às da habilitação estrangeira, respeitando a tabela de equivalência."] }
+]}
+};
+
+/* =========================================================================
+   CATEGORIAS E EQUIVALÊNCIA
+   Cada categoria é traduzida para "fichas" de direito de condução.
+   A equivalência sai da interseção dessas fichas, não de uma tabela decorada.
+   ========================================================================= */
+
+/* fichas: MOP ciclomotor · MOTO_L ≤125cc · MOTO_M média · MOTO ilimitada
+   CAR ≤3,5t · TRUCK_L 3,5–7,5t · TRUCK_M 7,5–18t · TRUCK_H >18t
+   TRAILER reboque pesado / conjunto articulado
+   BUS_L microônibus até ~16 lugares · BUS ônibus acima disso            */
+
+const MOTO_ALL=["MOP","MOTO_L","MOTO_M","MOTO"];
+const CAR=["CAR"];
+const TRK_L=["CAR","TRUCK_L"];
+const TRK_M=["CAR","TRUCK_L","TRUCK_M"];
+const TRK_H=["CAR","TRUCK_L","TRUCK_M","TRUCK_H"];
+
+/* Padrão europeu harmonizado — vale para PT, ES, IT, DE e IE */
+const EU_CATS=[
+  {id:"AM",  d:"Ciclomotor até 45 km/h",                 c:["MOP"],                     t:"moto"},
+  {id:"A1",  d:"Motociclo até 125 cm³ / 11 kW",          c:["MOP","MOTO_L"],            t:"moto"},
+  {id:"A2",  d:"Motociclo até 35 kW",                    c:["MOP","MOTO_L","MOTO_M"],   t:"moto"},
+  {id:"A",   d:"Motociclo sem limite de cilindrada",     c:MOTO_ALL,                    t:"moto"},
+  {id:"B",   d:"Ligeiro até 3,5 t e 8 lugares",          c:CAR,                         t:"light"},
+  {id:"BE",  d:"Ligeiro com reboque pesado",             c:["CAR","TRAILER"],           t:"light"},
+  {id:"C1",  d:"Pesado de mercadorias 3,5 a 7,5 t",      c:TRK_L,                       t:"heavy"},
+  {id:"C",   d:"Pesado de mercadorias acima de 3,5 t",   c:TRK_H,                       t:"heavy"},
+  {id:"CE",  d:"Pesado de mercadorias com reboque",      c:TRK_H.concat(["TRAILER"]),   t:"heavy"},
+  {id:"D1",  d:"Pesado de passageiros até 16 lugares",   c:["CAR","BUS_L"],             t:"heavy"},
+  {id:"D",   d:"Pesado de passageiros sem limite",       c:["CAR","BUS_L","BUS"],       t:"heavy"},
+  {id:"DE",  d:"Pesado de passageiros com reboque",      c:["CAR","BUS_L","BUS","TRAILER"], t:"heavy"},
+  {id:"C+D", d:"Mercadorias e passageiros pesados",      c:TRK_H.concat(["BUS_L","BUS"]), t:"heavy"},
+  {id:"CE+D",d:"Mercadorias com reboque e passageiros",  c:TRK_H.concat(["TRAILER","BUS_L","BUS"]), t:"heavy"}
+];
+
+const CATS={
+  PT:EU_CATS, ES:EU_CATS, IT:EU_CATS, DE:EU_CATS, IE:EU_CATS,
+
+  JP:[
+    {id:"原付",       d:"Gentsuki — ciclomotor até 50 cm³",                     c:["MOP"],                    t:"moto"},
+    {id:"普通二輪",   d:"Futsū nirin — motocicleta até 400 cm³",                c:["MOP","MOTO_L","MOTO_M"],  t:"moto"},
+    {id:"大型二輪",   d:"Ōgata nirin — motocicleta sem limite",                 c:MOTO_ALL,                   t:"moto"},
+    {id:"普通",       d:"Futsū — carro até 3,5 t, até 10 lugares",              c:CAR,                        t:"light"},
+    {id:"準中型",     d:"Jun-chūgata — caminhão de 3,5 a 7,5 t",                c:TRK_L,                      t:"heavy"},
+    {id:"中型",       d:"Chūgata — caminhão de 7,5 a 11 t (permite até 29 lugares)",     c:TRK_M,                      t:"heavy"},
+    {id:"大型",       d:"Ōgata — caminhão acima de 11 t (permite 30 lugares ou mais)",   c:TRK_H,                      t:"heavy"},
+    {id:"大型 + 牽引",d:"Ōgata + kenin — pesado com reboque / carreta",                  c:TRK_H.concat(["TRAILER"]),  t:"heavy"},
+    {id:"中型 + 牽引",d:"Chūgata + kenin — médio com reboque",                           c:TRK_M.concat(["TRAILER"]),  t:"heavy"},
+    {id:"大型二種",   d:"Ōgata nishu — ônibus e táxi comercial (2ª classe)",             c:TRK_H.concat(["BUS_L","BUS"]), t:"pro"}
+  ],
+
+  NZ:[
+    {id:"Class 6", d:"Motocicleta",                                             c:MOTO_ALL,                  t:"moto"},
+    {id:"Class 1", d:"Carro e veículo leve até 4.500 kg",                        c:CAR,                       t:"light"},
+    {id:"Class 2", d:"Rígido médio, 4.500 a 18.000 kg",                          c:TRK_M,                     t:"heavy"},
+    {id:"Class 3", d:"Combinação média até 25.000 kg",                           c:TRK_M.concat(["TRAILER"]), t:"heavy"},
+    {id:"Class 4", d:"Rígido pesado acima de 18.000 kg",                         c:TRK_H,                     t:"heavy"},
+    {id:"Class 5", d:"Combinação pesada acima de 25.000 kg",                     c:TRK_H.concat(["TRAILER"]), t:"heavy"},
+    {id:"Class 4 + P", d:"Rígido pesado com endosso de passageiros",             c:TRK_H.concat(["BUS_L","BUS"]), t:"pro"}
+  ],
+
+  AU:[
+    {id:"R",  d:"Motocicleta",                                                   c:MOTO_ALL,                  t:"moto"},
+    {id:"C",  d:"Car — veículo leve até 4,5 t",                                  c:CAR,                       t:"light"},
+    {id:"LR", d:"Light Rigid — rígido de 4,5 a 8 t",                             c:TRK_L,                     t:"heavy"},
+    {id:"MR", d:"Medium Rigid — rígido acima de 8 t, 2 eixos",                   c:TRK_M,                     t:"heavy"},
+    {id:"HR", d:"Heavy Rigid — rígido de 3 eixos ou mais",                       c:TRK_H,                     t:"heavy"},
+    {id:"HC", d:"Heavy Combination — carreta simples",                           c:TRK_H.concat(["TRAILER"]), t:"heavy"},
+    {id:"MC", d:"Multi Combination — bitrem, road train",                        c:TRK_H.concat(["TRAILER"]), t:"heavy"},
+    {id:"HR + DA", d:"Heavy Rigid com Driver Authorisation (ônibus)",            c:TRK_H.concat(["BUS_L","BUS"]), t:"pro"}
+  ],
+
+  CA:[
+    {id:"M",  d:"Motocicleta",                                                   c:MOTO_ALL,                  t:"moto"},
+    {id:"G",  d:"Carro e veículo até 11.000 kg (Ontário)",                       c:CAR,                       t:"light"},
+    {id:"D",  d:"Caminhão acima de 11.000 kg",                                   c:TRK_H,                     t:"heavy"},
+    {id:"A",  d:"Conjunto trator-semirreboque",                                  c:TRK_H.concat(["TRAILER"]), t:"heavy"},
+    {id:"C",  d:"Ônibus acima de 24 passageiros",                                c:["CAR","BUS_L","BUS"],     t:"pro"},
+    {id:"B",  d:"Ônibus escolar",                                                c:["CAR","BUS_L","BUS"],     t:"pro"},
+    {id:"AZ", d:"Trator-semirreboque com freio a ar",                            c:TRK_H.concat(["TRAILER"]), t:"heavy"}
+  ],
+
+  US:[
+    {id:"M",     d:"Motorcycle",                                                 c:MOTO_ALL,                  t:"moto"},
+    {id:"D / C", d:"Carteira comum de carro (varia o nome por estado)",          c:CAR,                       t:"light"},
+    {id:"CDL B", d:"Commercial — veículo simples acima de 11.794 kg",            c:TRK_H,                     t:"pro"},
+    {id:"CDL A", d:"Commercial — conjunto articulado",                           c:TRK_H.concat(["TRAILER"]), t:"pro"},
+    {id:"CDL C + P", d:"Commercial — passageiros ou produtos perigosos",         c:["CAR","BUS_L","BUS"],     t:"pro"}
+  ],
+
+  BR:[
+    {id:"ACC", d:"Ciclomotor até 50 cm³",                                        c:["MOP"],                   t:"moto"},
+    {id:"A",   d:"Motocicleta sem limite de cilindrada",                         c:MOTO_ALL,                  t:"moto"},
+    {id:"B",   d:"Automóvel até 3,5 t e 8 passageiros",                          c:CAR,                       t:"light"},
+    {id:"AB",  d:"Motocicleta e automóvel",                                      c:MOTO_ALL.concat(CAR),      t:"light"},
+    {id:"C",   d:"Caminhão acima de 3,5 t",                                      c:TRK_H,                     t:"heavy"},
+    {id:"D",   d:"Ônibus acima de 8 passageiros",                                c:["CAR","BUS_L","BUS"],     t:"heavy"},
+    {id:"E",   d:"Conjunto com unidade acoplada acima de 6 t / articulado",      c:TRK_H.concat(["TRAILER"]), t:"heavy"},
+    {id:"CD",  d:"Caminhão e ônibus",                                            c:TRK_H.concat(["BUS_L","BUS"]), t:"heavy"},
+    {id:"E + D", d:"Carreta e ônibus",                                           c:TRK_H.concat(["TRAILER","BUS_L","BUS"]), t:"heavy"}
+  ]
+};
+
+/* Como cada destino trata as categorias pesadas na hora da troca */
+const HEAVY_POLICY={
+  PT:"Em Portugal, as ligeiras (A e B) saem na troca administrativa. As categorias C, D e E exigem avaliação médica reforçada e, conforme o caso, exame — e não são automáticas. O código 95 (CAM) não é transferido: o certificado de motorista profissional é pedido à parte, e sem ele você não faz transporte internacional.",
+  ES:"Na Espanha, A e B são canje direto. C e D exigem pruebas de aptitud adicionais — teórica e prática específicas de pesados — com taxa maior. Conte com isso no orçamento.",
+  IT:"Na Itália, a tabela de equipollenza de cada acordo bilateral define quais categorias entram. Vários acordos extra-UE cobrem apenas A e B: as categorias pesadas ficam de fora e teriam de ser tiradas do zero. Confira a tabela do acordo do seu país antes de contar com C, D ou E.",
+  DE:"Na Alemanha, a isenção da Anlage 11 costuma valer para carro e moto. C, CE, D e DE frequentemente ficam fora da isenção e exigem exame, além de exame médico e teste psicofísico para pesados.",
+  IE:"Na Irlanda, categorias pesadas na troca exigem relatório médico (form D501). O código 95 / CPC não passa na troca — é um cartão separado pedido à RSA.",
+  JP:"No Japão, a conversão devolve as categorias equivalentes segundo a tabela oficial. Mas a 2ª classe (二種), necessária para dirigir ônibus e táxi transportando passageiros pagantes, NÃO se obtém por conversão: é exame japonês completo. Categorias pesadas também exigem exame de aptidão adicional.",
+  NZ:"Na Nova Zelândia, mesmo vindo de país isento, as classes 2 a 5 não saem no balcão: exigem atestado médico, teórica no computador e, depois, um curso aprovado pela NZTA ou o teste prático. Só a Class 1 e a Class 6 são realmente diretas.",
+  AU:"Na Austrália, C e R costumam ser trocadas no balcão. LR, MR, HR, HC e MC quase nunca são automáticas — a maioria dos estados exige avaliação local, e ônibus exige Driver Authorisation separada.",
+  CA:"No Canadá, as classes comerciais (A, D, AZ, B, C) praticamente não são trocadas por acordo: exigem exame escrito, exame de estrada, exame médico e, para freio a ar, o teste Z. Só a G e a M costumam sair diretas.",
+  US:"Nos Estados Unidos, CDL nunca se converte, de país nenhum. Carteira comercial estrangeira não vale: é processo completo, incluindo exame médico DOT, teórica, pre-trip inspection e teste de estrada. Só a carteira comum de carro é trocável.",
+  BR:"No Brasil, a convalidação devolve as categorias equivalentes pela tabela do CONTRAN. Para C, D e E entram requisitos extras: exame psicológico obrigatório, idade mínima e, em alguns casos, tempo mínimo de habilitação na categoria anterior."
+};
+
+const subset=(a,b)=>a.every(x=>b.indexOf(x)>-1);
+
+/* Dada a categoria de origem, devolve as categorias do destino realmente cobertas,
+   já eliminando as que estão contidas em outra maior. */
+function equivalencia(fromCat, to){
+  const alvo = CATS[to].filter(c=>c.t!=="pro");
+  let granted = alvo.filter(c=>subset(c.c, fromCat.c));
+  granted = granted.filter(g=>!granted.some(h=>h.id!==g.id && subset(g.c,h.c) && !subset(h.c,g.c)));
+  const seen={}; granted = granted.filter(g=>seen[g.id]?false:(seen[g.id]=1));
+  if(granted.length) return {list:granted, approx:false};
+
+  /* O destino não tem categoria tão estreita — acontece com moto, porque
+     Nova Zelândia, Austrália, Canadá e EUA têm uma classe única de motocicleta.
+     Nesse caso devolvemos a menor categoria do destino que cobre o seu direito. */
+  let cobre = alvo.filter(c=>subset(fromCat.c, c.c));
+  cobre = cobre.filter(g=>!cobre.some(h=>h.id!==g.id && subset(h.c,g.c) && !subset(g.c,h.c)));
+  return {list:cobre, approx:cobre.length>0};
+}
+
+
+function resolve(from,to){
+  if(from===to) return null;
+  const dest = RULES[to];
+  if(!dest) return null;
+  for(const c of dest.cases){ if(has(c.when,from)) return c; }
+  return null;
+}
+
+const STATUS_META = {
+  direto : {cls:"s-ok",   tag:"t-ok",   label:"Troca direta"},
+  parcial: {cls:"s-warn", tag:"t-warn", label:"Depende"},
+  exame  : {cls:"s-stop", tag:"t-stop", label:"Com exame"}
+};
+
+/* Data em que cada regra foi conferida na fonte oficial.
+   Ao atualizar uma regra, mude também esta data. */
+const VERIFICADO_EM = "20 de julho de 2026";
+
+/* ---------- texto para WhatsApp ---------- */
+function plain(s){ return String(s).replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim(); }
+
+function whatsappText(from,to,r){
+  const O=C[from], D=C[to];
+  const L=[];
+  L.push(`*${O.f} ${O.n.toUpperCase()} → ${D.f} ${D.n.toUpperCase()}*`);
+  L.push(`_${r.stamp}_`);
+  L.push("");
+  L.push(plain(r.line));
+  L.push("");
+  const cat=catAtual(from);
+  if(cat){
+    const res=equivalencia(cat,to), eq=res.list;
+    L.push("*CATEGORIA*");
+    L.push(`Tenho: ${cat.id} (${cat.d})`);
+    L.push(eq.length
+      ? `Equivale em ${D.n} a: ${eq.map(e=>e.id).join(" + ")}`
+      : `Em ${D.n} não há equivalente direto — cairia numa categoria menor ou exigiria exame da categoria.`);
+    eq.forEach(e=>L.push(`   ${e.id} = ${e.d}`));
+    if(res.approx) L.push(`⚠ Equivalência por aproximação: ${D.n} não tem categoria tão estreita, a classe indicada é mais ampla e pode vir com restrição anotada.`);
+    if(cat.t==="heavy"||cat.t==="pro") L.push(`⚠ ${plain(HEAVY_POLICY[to])}`);
+    L.push("");
+  }
+  L.push(`*Prova teórica:* ${plain(r.theory)}`);
+  L.push(`*Prova prática:* ${plain(r.practical)}`);
+  L.push(`*Tradução:* ${plain(r.trad)}`);
+  L.push(`*Prazo:* ${plain(r.deadline)}`);
+  L.push("");
+  L.push("*PASSO A PASSO*");
+  r.steps.forEach((s,i)=>L.push(`${i+1}. ${plain(s)}`));
+  L.push("");
+  L.push("*DOCUMENTOS*");
+  r.docs.forEach(d=>L.push(`• ${plain(d)}`));
+  if(r.notes && r.notes.length){
+    L.push("");
+    L.push("*ATENÇÃO*");
+    r.notes.forEach(n=>L.push(`⚠ ${plain(n)}`));
+  }
+  L.push("");
+  L.push(`*Autoridade:* ${D.auth}`);
+  L.push(D.url);
+  L.push("");
+  L.push(`_Informação retirada das fontes oficiais e verificada em ${VERIFICADO_EM}. As regras de troca de habilitação mudam por decreto e por acordo bilateral — e no Canadá, Austrália e EUA variam por província ou estado. Confirme na autoridade do país de destino antes de pagar tradução ou taxa._`);
+  return L.join("\n");
+}
+
+async function copiar(btn,texto){
+  let ok=false;
+  try{ await navigator.clipboard.writeText(texto); ok=true; }
+  catch(e){
+    const ta=document.createElement("textarea");
+    ta.value=texto; ta.style.position="fixed"; ta.style.opacity="0";
+    document.body.appendChild(ta); ta.select();
+    try{ ok=document.execCommand("copy"); }catch(_){}
+    document.body.removeChild(ta);
+  }
+  const antes=btn.textContent;
+  btn.textContent = ok ? "✓ Copiado" : "Não deu — segure para copiar";
+  if(ok) btn.dataset.done="1";
+  setTimeout(()=>{ btn.textContent=antes; delete btn.dataset.done; },2200);
+}
+
+function field(num,key,val){
+  return `<div class="field"><div class="fnum">${num}</div><div><div class="fkey">${key}</div><div class="fval">${val}</div></div></div>`;
+}
+function list(arr){ return arr && arr.length ? "<ul>"+arr.map(i=>"<li>"+i+"</li>").join("")+"</ul>" : ""; }
+
+function catAtual(from){
+  const sel=document.getElementById("cat");
+  return (CATS[from]||[]).find(c=>c.id===sel.value) || (CATS[from]||[])[0];
+}
+
+function equivHTML(from,to,r){
+  const cat=catAtual(from); if(!cat) return "";
+  const res=equivalencia(cat,to), eq=res.list;
+  const D=C[to];
+  const conversivel = r.status!=="exame";
+
+  const chipsOut = eq.length
+    ? eq.map(e=>`<span class="chip out" title="${e.d}">${e.id}</span>`).join('<span class="arrow">+</span>')
+    : `<span class="chip none">sem equivalente direto</span>`;
+
+  const desc = eq.length
+    ? eq.map(e=>`<b>${e.id}</b> — ${e.d}`).join("<br>")
+    : `Não existe categoria em ${D.n} que cubra exatamente esse direito de condução. Você provavelmente cairia numa categoria menor, ou teria de fazer o exame local da categoria.`;
+
+  let aviso="";
+  if(res.approx){
+    aviso+=`<div class="equiv-warn"><strong>Equivalência por aproximação.</strong> ${D.n} não tem uma categoria tão estreita quanto a sua — a classe indicada é mais ampla. Na prática você costuma receber essa classe, às vezes com uma restrição anotada na carteira.</div>`;
+  }
+  if(cat.t==="heavy"||cat.t==="pro"){
+    aviso+=`<div class="equiv-warn"><strong>Categoria pesada.</strong> ${HEAVY_POLICY[to]}</div>`;
+  }
+  if(!conversivel){
+    aviso=`<div class="equiv-warn"><strong>Atenção:</strong> nesta rota não existe troca direta — a equivalência acima é só referência do que você teria depois de passar nos exames de ${D.n}.</div>`+aviso;
+  }
+
+  return `
+  <div class="equiv">
+    <div class="equiv-h">Equivalência de categoria</div>
+    <div class="equiv-b">
+      <div class="equiv-map">
+        <span class="chip" title="${cat.d}">${cat.id}</span>
+        <span class="arrow">→</span>
+        ${chipsOut}
+      </div>
+      <p class="equiv-desc"><b>${C[from].n}: ${cat.id}</b> — ${cat.d}<br><br>Em ${D.n} isso corresponde a:<br>${desc}</p>
+      ${aviso}
+    </div>
+  </div>`;
+}
+
+function render(from,to){
+  const box = document.getElementById("result");
+  if(from===to){
+    box.innerHTML = `<div class="card"><div class="card-body"><p class="route">Mesmo país</p>
+      <p class="verdict-line">Escolha uma origem e um destino diferentes para ver o que muda.</p></div></div>`;
+    return;
+  }
+  const r = resolve(from,to);
+  const D = C[to], O = C[from];
+  if(!r){
+    box.innerHTML = `<div class="card"><div class="card-body"><p class="route">Rota ainda não mapeada</p>
+      <p class="verdict-line">Consulte diretamente a autoridade de ${D.n}.</p></div></div>`;
+    return;
+  }
+  const m = STATUS_META[r.status];
+  const mrz = `${from}<<${O.n.toUpperCase().replace(/[^A-Z]/g,"")}<<TO<<${to}<<${D.n.toUpperCase().replace(/[^A-Z]/g,"")}<<${r.status.toUpperCase()}<<${new Date().getFullYear()}`;
+
+  box.innerHTML = `
+  <div class="card">
+    <div class="card-top">
+      <span>Ficha de conversão</span>
+      <span class="stars">★ ★ ★</span>
+      <span>${from} → ${to}</span>
+    </div>
+    <div class="card-body">
+      <div class="stamp ${m.cls}">${r.stamp}<small>${D.n}</small></div>
+      <p class="route">${O.f} ${O.n} <span>para</span> ${D.f} ${D.n}</p>
+      <p class="verdict-line">${r.line}</p>
+      ${equivHTML(from,to,r)}
+      <div class="fields">
+        ${field("1","Prova teórica",`<span class="tag ${r.theory.startsWith("Não")?"t-ok":(r.theory.startsWith("Sim")?"t-stop":"t-warn")}">${r.theory.startsWith("Não")?"Dispensada":(r.theory.startsWith("Sim")?"Obrigatória":"Depende")}</span><strong>${r.theory}</strong>`)}
+        ${field("2","Prova prática",`<span class="tag ${r.practical.startsWith("Não")?"t-ok":(r.practical.startsWith("Sim")?"t-stop":"t-warn")}">${r.practical.startsWith("Não")?"Dispensada":(r.practical.startsWith("Sim")?"Obrigatória":"Depende")}</span><strong>${r.practical}</strong>`)}
+        ${field("3","Tradução",r.trad)}
+        ${field("4","Prazo",r.deadline)}
+        ${field("5","Passo a passo",list(r.steps))}
+        ${field("9","Documentos",list(r.docs))}
+        ${r.notes && r.notes.length ? field("12","Observações e armadilhas",list(r.notes)) : ""}
+      </div>
+    </div>
+    <div class="mrz">${mrz}</div>
+    <div class="source">Autoridade: <strong>${D.auth}</strong> · <a href="${D.url}" target="_blank" rel="noopener">abrir site oficial ↗</a></div>
+    <div class="verified">
+      <strong>Verificado em ${VERIFICADO_EM}</strong>, direto na fonte oficial de ${D.n}.
+      Regras de troca mudam por decreto e por acordo bilateral, e no Canadá, Austrália e EUA variam por província ou estado.
+      Confirme no site acima antes de pagar tradução ou taxa.
+    </div>
+    <div class="actions">
+      <button class="act" type="button" id="btnCopy">Copiar para enviar</button>
+      <a class="act wa" id="btnWa" href="#" target="_blank" rel="noopener">Abrir no WhatsApp</a>
+    </div>
+  </div>`;
+
+  const texto = whatsappText(from,to,r);
+  document.getElementById("btnCopy").addEventListener("click",e=>copiar(e.currentTarget,texto));
+  document.getElementById("btnWa").href = "https://wa.me/?text="+encodeURIComponent(texto);
+}
+
+/* ---------- matriz ---------- */
+function buildMatrix(){
+  let h = "<table><thead><tr><th class='rowh'>de \\ para</th>";
+  ORDER.forEach(c=>h+=`<th title="${C[c].n}">${c}</th>`);
+  h+="</tr></thead><tbody>";
+  ORDER.forEach(f=>{
+    h+=`<tr><th class="rowh" title="${C[f].n}">${C[f].f} ${f}</th>`;
+    ORDER.forEach(t=>{
+      if(f===t){ h+=`<td class="self">—</td>`; return; }
+      const r = resolve(f,t);
+      const s = r?r.status:"exame";
+      const sym = s==="direto"?"●":(s==="parcial"?"◐":"○");
+      h+=`<td data-s="${s}" data-f="${f}" data-t="${t}" title="${C[f].n} → ${C[t].n}">${sym}</td>`;
+    });
+    h+="</tr>";
+  });
+  return h+"</tbody></table>";
+}
+
+/* ---------- init ---------- */
+const selFrom=document.getElementById("from"), selTo=document.getElementById("to");
+ORDER.forEach(c=>{
+  selFrom.insertAdjacentHTML("beforeend",`<option value="${c}">${C[c].f}  ${C[c].n}</option>`);
+  selTo.insertAdjacentHTML("beforeend",`<option value="${c}">${C[c].f}  ${C[c].n}</option>`);
+});
+selFrom.value="BR"; selTo.value="JP";
+
+const selCat=document.getElementById("cat"), catHint=document.getElementById("catHint");
+function fillCats(keep){
+  const lista=CATS[selFrom.value]||[];
+  selCat.innerHTML=lista.map(c=>`<option value="${c.id}">${c.id} — ${c.d}</option>`).join("");
+  if(keep && lista.some(c=>c.id===keep)) selCat.value=keep;
+  const cat=lista.find(c=>c.id===selCat.value);
+  catHint.textContent = cat
+    ? `Nomenclatura de ${C[selFrom.value].n}. Se a sua carteira tem mais de uma categoria, todas são convertidas no mesmo pedido — veja uma de cada vez aqui.`
+    : "";
+}
+
+function update(){ render(selFrom.value, selTo.value); }
+selFrom.addEventListener("change",()=>{ fillCats(); update(); });
+selCat.addEventListener("change",()=>{ fillCats(selCat.value); update(); });
+selTo.addEventListener("change",update);
+document.getElementById("swap").addEventListener("click",()=>{
+  const a=selFrom.value; selFrom.value=selTo.value; selTo.value=a; fillCats(); update();
+});
+
+const mBox=document.getElementById("matrix"), mLeg=document.getElementById("legend"), mBtn=document.getElementById("toggleMatrix");
+mBtn.addEventListener("click",()=>{
+  const open = mBox.hidden;
+  if(open && !mBox.innerHTML) mBox.innerHTML = buildMatrix();
+  mBox.hidden = !open; mLeg.hidden = !open;
+  mBtn.textContent = open ? "Esconder matriz" : "Ver matriz completa (11 × 11)";
+});
+mBox.addEventListener("click",e=>{
+  const td=e.target.closest("td[data-f]"); if(!td) return;
+  selFrom.value=td.dataset.f; selTo.value=td.dataset.t; fillCats(); update();
+  document.getElementById("result").scrollIntoView({behavior:"smooth",block:"start"});
+});
+
+fillCats();
+update();
+</script>
+</body>
+</html>
