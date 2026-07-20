@@ -9,15 +9,15 @@
 <style>
 /* ===================== TOKENS (paleta R8: vermelho de corrida + grafite + prata) ===================== */
 :root{
-  --bg:#f1f2f4; --surface:#ffffff; --surface-2:#f6f7f9; --hair:#e5e7eb; --hair-2:#d5d8de;
-  --ink:#1a1d23; --muted:#5e6470; --muted-2:#8b909b;
-  --primary:#d81f2b; --primary-ink:#ffffff; --primary-soft:rgba(216,31,43,.10);
-  --amber:#e0850e; --green:#12996a; --red:#c62230; --purple:#7256e6; --slate:#6b7280;
-  --silver:#aeb4bd;
-  --shadow:0 1px 2px rgba(20,22,28,.06),0 8px 24px rgba(20,22,28,.09);
+  --bg:#f7f7f8; --surface:#ffffff; --surface-2:#f2f3f5; --hair:#e4e6ea; --hair-2:#d0d3d9;
+  --ink:#12141a; --muted:#454b56; --muted-2:#6d737e;
+  --primary:#d81f2b; --primary-ink:#ffffff; --primary-soft:rgba(216,31,43,.09);
+  --warn:#c81e63; --green:#15803d; --red:#c1272d; --purple:#6d28d9; --slate:#475569;
+  --silver:#9aa0ab;
+  --shadow:0 1px 2px rgba(20,22,28,.05),0 6px 18px rgba(20,22,28,.07);
   --radius:14px; --radius-sm:9px;
-  --st-orcamento:#7256e6; --st-aguardando:#6b7280; --st-em_servico:#e0850e;
-  --st-pronto:#2f6bd6; --st-entregue:#12996a; --st-recusado:#c62230;
+  --st-orcamento:#7c3aed; --st-aguardando:#475569; --st-em_servico:#0e8aa0;
+  --st-pronto:#2563eb; --st-entregue:#15803d; --st-recusado:#c1272d;
 }
 @media (prefers-color-scheme:dark){
   :root{
@@ -28,9 +28,9 @@
   }
 }
 :root[data-theme="light"]{
-  --bg:#f1f2f4; --surface:#fff; --surface-2:#f6f7f9; --hair:#e5e7eb; --hair-2:#d5d8de;
-  --ink:#1a1d23; --muted:#5e6470; --muted-2:#8b909b; --primary:#d81f2b; --primary-soft:rgba(216,31,43,.10);
-  --silver:#aeb4bd; --shadow:0 1px 2px rgba(20,22,28,.06),0 8px 24px rgba(20,22,28,.09);
+  --bg:#f7f7f8; --surface:#fff; --surface-2:#f2f3f5; --hair:#e4e6ea; --hair-2:#d0d3d9;
+  --ink:#12141a; --muted:#454b56; --muted-2:#6d737e; --primary:#d81f2b; --primary-soft:rgba(216,31,43,.09);
+  --silver:#9aa0ab; --shadow:0 1px 2px rgba(20,22,28,.05),0 6px 18px rgba(20,22,28,.07);
 }
 :root[data-theme="dark"]{
   --bg:#101318; --surface:#191d24; --surface-2:#14171d; --hair:#2a2f39; --hair-2:#39404d;
@@ -67,7 +67,7 @@ input,select,textarea{font-family:inherit;font-size:12.5px}
 .nav button svg{width:18px;height:18px;flex:none;stroke-width:1.9}
 .nav button:hover{background:var(--surface-2);color:var(--ink)}
 .nav button.active{background:var(--primary-soft);color:var(--primary);font-weight:650}
-.nav .badge{margin-left:auto;background:var(--amber);color:#fff;font-size:11px;font-weight:700;
+.nav .badge{margin-left:auto;background:var(--warn);color:#fff;font-size:11px;font-weight:700;
   min-width:19px;height:19px;border-radius:10px;display:grid;place-items:center;padding:0 5px}
 .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding:8px 6px 2px;border-top:1px solid var(--hair)}
 .side-foot .row{display:flex;gap:8px}
@@ -177,6 +177,23 @@ table.tbl tbody tr:hover,table.tbl tr.click:hover{background:var(--surface-2);cu
 .modal-back{position:fixed;inset:0;background:rgba(10,15,25,.5);backdrop-filter:blur(3px);z-index:60;display:flex;
   align-items:flex-end;justify-content:center;padding:0}
 @media(min-width:721px){.modal-back{align-items:center;padding:24px}}
+/* diálogo de confirmação (fica ACIMA de qualquer modal) */
+.confirm-back{position:fixed;inset:0;background:rgba(8,10,16,.55);backdrop-filter:blur(3px);z-index:80;display:flex;align-items:center;justify-content:center;padding:18px}
+.confirm-box{background:var(--surface);border:1px solid var(--hair);border-radius:16px;max-width:430px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
+.confirm-box .ch{display:flex;align-items:center;gap:11px;padding:18px 20px 6px}
+.confirm-box .ci{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;flex:none}
+.confirm-box .ci svg{width:20px;height:20px;stroke-width:2}
+.confirm-box h3{margin:0;font-size:16px;font-weight:750}
+.confirm-box .cb{padding:4px 20px 16px;color:var(--muted);font-size:13.5px;line-height:1.5}
+.confirm-box .cb b{color:var(--ink)}
+.confirm-box .cf{display:flex;gap:9px;justify-content:flex-end;padding:0 18px 16px}
+.confirm-box .impact{margin-top:10px;background:var(--surface-2);border:1px solid var(--hair);border-radius:9px;padding:9px 11px;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:8px}
+.confirm-box .impact svg{width:17px;height:17px;flex:none;stroke-width:2}
+.confirm-box .impact b{font-variant-numeric:tabular-nums}
+.btn.solid-green{background:var(--green);border-color:var(--green);color:#fff}
+.btn.solid-green:hover{filter:brightness(1.06)}
+.btn.solid-red{background:var(--red);border-color:var(--red);color:#fff}
+.btn.solid-red:hover{filter:brightness(1.06)}
 .modal{background:var(--surface);border:1px solid var(--hair);width:100%;max-width:640px;max-height:94vh;overflow:auto;
   border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25)}
 @media(min-width:721px){.modal{border-radius:18px}}
@@ -212,7 +229,7 @@ table.tbl tbody tr:hover,table.tbl tr.click:hover{background:var(--surface-2);cu
 .paychip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--surface-2);border:1px solid var(--hair);color:var(--muted)}
 .paytag{font-size:11px;font-weight:700;white-space:nowrap}
 .paytag.ok{color:var(--st-entregue)}
-.paytag.due{color:var(--st-em_servico)}
+.paytag.due{color:var(--warn)}
 /* campo de dinheiro com prefixo ¥ */
 .moneywrap{position:relative;display:block}
 .moneywrap::before{content:'¥';position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted-2);font-size:13px;pointer-events:none;font-weight:600}
@@ -252,7 +269,7 @@ table.tbl tbody tr:hover,table.tbl tr.click:hover{background:var(--surface-2);cu
 .empty{text-align:center;color:var(--muted-2);padding:46px 20px}
 .empty svg{width:40px;height:40px;opacity:.5;margin-bottom:10px}
 .alert{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:11px;font-size:13.5px;font-weight:600}
-.alert.warn{background:color-mix(in srgb,var(--amber) 13%,transparent);color:var(--amber)}
+.alert.warn{background:color-mix(in srgb,var(--warn) 13%,transparent);color:var(--warn)}
 .alert.info{background:var(--primary-soft);color:var(--primary)}
 .alert svg{width:18px;height:18px;flex:none}
 
@@ -364,6 +381,7 @@ table.tbl tbody tr:hover,table.tbl tr.click:hover{background:var(--surface-2);cu
 </aside>
 
 <div id="modalRoot"></div>
+<div id="confirmRoot"></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -425,6 +443,8 @@ const PAG={dinheiro:'Dinheiro',credito:'Cartão de crédito',debito:'Cartão de 
 const TAXA_PADRAO=3.5;  // taxa média de cartão de crédito no Japão (%)
 // forma de pagamento padrão de uma OS
 function pagOf(o){ return o.pagamento || {forma:'dinheiro',parcelas:1,taxaPct:0,repassar:false,pago:false}; }
+// data em que o pagamento foi recebido (regime de CAIXA). Fallback p/ dados antigos: data de entrega.
+function pagoEmOf(o){ const p=pagOf(o); return p.pago ? (p.pagoEm || o.entregueEm || o.criadoEm) : null; }
 // cálculo financeiro do pagamento: taxa do cartão = custo do comerciante (ou repassado)
 function pagCalc(base,p){
   p=p||{}; const isCard=p.forma==='credito'||p.forma==='debito';
@@ -437,7 +457,7 @@ function pagCalc(base,p){
 
 /* ---------------- persistência ---------------- */
 const KEY='oficina_db_v1';
-const SEED_VERSION=3;   // ao subir este número, os exemplos recarregam sozinhos (sem clicar "Zerar")
+const SEED_VERSION=4;   // ao subir este número, os exemplos recarregam sozinhos (sem clicar "Zerar")
 let DB={clientes:[],veiculos:[],pecas:[],ordens:[],seq:1,theme:'',seedVersion:0};
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){} }
 function load(){ try{ const r=localStorage.getItem(KEY); if(r){ DB=JSON.parse(r); return true; } }catch(e){} return false; }
@@ -520,6 +540,7 @@ function mkOS(c,v,status,rawItems,daysAgo,pagamento){
     pagamento:pagamento||{forma:'dinheiro',parcelas:1,taxaPct:0,repassar:false,pago:false},
     itens,criadoEm:criado,entregueEm:(status==='entregue'?criado:null),consumido:false,
     hist:[{t:criado,txt:'OS criada'}]};
+  if(o.pagamento.pago) o.pagamento.pagoEm = o.entregueEm || criado;   // pago no ato da entrega (exemplos)
   if(status==='entregue'){ o.hist.push({t:criado,txt:'Entregue ao cliente'}); }
   DB.ordens.push(o);
   if(status==='entregue') consumeStock(o);
@@ -618,10 +639,12 @@ function viewPainel(){
   const abertasTot=abertas.reduce((s,o)=>s+total(o),0);
   const entregMes=ord.filter(o=>o.status==='entregue'&&inPeriod(o.entregueEm,'mes'));
   const fatMes=entregMes.reduce((s,o)=>s+total(o),0);
-  const recebMes=entregMes.filter(o=>pagOf(o).pago).reduce((s,o)=>s+total(o),0);
+  // Recebido do mês = regime de CAIXA: OS pagas cujo PAGAMENTO ocorreu neste mês
+  const recebMes=ord.filter(o=>pagOf(o).pago&&inPeriod(pagoEmOf(o),'mes')).reduce((s,o)=>s+total(o),0);
   const pendentes=ord.filter(o=>o.status==='entregue'&&!pagOf(o).pago);
   const pendTot=pendentes.reduce((s,o)=>s+total(o),0);
-  const aReceber=pendTot+abertasTot;                 // já entregue e não pago + serviços em aberto
+  // A receber = tudo que ainda não foi pago (em aberto + entregue não pago)
+  const aReceber=ord.filter(o=>!pagOf(o).pago&&['aguardando','em_servico','pronto','entregue'].includes(o.status)).reduce((s,o)=>s+total(o),0);
   const orc=ord.filter(o=>o.status==='orcamento');
   const baixo=DB.pecas.filter(p=>disponivel(p)<=p.min);
   const recent=[...ord].sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm)).slice(0,6);
@@ -633,7 +656,7 @@ function viewPainel(){
   return `
   <div class="grid kpis">
     ${kpi('Recebido (mês)',yen(recebMes),'M20 6 9 17l-5-5','já pago pelos clientes','var(--green)')}
-    ${kpi('A receber',yen(aReceber),'M12 8v4l3 3M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z','pendente + em aberto','var(--st-em_servico)')}
+    ${kpi('A receber',yen(aReceber),'M12 8v4l3 3M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z','pendente + em aberto','var(--warn)')}
     ${kpi('Faturamento (mês)',yen(fatMes),'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6',entregMes.length+' entregues')}
     ${kpi('OS em aberto',abertas.length,'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2',yen(abertasTot))}
   </div>
@@ -704,7 +727,12 @@ function wireKanban(){
   document.querySelectorAll('.kcol').forEach(col=>{
     col.addEventListener('dragover',e=>{ e.preventDefault(); col.classList.add('drop'); });
     col.addEventListener('dragleave',()=>col.classList.remove('drop'));
-    col.addEventListener('drop',e=>{ e.preventDefault(); const st=col.dataset.col; if(dragId){ const o=DB.ordens.find(x=>x.id===dragId); if(o){ setStatus(o,st); toast('OS movida p/ '+STATUS[st].label); render(); } } });
+    col.addEventListener('drop',e=>{ e.preventDefault(); const st=col.dataset.col, dId=dragId; col.classList.remove('drop');
+      if(dId){ const o=DB.ordens.find(x=>x.id===dId); if(o && o.status!==st){
+        confirmAsk({ title:'Mover OS', okLabel:'Confirmar',
+          msg:`Mover a OS #${String(o.numero).padStart(4,'0')} para <b>${STATUS[st].label}</b>?`+(st==='entregue'?' As peças darão baixa no estoque.':''),
+          onOk:()=>{ setStatus(o,st); render(); wireKanban(); toast('OS movida p/ '+STATUS[st].label); } });
+      } } });
   });
 }
 
@@ -762,11 +790,10 @@ function viewFinanceiro(){
   const taxasCartao=entregues.reduce((s,o)=>{ const p=pagCalc(total(o),pagOf(o)); return s + (p.isCard&&!p.repassar?p.taxa:0); },0);
   const lucro=fat-custoPec-taxasCartao, margem=fat?Math.round(lucro/fat*100):0;
   const ticket=entregues.length?fat/entregues.length:0;
-  // recebido (entregue E pago) x a receber (entregue não-pago + em aberto)
-  const recebido=entregues.filter(o=>pagOf(o).pago).reduce((s,o)=>s+total(o),0);
-  const entregueNaoPago=entregues.filter(o=>!pagOf(o).pago).reduce((s,o)=>s+total(o),0);
-  const emAberto=DB.ordens.filter(o=>['aguardando','em_servico','pronto'].includes(o.status)).reduce((s,o)=>s+total(o),0);
-  const aReceber=entregueNaoPago+emAberto;
+  // Recebido = regime de CAIXA: OS pagas cujo pagamento caiu no período (por data de pagamento)
+  const recebido=DB.ordens.filter(o=>pagOf(o).pago&&inPeriod(pagoEmOf(o),per)).reduce((s,o)=>s+total(o),0);
+  // A receber = tudo em aberto + entregue não pago (saldo devedor, não filtrado por período)
+  const aReceber=DB.ordens.filter(o=>!pagOf(o).pago&&['aguardando','em_servico','pronto','entregue'].includes(o.status)).reduce((s,o)=>s+total(o),0);
   const perBtn=(id,lbl)=>`<button class="fchip ${per===id?'active':''}" data-period="${id}">${lbl}</button>`;
   const kpi=(lbl,val,delta,cls)=>`<div class="card kpi"><span class="lbl">${lbl}</span><span class="val tnum" ${cls?`style="color:${cls}"`:''}>${val}</span>${delta?`<span class="delta">${delta}</span>`:''}</div>`;
   // gráfico: faturamento últimos 6 meses
@@ -780,7 +807,7 @@ function viewFinanceiro(){
   <div class="grid kpis">
     ${kpi('Faturamento',yen(fat),entregues.length+' OS entregues')}
     ${kpi('Recebido',yen(recebido),'já pago pelos clientes','var(--green)')}
-    ${kpi('A receber',yen(aReceber),'em aberto + não pago','var(--st-em_servico)')}
+    ${kpi('A receber',yen(aReceber),'em aberto + não pago','var(--warn)')}
     ${kpi('Lucro bruto',yen(lucro),'margem '+margem+'%','var(--green)')}
   </div>
   <div class="grid kpis" style="margin-top:14px">
@@ -852,6 +879,23 @@ function viewRelatorio(){
    ========================================================================= */
 function openModal(html,wide){ $('#modalRoot').innerHTML=`<div class="modal-back" data-modal-back><div class="modal ${wide?'wide':''}" role="dialog">${html}</div></div>`; }
 function closeModal(){ $('#modalRoot').innerHTML=''; }
+
+/* diálogo de confirmação — toda alteração sensível passa por aqui (Tem certeza?) */
+let _confirmCb=null, _confirmCancelCb=null;
+function closeConfirm(){ const cc=_confirmCancelCb; $('#confirmRoot').innerHTML=''; _confirmCb=null; _confirmCancelCb=null; if(cc) cc(); }
+function confirmAsk({title,msg,impact,okLabel,kind,onOk,onCancel}){
+  _confirmCb=onOk; _confirmCancelCb=onCancel||null;
+  const tone = kind==='danger' ? {c:'var(--red)',bg:'color-mix(in srgb,var(--red) 12%,transparent)',btn:'solid-red',ic:'M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'}
+    : kind==='money' ? {c:'var(--green)',bg:'color-mix(in srgb,var(--green) 12%,transparent)',btn:'solid-green',ic:'M20 6 9 17l-5-5'}
+    : {c:'var(--primary)',bg:'var(--primary-soft)',btn:'primary',ic:'M12 8v4M12 16h.01M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z'};
+  $('#confirmRoot').innerHTML=`<div class="confirm-back" data-confirm-cancel>
+    <div class="confirm-box" role="alertdialog">
+      <div class="ch"><div class="ci" style="background:${tone.bg};color:${tone.c}">${icon(tone.ic)}</div><h3>${title}</h3></div>
+      <div class="cb">${msg}${impact?`<div class="impact">${impact}</div>`:''}</div>
+      <div class="cf"><button class="btn ghost" data-confirm-cancel>Cancelar</button><button class="btn ${tone.btn}" id="confirmOk">${okLabel||'Confirmar'}</button></div>
+    </div></div>`;
+  $('#confirmOk').onclick=()=>{ const cb=_confirmCb; _confirmCb=null; _confirmCancelCb=null; $('#confirmRoot').innerHTML=''; if(cb) cb(); };
+}
 
 /* ---- cliente ---- */
 function modalCliente(){
@@ -965,7 +1009,7 @@ function recalcOS(){ // atualiza a caixa de totais (itens + desconto + pagamento
 function pagDetalheHTML(o){
   const pg=pagOf(o), p=pagCalc(total(o), pg);
   const pagoChip = pg.pago ? '<span class="paychip" style="color:var(--st-entregue);border-color:var(--st-entregue)">● Pago</span>'
-                           : '<span class="paychip" style="color:var(--st-em_servico);border-color:var(--st-em_servico)">● Pendente</span>';
+                           : '<span class="paychip" style="color:var(--warn);border-color:var(--warn)">● Pendente</span>';
   let extra='';
   if(p.parc>1) extra+=`<div class="det-grid" style="margin:8px 0 0"><div><div class="k">Parcelamento</div><div class="v mono">${p.parc}× de ${yen(p.parcela)}</div></div><div><div class="k">Total ao cliente</div><div class="v mono">${yen(p.cliente)}</div></div></div>`;
   if(p.isCard && p.taxa>0){
@@ -977,7 +1021,7 @@ function pagDetalheHTML(o){
       <div style="font-size:11px;color:var(--muted-2);font-weight:700;text-transform:uppercase;letter-spacing:.03em">Pagamento</div>
       <span class="paychip">${PAG[pg.forma]||'—'}${p.parc>1?' · '+p.parc+'×':''}</span>
       <div style="flex:1"></div>${pagoChip}
-      <button class="btn sm" data-act="toggle-pago" data-id="${o.id}">${pg.pago?'Marcar pendente':'Marcar como pago'}</button>
+      <button class="btn sm ${pg.pago?'':'solid-green'}" data-act="toggle-pago" data-id="${o.id}">${pg.pago?'↺ Estornar pagamento':'✓ Registrar pagamento'}</button>
     </div>${extra}</div>`;
 }
 
@@ -1065,6 +1109,9 @@ function toggleTheme(){ const cur=document.documentElement.getAttribute('data-th
   DB.theme=next; save(); }
 
 document.addEventListener('click',e=>{
+  // diálogo de confirmação: cancelar (fora do botão OK) fecha sem agir
+  const cc=e.target.closest('[data-confirm-cancel]');
+  if(cc && (e.target===cc || cc.classList.contains('confirm-back') || cc.classList.contains('btn'))){ closeConfirm(); return; }
   const nav=e.target.closest('[data-nav]'); if(nav){ go(nav.dataset.nav); return; }
   const t=e.target.closest('[data-act]');
   const back=e.target.closest('[data-modal-back]');
@@ -1081,22 +1128,35 @@ document.addEventListener('click',e=>{
     case 'drawer': openDrawer(); break;
     case 'drawer-close': closeDrawer(); break;
     case 'theme': toggleTheme(); break;
-    case 'reset': if(confirm('Zerar todos os dados e recarregar os exemplos?')){ seed(); render(); toast('Dados de exemplo recarregados'); } break;
+    case 'reset': confirmAsk({title:'Zerar dados',kind:'danger',okLabel:'Zerar tudo',msg:'Isso apaga tudo e recarrega os dados de exemplo. Não dá pra desfazer.',onOk:()=>{ seed(); render(); toast('Dados de exemplo recarregados'); }}); break;
     case 'nova-os': modalOS(); break;
     case 'novo-cliente': modalCliente(); break;
     case 'nova-peca': modalPeca(); break;
     case 'save-cliente': saveCliente(); break;
     case 'save-peca': savePeca(id); break;
-    case 'del-peca': if(confirm('Excluir esta peça?')){ DB.pecas=DB.pecas.filter(p=>p.id!==id); save(); closeModal(); render(); toast('Peça excluída'); } break;
+    case 'del-peca': confirmAsk({title:'Excluir peça',kind:'danger',okLabel:'Excluir',msg:'Tem certeza que deseja excluir esta peça do estoque?',onOk:()=>{ DB.pecas=DB.pecas.filter(p=>p.id!==id); save(); closeModal(); render(); toast('Peça excluída'); }}); break;
     case 'save-os': saveOS(); break;
     case 'add-mao': osDraft.itens.push({id:uid(),tipo:'mao',desc:'',qtd:1,preco:0,custo:0}); refreshOSForm(); break;
     case 'rm-item': syncDraftInputs(); osDraft.itens.splice(+t.dataset.ix,1); refreshOSForm(); break;
     case 'set-status': break; // via change
     case 'edit-os': closeModal(); modalOS(id); break;
-    case 'del-os': if(confirm('Excluir esta OS?')){ const o=DB.ordens.find(x=>x.id===id); if(o&&o.consumido) restoreStock(o); DB.ordens=DB.ordens.filter(x=>x.id!==id); save(); closeModal(); render(); toast('OS excluída'); } break;
+    case 'del-os': confirmAsk({title:'Excluir OS',kind:'danger',okLabel:'Excluir',msg:'Tem certeza que deseja excluir esta ordem de serviço? Isso também remove o valor dela dos relatórios.',onOk:()=>{ const o=DB.ordens.find(x=>x.id===id); if(o&&o.consumido) restoreStock(o); DB.ordens=DB.ordens.filter(x=>x.id!==id); save(); closeModal(); render(); toast('OS excluída'); }}); break;
     case 'print-os': window.print(); break;
-    case 'toggle-pago': { const o=DB.ordens.find(x=>x.id===id); if(o){ o.pagamento=pagOf(o); o.pagamento.pago=!o.pagamento.pago; o.hist.push({t:nowISO(),txt:o.pagamento.pago?'Pagamento recebido':'Pagamento marcado como pendente'}); save(); render(); modalDetalhe(o.id); toast(o.pagamento.pago?'Marcado como pago — ganhos atualizados':'Marcado como pendente'); } break; }
-    case 'del-cliente': if(confirm('Excluir cliente e seus veículos? (as OS permanecem)')){ DB.clientes=DB.clientes.filter(c=>c.id!==id); DB.veiculos=DB.veiculos.filter(v=>v.clienteId!==id); save(); closeModal(); render(); toast('Cliente excluído'); } break;
+    case 'toggle-pago': { const o=DB.ordens.find(x=>x.id===id); if(!o) break;
+      const val=total(o), vaiPagar=!pagOf(o).pago;
+      if(vaiPagar){
+        confirmAsk({ title:'Registrar pagamento', kind:'money', okLabel:'Confirmar pagamento',
+          msg:`Confirmar o recebimento desta OS? O pagamento será registrado com a data de <b>hoje</b>.`,
+          impact:`${icon('M20 6 9 17l-5-5')}<span>Soma <b>${yen(val)}</b> ao Recebido do mês</span>`,
+          onOk:()=>{ o.pagamento=pagOf(o); o.pagamento.pago=true; o.pagamento.pagoEm=nowISO(); o.hist.push({t:nowISO(),txt:'Pagamento recebido ('+yen(val)+')'}); save(); render(); modalDetalhe(o.id); toast('Pagamento registrado — ganhos atualizados'); } });
+      } else {
+        confirmAsk({ title:'Estornar pagamento', kind:'danger', okLabel:'Estornar',
+          msg:`Tem certeza que deseja <b>estornar</b> o pagamento desta OS? Ela volta para pendente.`,
+          impact:`${icon('M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.4 2.6L3 8M3 3v5h5')}<span>Subtrai <b>${yen(val)}</b> do Recebido do mês</span>`,
+          onOk:()=>{ o.pagamento=pagOf(o); o.pagamento.pago=false; o.pagamento.pagoEm=null; o.hist.push({t:nowISO(),txt:'Pagamento estornado ('+yen(val)+')'}); save(); render(); modalDetalhe(o.id); toast('Pagamento estornado'); } });
+      }
+      break; }
+    case 'del-cliente': confirmAsk({title:'Excluir cliente',kind:'danger',okLabel:'Excluir',msg:'Excluir este cliente e seus veículos? As OS dele permanecem no histórico.',onOk:()=>{ DB.clientes=DB.clientes.filter(c=>c.id!==id); DB.veiculos=DB.veiculos.filter(v=>v.clienteId!==id); save(); closeModal(); render(); toast('Cliente excluído'); }}); break;
     case 'nova-os-cli': closeModal(); modalOS(); osDraft.clienteId=t.dataset.cli; refreshOSForm(); break;
     case 'novo-veiculo': syncDraftInputs&&syncDraftInputs(); modalVeiculo(t.dataset.cli||osDraft?.clienteId||'', osDraft?'reopen-os':'close'); break;
     case 'save-veiculo': saveVeiculo(t.dataset.cli, t.dataset.back); break;
@@ -1112,7 +1172,12 @@ document.addEventListener('click',e=>{
   const rp=e.target.closest('[data-relperiod]'); if(rp){ uiState.relPeriod=rp.dataset.relperiod; render(); }
 });
 document.addEventListener('change',e=>{
-  const ss=e.target.closest('[data-act="set-status"]'); if(ss){ const o=DB.ordens.find(x=>x.id===ss.dataset.id); if(o){ setStatus(o,e.target.value); render(); modalDetalhe(o.id); toast('Status atualizado'); } return; }
+  const ss=e.target.closest('[data-act="set-status"]'); if(ss){ const o=DB.ordens.find(x=>x.id===ss.dataset.id), novo=e.target.value;
+    if(o){ confirmAsk({ title:'Mudar status', okLabel:'Confirmar',
+      msg:`Mudar o status desta OS para <b>${STATUS[novo].label}</b>?`+(novo==='entregue'?' Ao marcar como entregue, as peças dão baixa no estoque.':''),
+      onOk:()=>{ setStatus(o,novo); render(); modalDetalhe(o.id); toast('Status atualizado'); },
+      onCancel:()=>modalDetalhe(o.id) }); }  // cancelar reabre o detalhe e reseta o seletor
+    return; }
   if(e.target.id==='os_cli'){ syncDraftInputs(); osDraft.clienteId=e.target.value; osDraft.veiculoId=''; refreshOSForm(); return; }
   if(e.target.id==='os_veh'){ osDraft.veiculoId=e.target.value; const v=veiculo(e.target.value); if(v&&$('#os_km')&&!$('#os_km').value) $('#os_km').value=v.km||''; return; }
   if(e.target.id==='pecaPick'){ const p=peca(e.target.value); if(p){ syncDraftInputs(); osDraft.itens.push({id:uid(),tipo:'peca',pecaId:p.id,desc:p.nome,qtd:1,preco:p.preco,custo:p.custo}); refreshOSForm(); } return; }
