@@ -408,6 +408,15 @@
         </div>
 
         <div class="ind-row">
+          <label class="sw"><input type="checkbox" id="liqOn"><span></span></label>
+          <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,#3b1e6e,#e0245e,#ffb020,#fff)"></span>Mapa de Liquidez</span>
+          <span class="ind-params">
+            janela <input type="number" id="liqLook" value="250" min="60" max="600" title="Nº de candles analisados">
+            intens. <input type="number" id="liqGamma" value="60" min="10" max="100" title="Sensibilidade / contraste (%)">
+          </span>
+        </div>
+
+        <div class="ind-row">
           <label class="sw"><input type="checkbox" id="patOn"><span></span></label>
           <span class="ind-name"><span class="dotc" style="background:#8b9dff"></span>Padrões Gráficos</span>
           <span class="ind-params">triângulos · cunhas · canais · topo/fundo duplo · Elliott</span>
@@ -507,7 +516,7 @@ const S = {
 
 /* ---------- persistência (localStorage com proteção) ---------- */
 const store = {
-  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, symbol:S.symbol, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined), pat:(typeof PATTERNS!=='undefined'?PATTERNS.cfg:undefined)})); }catch(e){} },
+  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, symbol:S.symbol, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined), pat:(typeof PATTERNS!=='undefined'?PATTERNS.cfg:undefined), liq:(typeof LIQ!=='undefined'?LIQ.cfg:undefined)})); }catch(e){} },
   load(){ try{ return JSON.parse(localStorage.getItem('ib_term')||'{}'); }catch(e){ return {}; } }
 };
 
@@ -759,6 +768,7 @@ async function loadData(){
     renderEMA();
     MA.render();
     OB.compute();
+    LIQ.compute();
     PATTERNS.detect();
     chart.timeScale().fitContent();
     fitPriceOnce(chart);   // fit de preço 1x (depois escala manual)
@@ -806,6 +816,7 @@ function onLiveCandle(c, closed){
 
   // Order Blocks só recalculam quando o candle fecha (mitigação = barra confirmada)
   if(closed) OB.compute();
+  if(closed) LIQ.compute();
   if(closed) PATTERNS.detect();
   if(OB.cfg.on){ OB.checkAlerts(); OB.sweepDead(); MTFOB.render(); }   // alertas + remove mortos + confluência MTF ao vivo
 
@@ -838,6 +849,99 @@ window.addEventListener('resize', resizeOverlay);
 const xOf = t => chart.timeScale().timeToCoordinate(t);
 const yOf = p => candleSeries.priceToCoordinate(p);
 const FIB = [0,0.236,0.382,0.5,0.618,0.786,1];
+
+/* =========================================================================
+   MAPA DE LIQUIDEZ (estimativa) — inspirado no "liquidation heatmap" da Coinglass
+   Como não temos os dados de Open Interest da Coinglass (que são pagos), o mapa é
+   DERIVADO dos próprios candles: a partir de cada candle projetamos os níveis de
+   liquidação de posições alavancadas (10x/25x/50x/100x), ponderados pelo volume,
+   e acumulamos onde esses níveis se AGRUPAM. Cada nível "vive" para a direita até
+   o preço tocá-lo (aí é liquidado/consumido e some) — o que forma as manchas/
+   nuvens térmicas de liquidez de repouso que costumam funcionar como ímã de preço.
+   ========================================================================= */
+function heatColor(v){
+  if(v<=0.02) return [0,0,0,0];
+  const stops=[
+    [0.00, 30, 12, 60,   0],
+    [0.18, 45, 20,130,  40],
+    [0.38, 120,26,150,  92],
+    [0.58, 214,32, 86, 140],
+    [0.74, 244,96, 32, 168],
+    [0.88, 250,182,44, 196],
+    [1.00, 255,247,190,224]
+  ];
+  for(let i=1;i<stops.length;i++){
+    if(v<=stops[i][0]){ const a=stops[i-1],b=stops[i],t=(v-a[0])/((b[0]-a[0])||1);
+      return [Math.round(a[1]+(b[1]-a[1])*t),Math.round(a[2]+(b[2]-a[2])*t),Math.round(a[3]+(b[3]-a[3])*t),Math.round(a[4]+(b[4]-a[4])*t)]; }
+  }
+  const l=stops[stops.length-1]; return [l[1],l[2],l[3],l[4]];
+}
+const LIQ = {
+  cfg:{ on:false, look:250, rows:132, gamma:0.6, levs:[10,25,50,100] },
+  ready:false, cols:0, rows:0, pMin:0, pMax:0, tMin:null, tMax:null,
+  off:document.createElement('canvas'),
+  compute(){
+    this.ready=false;
+    if(!this.cfg.on) return;
+    const all=S.candles; if(!all||all.length<30) return;
+    const look=Math.max(40,Math.min(this.cfg.look, all.length));
+    const win=all.slice(all.length-look);
+    const cols=win.length, R=this.cfg.rows;
+    let pMin=Infinity,pMax=-Infinity;
+    for(const c of win){ if(c.low<pMin)pMin=c.low; if(c.high>pMax)pMax=c.high; }
+    const pad=(pMax-pMin)*0.04; pMin-=pad; pMax+=pad;
+    if(!(pMax>pMin)) return;
+    const span=pMax-pMin;
+    const G=new Float32Array(R*cols);
+    const rowOf=p=>{ let r=Math.floor((p-pMin)/span*R); return r<0?0:(r>=R?R-1:r); };
+    let vmax=0; for(const c of win) if(c.volume>vmax)vmax=c.volume;
+    for(let i=0;i<cols;i++){
+      const c=win[i], w=vmax?(0.25+0.75*(c.volume/vmax)):1, e=(c.high+c.low+c.close)/3;
+      for(const lev of this.cfg.levs){
+        const m=1/lev*0.985;
+        const longLiq=e*(1-m), shortLiq=e*(1+m);
+        if(longLiq>pMin&&longLiq<pMax){ const row=rowOf(longLiq); let end=cols-1;
+          for(let j=i+1;j<cols;j++){ if(win[j].low<=longLiq){ end=j; break; } }
+          for(let j=i;j<=end;j++) G[row*cols+j]+=w; }
+        if(shortLiq>pMin&&shortLiq<pMax){ const row=rowOf(shortLiq); let end=cols-1;
+          for(let j=i+1;j<cols;j++){ if(win[j].high>=shortLiq){ end=j; break; } }
+          for(let j=i;j<=end;j++) G[row*cols+j]+=w; }
+      }
+    }
+    let mx=0; for(let k=0;k<G.length;k++) if(G[k]>mx)mx=G[k];
+    if(mx<=0) return;
+    this.off.width=cols; this.off.height=R;
+    const octx=this.off.getContext('2d'), img=octx.createImageData(cols,R);
+    const g=Math.max(0.15,Math.min(1,this.cfg.gamma));
+    for(let r=0;r<R;r++) for(let j=0;j<cols;j++){
+      const v=Math.pow(G[r*cols+j]/mx, g), col=heatColor(v), y=R-1-r, o=(y*cols+j)*4;
+      img.data[o]=col[0]; img.data[o+1]=col[1]; img.data[o+2]=col[2]; img.data[o+3]=col[3];
+    }
+    octx.putImageData(img,0,0);
+    this.cols=cols; this.rows=R; this.pMin=pMin; this.pMax=pMax; this.tMin=win[0].time; this.tMax=win[cols-1].time;
+    this.ready=true;
+  },
+  draw(){
+    if(!this.cfg.on||!this.ready) return;
+    const R=this.rows, span=this.pMax-this.pMin, W=cv.clientWidth;
+    let leftX=xOf(this.tMin), rightX=xOf(this.tMax);
+    if(leftX==null) leftX=0; if(rightX==null) rightX=W;
+    if(rightX<=leftX) return;
+    ctx.save();
+    ctx.globalCompositeOperation='lighter';
+    ctx.imageSmoothingEnabled=true;
+    for(let r=0;r<R;r++){
+      const pLo=this.pMin+(r/R)*span, pHi=this.pMin+((r+1)/R)*span;
+      const yTop=yOf(pHi), yBot=yOf(pLo);
+      if(yTop==null||yBot==null) continue;
+      let h=yBot-yTop; if(h<=0) h=1;
+      ctx.drawImage(this.off, 0, R-1-r, this.cols, 1, leftX, yTop, rightX-leftX, h+0.6);
+    }
+    ctx.restore();
+    ctx.save(); ctx.font="9px 'IBM Plex Mono', monospace"; ctx.fillStyle='rgba(255,184,80,.7)';
+    ctx.fillText('Mapa de Liquidez · estimativa', (leftX<6?6:leftX+6), 12); ctx.restore();
+  }
+};
 
 function line(x1,y1,x2,y2,color,dash){
   ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=1.4; ctx.setLineDash(dash||[]);
@@ -1583,6 +1687,7 @@ function drawCountdown(){
 
 function redraw(){
   ctx.clearRect(0,0,cv.width,cv.height);
+  LIQ.draw();
   CYCLE.draw();
   OB.draw();
   PATTERNS.draw();
@@ -1810,11 +1915,22 @@ $('#obArrows').addEventListener('change', syncOB);
 function syncPatterns(){ PATTERNS.cfg.on=$('#patOn').checked; PATTERNS.detect(); store.save(); }
 $('#patOn').addEventListener('change', syncPatterns);
 
+// ---- Mapa de Liquidez (heatmap de liquidação, estimativa) ----
+function syncLiq(){
+  LIQ.cfg.on    = $('#liqOn').checked;
+  LIQ.cfg.look  = Math.max(60, Math.min(600, +$('#liqLook').value||250));
+  LIQ.cfg.gamma = Math.max(0.15, Math.min(1, (+$('#liqGamma').value||60)/100));
+  LIQ.compute(); store.save();
+}
+['liqOn','liqLook','liqGamma'].forEach(id=>{ const el=$('#'+id); if(el) el.addEventListener('change', syncLiq); });
+
 // rede de segurança: recalcula os Order Blocks periodicamente (novos aparecem,
 // mitigados somem) mesmo que o flag de fechamento do WebSocket falhe — sem refresh
 setInterval(()=>{ if(OB.cfg.on && S.candles.length){ OB.compute(); OB.checkAlerts(); OB.sweepDead(); MTFOB.render(); } }, 15000);
 // recomputa os padrões gráficos periodicamente (segue o preço ao vivo, sem refresh)
 setInterval(()=>{ if(PATTERNS.cfg.on && S.candles.length) PATTERNS.detect(); }, 15000);
+// recomputa o mapa de liquidez periodicamente (segue o volume/preço ao vivo)
+setInterval(()=>{ if(LIQ.cfg.on && S.candles.length) LIQ.compute(); }, 15000);
 
 // ---- Médias Móveis (SMA/EMA + toggles 50/100/200/300/400) ----
 function syncMA(){
@@ -2148,6 +2264,9 @@ $('#cycleDays').addEventListener('change', syncCycle);
   MTFOB.set(OB.cfg.on);   // painel de confluência Multi-TF acompanha o toggle dos Order Blocks
   if(saved.pat){ Object.assign(PATTERNS.cfg, saved.pat); $('#patOn').checked=PATTERNS.cfg.on; }
   PATTERNS.detect();
+  if(saved.liq){ Object.assign(LIQ.cfg, saved.liq);
+    $('#liqOn').checked=LIQ.cfg.on; if($('#liqLook'))$('#liqLook').value=LIQ.cfg.look; if($('#liqGamma'))$('#liqGamma').value=Math.round(LIQ.cfg.gamma*100); }
+  LIQ.compute();
   if(saved.sound){ SOUND.on=true; $('#soundOn').checked=true; }  // áudio libera no 1º clique
   if(saved.cycle){ Object.assign(CYCLE.cfg, saved.cycle);
     $('#cycleOn').checked=CYCLE.cfg.on; $('#cycleAnchor').value=CYCLE.cfg.anchor; $('#cycleDays').value=CYCLE.cfg.days; }
