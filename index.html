@@ -180,23 +180,24 @@
 
   /* ---------- PILHA DO CANTO SUP. ESQ. (Ciclo + Order Blocks Multi-TF) ---------- */
   .leftstack{
-    position:absolute;top:10px;left:10px;z-index:5;display:flex;flex-direction:column;gap:7px;
-    width:196px;max-width:calc(100vw - 20px);max-height:calc(100% - 20px);
+    position:absolute;top:8px;left:8px;z-index:5;display:flex;flex-direction:row;flex-wrap:wrap;align-items:flex-start;gap:6px;
+    width:auto;max-width:calc(100% - 16px);max-height:calc(100% - 16px);
     overflow-y:auto;overflow-x:hidden;scrollbar-width:none;
   }
+  .leftstack > div{ width:158px; }   /* cards lado a lado, estreitos */
   .leftstack::-webkit-scrollbar{display:none}
 
   /* card BTC Time Cycle — compacto (altura/fonte reduzidas) */
   .cyclebox{
     width:100%;background:rgba(13,18,27,.92);border:1px solid var(--hair-2);border-radius:9px;
-    padding:7px 9px;backdrop-filter:blur(4px);box-shadow:0 4px 16px rgba(0,0,0,.35);
+    padding:6px 8px;backdrop-filter:blur(4px);box-shadow:0 4px 16px rgba(0,0,0,.35);
   }
   .cyclebox[hidden]{display:none}
   .cb-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
   .cb-tag{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted-2)}
   .cb-phase{font-family:"Space Grotesk",sans-serif;font-size:10px;font-weight:700;letter-spacing:.4px}
   .cb-row{display:flex;align-items:baseline;gap:6px;margin-bottom:4px}
-  .cb-pct{font-family:"Space Grotesk",sans-serif;font-size:18px;font-weight:700;line-height:1}
+  .cb-pct{font-family:"Space Grotesk",sans-serif;font-size:15px;font-weight:700;line-height:1}
   .cb-sub{font-family:"IBM Plex Mono",monospace;font-size:9px;color:var(--muted)}
   .cb-bar{position:relative;width:100%;height:5px;border-radius:3px;background:var(--hair);overflow:hidden;margin-bottom:5px}
   .cb-bar i{position:absolute;left:0;top:0;height:100%;display:block;border-radius:3px}
@@ -207,7 +208,7 @@
   /* card Order Blocks Multi-TF (confluência 1h / 4h / 1D vs. preço atual) — compacto */
   .mtfob{
     width:100%;background:rgba(13,18,27,.92);border:1px solid var(--hair);border-radius:9px;
-    padding:7px 9px;backdrop-filter:blur(4px);
+    padding:6px 8px;backdrop-filter:blur(4px);
   }
   .mtfob[hidden]{display:none}
   .mtf-title{
@@ -229,8 +230,10 @@
   /* card Padrões Gráficos (figuras clássicas detectadas + status/probabilidade) */
   .patternbox{
     width:100%;background:rgba(13,18,27,.92);border:1px solid var(--hair);border-radius:9px;
-    padding:7px 9px;backdrop-filter:blur(4px);
+    padding:6px 8px;backdrop-filter:blur(4px);
   }
+  .pt-name{font-size:11px !important}
+  .pt-say{font-size:9px !important}
   .patternbox[hidden]{display:none}
   .pt-title{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.5px;text-transform:uppercase;
     color:var(--muted-2);margin-bottom:5px;display:flex;justify-content:space-between;align-items:center}
@@ -248,12 +251,13 @@
 
   body.grid-on .leftstack{display:none}
   /* telas estreitas / celular na horizontal: encolhe a pilha e nunca deixa vazar */
-  @media (max-width:560px){ .leftstack{width:176px;gap:6px} .cb-pct{font-size:16px} }
-  @media (orientation:landscape) and (max-height:520px){
-    .leftstack{width:168px;gap:5px;transform:scale(.9);transform-origin:top left}
-    .cyclebox,.mtfob{padding:6px 8px}
-    .cb-pct{font-size:15px}
-    .cb-note,.mtf-state{font-size:8.5px}
+  @media (max-width:560px){ .leftstack{gap:5px} .leftstack > div{width:144px} .cb-pct{font-size:14px} }
+  @media (orientation:landscape) and (max-height:560px){
+    .leftstack{gap:5px;transform:scale(.92);transform-origin:top left}
+    .leftstack > div{width:140px}
+    .cyclebox,.mtfob,.patternbox{padding:5px 7px}
+    .cb-pct{font-size:13px}
+    .cb-note,.mtf-state,.pt-say{font-size:8px}
   }
 
   /* error banner */
@@ -1586,7 +1590,7 @@ const PATTERNS = {
     const rightEdge=cv.clientWidth-rsw-1;
     const STRUCT='#8b9dff';
     for(const d of this.found){                   // já vêm deduplicados por região
-      if(d.kind==='ew' && d._draw===false) continue;   // Elliott só desenha se não colidir
+      // Elliott SEMPRE é desenhado quando detectado (o usuário quer ver de onde vem a leitura)
       const bc = d.bias==='bull'?'#26a69a':d.bias==='bear'?'#ef5350':'#f7d33f';
       if(d.kind==='dbl'){
         const P=d.pts.map(p=>({x:xOf(p.time),y:yOf(p.price)}));
@@ -1623,13 +1627,38 @@ const PATTERNS = {
       } else if(d.kind==='ew'){
         const P=d.w.map(p=>({x:xOf(p.time),y:yOf(p.price)}));
         if(P.some(q=>q.x==null||q.y==null)) continue;
+        // impulso 0→5
         for(let k=0;k<5;k++) line(P[k].x,P[k].y,P[k+1].x,P[k+1].y,STRUCT);
-        const labels=['0','1','2','3','4','5'];
-        P.forEach((q,k)=>{ ctx.save(); ctx.fillStyle=STRUCT; ctx.beginPath(); ctx.arc(q.x,q.y,2.6,0,7); ctx.fill();
-          tag(q.x+3,q.y-7,labels[k],STRUCT); ctx.restore(); });
+        for(let k=0;k<=5;k++){ const above=d.w[k].t==='H';
+          this.waveMark(P[k].x,P[k].y, k===0?'0':String(k), k===0?'#7e88a8':STRUCT, above); }
+        // ---- projeção da correção A-B-C após a onda 5 (contrária ao impulso) ----
+        const up=d.name.includes('↑'), sign=up?-1:1;
+        const p0=d.w[0].price, p5=d.w[5].price, range=Math.abs(p5-p0);
+        const x0=P[0].x, x5=P[5].x, avgDx=Math.max(12,(x5-x0)/5);
+        const pA=p5+sign*0.382*range, pB=pA-sign*0.5*Math.abs(p5-pA), pC=p5+sign*0.618*range;
+        const xA=Math.min(rightEdge,x5+avgDx*0.9), xB=Math.min(rightEdge,x5+avgDx*1.7), xC=Math.min(rightEdge,x5+avgDx*2.6);
+        const yA=yOf(pA), yB=yOf(pB), yC=yOf(pC), corr='#f7a03f';
+        if(yA!=null&&yB!=null&&yC!=null){
+          line(P[5].x,P[5].y,xA,yA,corr,[4,3]); line(xA,yA,xB,yB,corr,[4,3]); line(xB,yB,xC,yC,corr,[4,3]);
+          this.waveMark(xA,yA,'A',corr,!up); this.waveMark(xB,yB,'B',corr,up); this.waveMark(xC,yC,'C',corr,!up);
+          line(xC,yC,rightEdge,yC,corr,[2,4]); tag(rightEdge-96,yC+(up?12:-10),'alvo C '+fmtPx(pC),corr);
+        }
         this.badge(P[5].x, P[5].y-6, d, bc);
       }
     }
+  },
+  // marcador numerado de onda (círculo com o número), ligado ao pivô por um fio fino
+  waveMark(x, y, label, col, above){
+    const r=7.5, cy=y+(above?-13:13);
+    ctx.save();
+    ctx.globalAlpha=.55; ctx.strokeStyle=col; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x, cy+(above?r:-r)); ctx.stroke();
+    ctx.globalAlpha=1;
+    ctx.fillStyle='rgba(13,18,27,.92)'; ctx.strokeStyle=col; ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.arc(x,cy,r,0,7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle=col; ctx.font="700 9.5px 'IBM Plex Mono', monospace"; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(label, x, cy+.5);
+    ctx.restore();
   },
   badge(x, y, d, col){
     const txt=d.name+' · '+d.prob+'%';
