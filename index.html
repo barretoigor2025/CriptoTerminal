@@ -1601,21 +1601,31 @@ const PATTERNS = {
         const yT=yOf(d.target); if(yT!=null){ line(P[2].x,yT,rightEdge,yT,bc,[2,4]); tag(rightEdge-70,yT-8,'alvo '+fmtPx(d.target),bc); }
         this.badge(P[2].x, Math.min(...P.map(q=>q.y))-6, d, bc);
       } else if(d.kind==='tri'||d.kind==='wedge'||d.kind==='channel'){
-        // linhas ancoradas em TEMPO real: do 1º pivô de cada lado até o último
-        // candle, estendendo à direita mantendo a inclinação em pixels
-        const c=S.candles, xi=c.length-1;
+        // Linhas do canal/figura desenhadas ponto-a-ponto por ÍNDICE→coordenada:
+        // isso mantém a reta correta na escala LOG e estável no zoom/scroll (antes ela
+        // era extrapolada por inclinação em pixels e "descaralhava" no zoom). Usamos a
+        // inclinação da regressão de cada lado, mas deslocamos a reta para TOCAR o
+        // extremo (topo dos highs / fundo dos lows) — assim ela abraça as velas.
+        const c=S.candles, xi=c.length-1, ts=chart.timeScale();
         const hs=d.win.filter(p=>p.t==='H'), ls=d.win.filter(p=>p.t==='L');
-        const drawFit=(fit, side)=>{
-          if(!side.length) return;
-          const iA=side[0].i;
-          const xA=xOf(c[iA].time), xB=xOf(c[xi].time);
-          const yA=yOf(fit.m*iA+fit.b), yB=yOf(fit.m*xi+fit.b);
-          if(xA==null||xB==null||yA==null||yB==null) return;
-          let ex=xB, ey=yB;
-          if(xB!==xA){ const s=(yB-yA)/(xB-xA); ex=rightEdge; ey=yA+s*(ex-xA); }
-          line(xA,yA,ex,ey,STRUCT);
+        const bs=(ts.options&&ts.options().barSpacing)||6;
+        const xLast=ts.logicalToCoordinate(xi);
+        const fwd=(xLast!=null)?Math.max(0,Math.min(400,Math.round((rightEdge-xLast)/Math.max(2,bs)))):24;
+        const drawFit=(fit, side, hugTop)=>{
+          if(side.length<1) return;
+          const m=fit.m;
+          const b = hugTop ? Math.max(...side.map(p=>p.price - m*p.i))
+                           : Math.min(...side.map(p=>p.price - m*p.i));
+          const iStart=side[0].i, iEnd=xi+fwd, step=Math.max(1,Math.round((iEnd-iStart)/80));
+          ctx.save(); ctx.strokeStyle=STRUCT; ctx.lineWidth=1.5; ctx.setLineDash([]); ctx.beginPath();
+          let started=false;
+          const put=(i)=>{ const x=ts.logicalToCoordinate(i), y=yOf(m*i+b);
+            if(x==null||y==null) return; if(!started){ctx.moveTo(x,y);started=true;} else ctx.lineTo(x,y); };
+          for(let i=iStart;i<=iEnd;i+=step) put(i);
+          put(iEnd);
+          ctx.stroke(); ctx.restore();
         };
-        drawFit(d.U, hs); drawFit(d.Lo, ls);
+        drawFit(d.U, hs, true); drawFit(d.Lo, ls, false);
         // marca cada pivô usado (âncoras)
         for(const p of d.win){ const x=xOf(p.time), y=yOf(p.price); if(x==null||y==null) continue;
           ctx.save(); ctx.fillStyle=STRUCT; ctx.strokeStyle='#0a0d13'; ctx.lineWidth=1;
