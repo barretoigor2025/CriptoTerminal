@@ -249,6 +249,15 @@
   .pt-vol{color:var(--muted-2)}
   .pt-say{font-family:"IBM Plex Mono",monospace;font-size:9.5px;line-height:1.35;color:var(--muted)}
 
+  /* tooltip dos posts do Trump (Truth Social) */
+  .trumptip{position:absolute;z-index:7;max-width:300px;background:rgba(13,18,27,.97);
+    border:1px solid #e0322e;border-radius:9px;padding:8px 10px;box-shadow:0 6px 22px rgba(0,0,0,.55);pointer-events:auto}
+  .trumptip[hidden]{display:none}
+  .trumptip .tt-h{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--muted);margin-bottom:4px}
+  .trumptip .tt-cat{color:#f7b32b;text-transform:uppercase;letter-spacing:.3px}
+  .trumptip .tt-b{font-size:11.5px;line-height:1.4;color:var(--txt)}
+  .trumptip .tt-a{display:inline-block;margin-top:5px;font-size:10px;color:#41b3ff;text-decoration:none}
+
   body.grid-on .leftstack{display:none}
   /* telas estreitas / celular na horizontal: encolhe a pilha e nunca deixa vazar */
   @media (max-width:560px){ .leftstack{gap:5px} .leftstack > div{width:144px} .cb-pct{font-size:14px} }
@@ -427,6 +436,12 @@
         </div>
 
         <div class="ind-row">
+          <label class="sw"><input type="checkbox" id="trumpOn"><span></span></label>
+          <span class="ind-name"><span class="dotc" style="background:#e0322e"></span>🇺🇸 Posts do Trump</span>
+          <span class="ind-params">Truth Social · só economia / mercado / guerra / cripto · a cada 1&nbsp;min</span>
+        </div>
+
+        <div class="ind-row">
           <label class="sw"><input type="checkbox" id="cycleOn"><span></span></label>
           <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,var(--bull),var(--bear))"></span>BTC Time Cycle</span>
           <span class="ind-params">
@@ -479,6 +494,7 @@
       <div class="mtfob" id="mtfob" hidden></div>
       <div class="patternbox" id="patternbox" hidden></div>
     </div>
+    <div class="trumptip" id="trumptip" hidden></div>
 
     <div class="banner" id="banner">
       <h3>Sem dados do mercado</h3>
@@ -520,7 +536,7 @@ const S = {
 
 /* ---------- persistência (localStorage com proteção) ---------- */
 const store = {
-  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, symbol:S.symbol, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined), pat:(typeof PATTERNS!=='undefined'?PATTERNS.cfg:undefined), liq:(typeof LIQ!=='undefined'?LIQ.cfg:undefined)})); }catch(e){} },
+  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, symbol:S.symbol, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined), pat:(typeof PATTERNS!=='undefined'?PATTERNS.cfg:undefined), liq:(typeof LIQ!=='undefined'?LIQ.cfg:undefined), trump:(typeof TRUMP!=='undefined'?{on:TRUMP.cfg.on}:undefined)})); }catch(e){} },
   load(){ try{ return JSON.parse(localStorage.getItem('ib_term')||'{}'); }catch(e){ return {}; } }
 };
 
@@ -944,6 +960,106 @@ const LIQ = {
     ctx.restore();
     ctx.save(); ctx.font="9px 'IBM Plex Mono', monospace"; ctx.fillStyle='rgba(255,184,80,.7)';
     ctx.fillText('Mapa de Liquidez · estimativa', (leftX<6?6:leftX+6), 12); ctx.restore();
+  }
+};
+
+/* =========================================================================
+   POSTS DO TRUMP (Truth Social) — marcadores no gráfico
+   Lê o arquivo público de posts do Trump (trumpstruth.org/feed, um RSS espelho do
+   Truth Social) a cada ~1 min, via proxy CORS (o navegador não acessa direto). Filtra
+   só o que é relevante para o mercado (economia / mercados / guerra-geopolítica / cripto)
+   por palavras-chave e finca um marcador "T" no topo da vela do horário do post, para
+   você ver o que a fala dele fez o preço se mover. Passe o cursor no marcador p/ ler.
+   Observação: é um espelho público (pode ter alguns minutos de atraso) e o filtro é
+   heurístico (palavras-chave), não perfeito.
+   ========================================================================= */
+const TRUMP = {
+  cfg:{ on:false },
+  posts:[], _loading:false, _timer:null, _lastOk:0,
+  feed:'https://trumpstruth.org/feed',
+  proxies:[
+    u=>({url:'https://api.allorigins.win/get?url='+encodeURIComponent(u), json:true}),
+    u=>({url:'https://corsproxy.io/?url='+encodeURIComponent(u), json:false}),
+    u=>({url:'https://api.allorigins.win/raw?url='+encodeURIComponent(u), json:false}),
+  ],
+  async fetchNow(){
+    if(this._loading) return; this._loading=true;
+    let xml=null;
+    for(const mk of this.proxies){
+      try{
+        const p=mk(this.feed);
+        const r=await fetch(p.url,{cache:'no-store'}); if(!r.ok) continue;
+        let txt = p.json ? (await r.json()).contents : await r.text();
+        if(txt && /<item[\s>]/i.test(txt)){ xml=txt; break; }
+      }catch(e){}
+    }
+    this._loading=false;
+    if(!xml) return;
+    try{ this.parse(xml); this._lastOk=Date.now(); }catch(e){}
+  },
+  strip(html){ const d=document.createElement('div'); d.innerHTML=html||''; return (d.textContent||'').replace(/\s+/g,' ').trim(); },
+  classify(t){
+    const s=(t||'').toLowerCase(), cats=[];
+    if(/\b(bitcoin|btc|crypto|ethereum|\beth\b|digital asset|stablecoin|coinbase|blockchain)\b/.test(s)) cats.push('cripto');
+    if(/\b(econom|inflation|interest rate|\brates?\b|federal reserve|the fed|powell|jobs report|unemploy|\bcpi\b|\bgdp\b|tariff|trade deal|trade war|taxes?|deficit|national debt|\bdollar\b|\boil\b|gas price|stock market|\bmarkets?\b|recession|treasury|sanction|\bopec\b|earnings|wall street)\b/.test(s)) cats.push('economia');
+    if(/\b(war|missile|attack|bomb|strike|\biran\b|russia|ukraine|\bchina\b|israel|nuclear|military|troops|defense|hormuz|hamas|\bnato\b|invasion|ceasefire|tariffs)\b/.test(s)) cats.push('geopolítica');
+    return cats;
+  },
+  parse(xml){
+    const doc=new DOMParser().parseFromString(xml,'text/xml');
+    const items=[...doc.querySelectorAll('item')], out=[];
+    for(const it of items){
+      const desc=it.querySelector('description'), title=it.querySelector('title');
+      const text=this.strip(desc?desc.textContent:'')||this.strip(title?title.textContent:'');
+      const pd=it.querySelector('pubDate'); const time=pd?Math.floor(Date.parse(pd.textContent)/1000):0;
+      if(!time||!text) continue;
+      const cats=this.classify(text); if(!cats.length) continue;   // só mercado/economia/guerra/cripto
+      let url=''; const on=it.getElementsByTagName('truth:originalUrl'); if(on&&on[0]) url=on[0].textContent.trim();
+      if(!url){ const lk=it.querySelector('link'); if(lk) url=lk.textContent.trim(); }
+      out.push({time, text, cats, url});
+    }
+    out.sort((a,b)=>a.time-b.time);
+    this.posts=out;
+  },
+  draw(){
+    if(!this.cfg.on || !this.posts.length) return;
+    const c=S.candles, n=c.length; if(n<2) return;
+    const dt=c[n-1].time-c[n-2].time; if(!(dt>0)) return;
+    const t0=c[0].time, tN=c[n-1].time+dt;
+    for(const p of this.posts){ p._x=null;
+      if(p.time<t0 || p.time>=tN) continue;
+      let idx=Math.floor((p.time-t0)/dt); if(idx<0)idx=0; if(idx>n-1)idx=n-1;
+      const x=xOf(c[idx].time), y=yOf(c[idx].high);
+      if(x==null||y==null) continue;
+      this.pin(x,y,p);
+    }
+  },
+  pin(x,yHigh,p){
+    const col='#e0322e', gold='#f7b32b', cy=yHigh-22;
+    ctx.save();
+    ctx.strokeStyle=col; ctx.globalAlpha=.7; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(x,yHigh-3); ctx.lineTo(x,cy+8); ctx.stroke(); ctx.globalAlpha=1;
+    ctx.beginPath(); ctx.arc(x,cy,8.5,0,7); ctx.fillStyle='rgba(13,18,27,.96)'; ctx.fill();
+    ctx.lineWidth=1.7; ctx.strokeStyle=col; ctx.stroke();
+    ctx.fillStyle=gold; ctx.font="700 10px 'IBM Plex Mono', monospace"; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('T', x, cy+0.5);
+    ctx.restore();
+    p._x=x; p._y=cy;
+  },
+  tip(px,py){
+    const el=$('#trumptip'); if(!el) return;
+    if(!this.cfg.on || !this.posts.length){ el.hidden=true; return; }
+    let best=null, bd=1e9;
+    for(const p of this.posts){ if(p._x==null) continue; const d=Math.hypot(px-p._x,py-p._y); if(d<bd){bd=d;best=p;} }
+    if(best && bd<20){
+      const when=new Date(best.time*1000).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      el.innerHTML='<div class="tt-h">🇺🇸 Trump · '+when+' <span class="tt-cat">'+best.cats.join(' · ')+'</span></div>'+
+        '<div class="tt-b">'+best.text.slice(0,320).replace(/</g,'&lt;')+(best.text.length>320?'…':'')+'</div>'+
+        (best.url?'<a class="tt-a" href="'+best.url+'" target="_blank" rel="noopener">ver no Truth Social ↗</a>':'');
+      el.style.left=Math.min(cv.clientWidth-310, best._x+12)+'px';
+      el.style.top=Math.max(6, best._y-12)+'px';
+      el.hidden=false;
+    } else el.hidden=true;
   }
 };
 
@@ -1730,6 +1846,7 @@ function redraw(){
   CYCLE.draw();
   OB.draw();
   PATTERNS.draw();
+  TRUMP.draw();
   EXPLOSION.draw();
   drawCountdown();
   for(const d of S.drawings){
@@ -1962,6 +2079,16 @@ function syncLiq(){
   LIQ.compute(); store.save();
 }
 ['liqOn','liqLook','liqGamma'].forEach(id=>{ const el=$('#'+id); if(el) el.addEventListener('change', syncLiq); });
+
+// ---- Posts do Trump (Truth Social) ----
+function syncTrump(){
+  TRUMP.cfg.on = $('#trumpOn').checked; store.save();
+  const el=$('#trumptip'); if(el && !TRUMP.cfg.on) el.hidden=true;
+  if(TRUMP.cfg.on){ TRUMP.fetchNow(); if(!TRUMP._timer) TRUMP._timer=setInterval(()=>{ if(TRUMP.cfg.on) TRUMP.fetchNow(); }, 60000); }
+}
+$('#trumpOn').addEventListener('change', syncTrump);
+// tooltip ao passar o cursor sobre o marcador
+chart.subscribeCrosshairMove(param=>{ if(param&&param.point) TRUMP.tip(param.point.x, param.point.y); else { const el=$('#trumptip'); if(el) el.hidden=true; } });
 
 // rede de segurança: recalcula os Order Blocks periodicamente (novos aparecem,
 // mitigados somem) mesmo que o flag de fechamento do WebSocket falhe — sem refresh
@@ -2306,6 +2433,7 @@ $('#cycleDays').addEventListener('change', syncCycle);
   if(saved.liq){ Object.assign(LIQ.cfg, saved.liq);
     $('#liqOn').checked=LIQ.cfg.on; if($('#liqLook'))$('#liqLook').value=LIQ.cfg.look; if($('#liqGamma'))$('#liqGamma').value=Math.round(LIQ.cfg.gamma*100); }
   LIQ.compute();
+  if(saved.trump){ TRUMP.cfg.on=!!saved.trump.on; $('#trumpOn').checked=TRUMP.cfg.on; if(TRUMP.cfg.on) syncTrump(); }
   if(saved.sound){ SOUND.on=true; $('#soundOn').checked=true; }  // áudio libera no 1º clique
   if(saved.cycle){ Object.assign(CYCLE.cfg, saved.cycle);
     $('#cycleOn').checked=CYCLE.cfg.on; $('#cycleAnchor').value=CYCLE.cfg.anchor; $('#cycleDays').value=CYCLE.cfg.days; }
