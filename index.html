@@ -898,7 +898,7 @@ function heatColor(v){
 }
 const LIQ = {
   cfg:{ on:false, look:250, rows:132, gamma:0.6, levs:[10,25,50,100] },
-  ready:false, cols:0, rows:0, pMin:0, pMax:0, tMin:null, tMax:null,
+  ready:false, cols:0, rows:0, pMin:0, pMax:0, tMin:null, tMax:null, iMin:0, iMax:0,
   off:document.createElement('canvas'),
   compute(){
     this.ready=false;
@@ -939,27 +939,37 @@ const LIQ = {
     }
     octx.putImageData(img,0,0);
     this.cols=cols; this.rows=R; this.pMin=pMin; this.pMax=pMax; this.tMin=win[0].time; this.tMax=win[cols-1].time;
+    this.iMin=all.length-cols; this.iMax=all.length-1;   // índices lógicos (âncora estável no zoom/scroll)
     this.ready=true;
   },
   draw(){
     if(!this.cfg.on||!this.ready) return;
-    const R=this.rows, span=this.pMax-this.pMin, W=cv.clientWidth;
-    let leftX=xOf(this.tMin), rightX=xOf(this.tMax);
-    if(leftX==null) leftX=0; if(rightX==null) rightX=W;
-    if(rightX<=leftX) return;
+    const R=this.rows, span=this.pMax-this.pMin, W=cv.clientWidth, Hc=cv.clientHeight;
+    // ÂNCORA por índice lógico (não por xOf(tempo)): logicalToCoordinate devolve a
+    // coordenada correta mesmo com o candle fora da viewport, então o mapa fica
+    // sempre colado nas velas em qualquer zoom/scroll (antes o fallback 0/W esticava
+    // tudo num retângulo torto que "grudava" no canto).
+    const ts=chart.timeScale();
+    let leftX=ts.logicalToCoordinate(this.iMin), rightX=ts.logicalToCoordinate(this.iMax);
+    if(leftX==null||rightX==null||rightX<=leftX) return;
+    // meia-vela de folga em cada ponta p/ alinhar às colunas
+    const half=(rightX-leftX)/Math.max(1,this.cols-1)/2; leftX-=half; rightX+=half;
+    if(rightX<0||leftX>W) return;   // totalmente fora da tela → nada a desenhar
     ctx.save();
+    ctx.beginPath(); ctx.rect(0,0,W,Hc); ctx.clip();   // nunca vaza da área do gráfico
     ctx.globalCompositeOperation='lighter';
     ctx.imageSmoothingEnabled=true;
     for(let r=0;r<R;r++){
       const pLo=this.pMin+(r/R)*span, pHi=this.pMin+((r+1)/R)*span;
       const yTop=yOf(pHi), yBot=yOf(pLo);
       if(yTop==null||yBot==null) continue;
+      if(yBot<0||yTop>Hc) continue;   // faixa fora da tela na vertical
       let h=yBot-yTop; if(h<=0) h=1;
       ctx.drawImage(this.off, 0, R-1-r, this.cols, 1, leftX, yTop, rightX-leftX, h+0.6);
     }
     ctx.restore();
     ctx.save(); ctx.font="9px 'IBM Plex Mono', monospace"; ctx.fillStyle='rgba(255,184,80,.7)';
-    ctx.fillText('Mapa de Liquidez · estimativa', (leftX<6?6:leftX+6), 12); ctx.restore();
+    ctx.fillText('Mapa de Liquidez · estimativa', Math.max(6,Math.min(leftX+6,W-160)), 12); ctx.restore();
   }
 };
 
