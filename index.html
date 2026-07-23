@@ -960,17 +960,23 @@ const LIQ = {
     // meia-vela de folga em cada ponta p/ alinhar às colunas
     const half=(rightX-leftX)/Math.max(1,this.cols-1)/2; leftX-=half; rightX+=half;
     if(rightX<0||leftX>W) return;   // totalmente fora da tela → nada a desenhar
+    // Fronteiras Y das R+1 linhas de preço, pré-calculadas: as faixas ficam CONTÍGUAS
+    // (o topo de uma é o fundo da outra) — sem sobreposição. Combinado com composição
+    // NORMAL (source-over, não 'lighter'), o desenho fica idêntico em qualquer navegador/
+    // GPU. Antes o 'lighter' + a folga de 0.6px somavam nas bordas e viravam listras
+    // brilhantes que "estouravam" diferente em cada GPU (bug do Chrome/Opera vs Brave).
+    const ys=new Array(R+1);
+    for(let r=0;r<=R;r++) ys[r]=yOf(this.pMin+(r/R)*span);
     ctx.save();
     ctx.beginPath(); ctx.rect(0,0,W,Hc); ctx.clip();   // nunca vaza da área do gráfico
-    ctx.globalCompositeOperation='lighter';
     ctx.imageSmoothingEnabled=true;
     for(let r=0;r<R;r++){
-      const pLo=this.pMin+(r/R)*span, pHi=this.pMin+((r+1)/R)*span;
-      const yTop=yOf(pHi), yBot=yOf(pLo);
-      if(yTop==null||yBot==null) continue;
-      if(yBot<0||yTop>Hc) continue;   // faixa fora da tela na vertical
-      let h=yBot-yTop; if(h<=0) h=1;
-      ctx.drawImage(this.off, 0, R-1-r, this.cols, 1, leftX, yTop, rightX-leftX, h+0.6);
+      const yB=ys[r], yT=ys[r+1];               // yT (preço maior) fica acima de yB
+      if(yT==null||yB==null) continue;
+      const yTop=Math.min(yT,yB), yBot=Math.max(yT,yB);
+      if(yBot<0||yTop>Hc) continue;             // faixa fora da tela na vertical
+      const h=yBot-yTop; if(h<=0) continue;
+      ctx.drawImage(this.off, 0, R-1-r, this.cols, 1, leftX, yTop, rightX-leftX, h+1);
     }
     ctx.restore();
     ctx.save(); ctx.font="9px 'IBM Plex Mono', monospace"; ctx.fillStyle='rgba(255,184,80,.7)';
