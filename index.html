@@ -190,6 +190,7 @@
     overflow-y:auto;overflow-x:hidden;scrollbar-width:none;
   }
   .leftstack > div{ width:158px; }   /* cards lado a lado, estreitos */
+  .leftstack > .sumbox{ width:288px; }   /* o card de resumo é mais longo */
   .leftstack::-webkit-scrollbar{display:none}
 
   /* card BTC Time Cycle — compacto (altura/fonte reduzidas) */
@@ -253,6 +254,20 @@
   .pt-prob{color:var(--muted)}.pt-prob b{color:var(--txt)}
   .pt-vol{color:var(--muted-2)}
   .pt-say{font-family:"IBM Plex Mono",monospace;font-size:9.5px;line-height:1.35;color:var(--muted)}
+
+  /* card Resumo Multi-TF (1h/4h/D/Semanal + síntese) — um pouco mais largo */
+  .sumbox{width:100%;background:rgba(13,18,27,.94);border:1px solid var(--hair);border-radius:9px;
+    padding:7px 9px;backdrop-filter:blur(4px)}
+  .sumbox[hidden]{display:none}
+  .sum-row{display:flex;align-items:center;gap:7px;padding:3px 0;border-top:1px solid rgba(255,255,255,.05);font-family:"IBM Plex Mono",monospace;font-size:9.5px}
+  .sum-row:first-of-type{border-top:none}
+  .sum-tf{font-weight:700;color:var(--btc);min-width:22px}
+  .sum-b{font-weight:700}
+  .sum-rsi{color:var(--muted-2)}
+  .sum-chg{margin-left:auto;font-weight:600}
+  .sum-syn{margin-top:6px;padding-top:5px;border-top:1px solid rgba(255,255,255,.10);font-family:"IBM Plex Mono",monospace;font-size:9.5px;line-height:1.4;color:var(--muted)}
+  .sum-syn b{color:var(--txt)}
+  .sum-cyc{margin-top:4px;font-family:"IBM Plex Mono",monospace;font-size:9px;line-height:1.35;color:var(--muted-2)}
 
   /* tooltip dos posts do Trump (Truth Social) */
   .trumptip{position:absolute;z-index:7;max-width:300px;background:rgba(13,18,27,.97);
@@ -441,6 +456,18 @@
         </div>
 
         <div class="ind-row">
+          <label class="sw"><input type="checkbox" id="rsiOn"><span></span></label>
+          <span class="ind-name"><span class="dotc" style="background:#b17ce0"></span>RSI</span>
+          <span class="ind-params">período <input type="number" id="rsiLen" value="14" min="2" max="50"> · na faixa inferior (sobre o volume)</span>
+        </div>
+
+        <div class="ind-row">
+          <label class="sw"><input type="checkbox" id="sumOn"><span></span></label>
+          <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,var(--bull),var(--bear))"></span>Resumo Multi-TF</span>
+          <span class="ind-params">card: 1h · 4h · Diário · Semanal + síntese, com o BTC Cycle</span>
+        </div>
+
+        <div class="ind-row">
           <label class="sw"><input type="checkbox" id="trumpOn"><span></span></label>
           <span class="ind-name"><span class="dotc" style="background:#e0322e"></span>🇺🇸 Posts do Trump</span>
           <span class="ind-params">Truth Social · só economia / mercado / guerra / cripto · a cada 1&nbsp;min</span>
@@ -498,6 +525,7 @@
       <div class="cyclebox" id="cyclebox" hidden></div>
       <div class="mtfob" id="mtfob" hidden></div>
       <div class="patternbox" id="patternbox" hidden></div>
+      <div class="sumbox" id="sumbox" hidden></div>
     </div>
     <div class="trumptip" id="trumptip" hidden></div>
 
@@ -541,7 +569,7 @@ const S = {
 
 /* ---------- persistência (localStorage com proteção) ---------- */
 const store = {
-  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, symbol:S.symbol, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined), pat:(typeof PATTERNS!=='undefined'?PATTERNS.cfg:undefined), liq:(typeof LIQ!=='undefined'?LIQ.cfg:undefined), trump:(typeof TRUMP!=='undefined'?{on:TRUMP.cfg.on}:undefined)})); }catch(e){} },
+  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, symbol:S.symbol, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined), pat:(typeof PATTERNS!=='undefined'?PATTERNS.cfg:undefined), liq:(typeof LIQ!=='undefined'?LIQ.cfg:undefined), trump:(typeof TRUMP!=='undefined'?{on:TRUMP.cfg.on}:undefined), rsi:(typeof RSI!=='undefined'?RSI.cfg:undefined), sum:(typeof SUMMARY!=='undefined'?{on:SUMMARY.cfg.on}:undefined)})); }catch(e){} },
   load(){ try{ return JSON.parse(localStorage.getItem('ib_term')||'{}'); }catch(e){ return {}; } }
 };
 
@@ -794,6 +822,7 @@ async function loadData(){
     MA.render();
     OB.compute();
     LIQ.compute();
+    RSI.compute();
     PATTERNS.detect();
     chart.timeScale().fitContent();
     fitPriceOnce(chart);   // fit de preço 1x (depois escala manual)
@@ -842,6 +871,7 @@ function onLiveCandle(c, closed){
   // Order Blocks só recalculam quando o candle fecha (mitigação = barra confirmada)
   if(closed) OB.compute();
   if(closed) LIQ.compute();
+  if(RSI.cfg.on) RSI.compute();   // RSI acompanha o preço ao vivo (recálculo barato)
   if(closed) PATTERNS.detect();
   if(OB.cfg.on){ OB.checkAlerts(); OB.sweepDead(); MTFOB.render(); }   // alertas + remove mortos + confluência MTF ao vivo
 
@@ -1081,6 +1111,145 @@ const TRUMP = {
       el.style.top=Math.max(6, best._y-12)+'px';
       el.hidden=false;
     } else el.hidden=true;
+  }
+};
+
+/* RSI de Wilder sobre um array de closes (valor único, o último) */
+function rsiOf(closes, len){
+  const n=closes.length; if(n<len+1) return null;
+  let g=0,l=0; for(let i=1;i<=len;i++){ const d=closes[i]-closes[i-1]; g+=Math.max(d,0); l+=Math.max(-d,0); }
+  g/=len; l/=len;
+  for(let i=len+1;i<n;i++){ const d=closes[i]-closes[i-1]; g=(g*(len-1)+Math.max(d,0))/len; l=(l*(len-1)+Math.max(-d,0))/len; }
+  return l===0?100:100-100/(1+g/l);
+}
+
+/* =========================================================================
+   RSI — oscilador na faixa inferior, DESENHADO no overlay por cima do volume
+   (adicionável/removível). Segue o zoom/scroll ancorando cada ponto por tempo.
+   ========================================================================= */
+const RSI = {
+  cfg:{ on:false, len:14 },
+  vals:[],
+  compute(){
+    this.vals=[];
+    if(!this.cfg.on) return;
+    const c=S.candles, n=c.length, len=Math.max(2,this.cfg.len); if(n<len+1) return;
+    const out=new Array(n).fill(null);
+    let g=0,l=0; for(let i=1;i<=len;i++){ const d=c[i].close-c[i-1].close; g+=Math.max(d,0); l+=Math.max(-d,0); }
+    g/=len; l/=len; out[len]= l===0?100:100-100/(1+g/l);
+    for(let i=len+1;i<n;i++){ const d=c[i].close-c[i-1].close;
+      g=(g*(len-1)+Math.max(d,0))/len; l=(l*(len-1)+Math.max(-d,0))/len;
+      out[i]= l===0?100:100-100/(1+g/l); }
+    this.vals=out;
+  },
+  band(){ const H=cv.clientHeight; return { top:H*0.795, bot:H*0.99 }; },   // faixa inferior (sobre o volume)
+  yOf(v){ const b=this.band(); return b.bot - (Math.max(0,Math.min(100,v))/100)*(b.bot-b.top); },
+  draw(){
+    if(!this.cfg.on || !this.vals.length) return;
+    const c=S.candles, n=c.length;
+    let rsw=0; try{ rsw=chart.priceScale('right').width()||0; }catch(_){}
+    const rightEdge=cv.clientWidth-rsw-1;
+    const y70=this.yOf(70), y50=this.yOf(50), y30=this.yOf(30);
+    ctx.save();
+    // níveis 70 / 50 / 30
+    ctx.lineWidth=1; ctx.setLineDash([3,4]);
+    ctx.strokeStyle='rgba(239,83,80,.30)';  ctx.beginPath(); ctx.moveTo(0,y70); ctx.lineTo(rightEdge,y70); ctx.stroke();
+    ctx.strokeStyle='rgba(38,166,154,.30)';  ctx.beginPath(); ctx.moveTo(0,y30); ctx.lineTo(rightEdge,y30); ctx.stroke();
+    ctx.strokeStyle='rgba(150,160,180,.16)'; ctx.beginPath(); ctx.moveTo(0,y50); ctx.lineTo(rightEdge,y50); ctx.stroke();
+    ctx.setLineDash([]);
+    // linha do RSI
+    ctx.strokeStyle='#b17ce0'; ctx.lineWidth=1.6; ctx.beginPath(); let started=false;
+    for(let i=0;i<n;i++){ const v=this.vals[i]; if(v==null) continue; const x=xOf(c[i].time); if(x==null) continue;
+      const y=this.yOf(v); if(!started){ctx.moveTo(x,y);started=true;} else ctx.lineTo(x,y); }
+    ctx.stroke();
+    // rótulos e valor atual
+    let last=null; for(let i=n-1;i>=0;i--){ if(this.vals[i]!=null){ last=this.vals[i]; break; } }
+    ctx.font="9px 'IBM Plex Mono', monospace"; ctx.textBaseline='middle';
+    ctx.fillStyle='rgba(239,83,80,.7)';  ctx.fillText('70', 3, y70);
+    ctx.fillStyle='rgba(38,166,154,.7)'; ctx.fillText('30', 3, y30);
+    if(last!=null){ const col=last>=70?'#ef5350':last<=30?'#26a69a':'#b17ce0';
+      ctx.fillStyle=col; ctx.fillText('RSI '+this.cfg.len+' · '+last.toFixed(1), 22, this.band().top-1); }
+    ctx.restore();
+  }
+};
+
+/* =========================================================================
+   RESUMO MULTI-TF — card com leitura de 1h / 4h / Diário / Semanal, uma síntese
+   mesclada (ponderada) e a fase do BTC Cycle. Busca os candles de cada TF via a
+   fonte atual e classifica tendência (EMAs + inclinação), momentum (RSI) e variação.
+   ========================================================================= */
+const SUMMARY = {
+  cfg:{ on:false }, tfs:['1h','4h','1d','1w'], L:{'1h':'1h','4h':'4h','1d':'1D','1w':'1S'},
+  W:{'1h':1,'4h':1.5,'1d':2.5,'1w':3}, data:{}, timer:null, el:$('#sumbox'), _loading:false,
+  visible(){ return this.cfg.on; },
+  analyze(c){
+    if(!c||c.length<60) return null;
+    const closes=c.map(x=>x.close), n=closes.length, price=closes[n-1];
+    const emaArr=(len)=>{ const k=2/(len+1); let e=closes[0]; const a=[e]; for(let i=1;i<n;i++){ e=closes[i]*k+e*(1-k); a.push(e);} return a; };
+    const e50=emaArr(50), e200=emaArr(Math.min(200,n-1));
+    const ema50=e50[n-1], ema200=e200[n-1];
+    const back=Math.min(20,n-2), slope=(e50[n-1]-e50[n-1-back])/back/price;   // %/barra
+    let bias, biasTxt;
+    if(price>ema50 && ema50>=ema200 && slope>0){ bias=1; biasTxt='alta'; }
+    else if(price<ema50 && ema50<=ema200 && slope<0){ bias=-1; biasTxt='baixa'; }
+    else { bias=0; biasTxt='lateral'; }
+    const rsi=rsiOf(closes,14);
+    const chg=(price/closes[Math.max(0,n-15)]-1)*100;
+    return {bias, biasTxt, rsi, chg, price};
+  },
+  async refresh(){
+    if(!this.visible()||this._loading) return; this._loading=true;
+    try{
+      const src=SOURCES[providerFor(S.symbol)];
+      const got=await Promise.all(this.tfs.map(tf=>src.rest(tf,S.symbol).then(c=>this.analyze(c)).catch(()=>null)));
+      this.tfs.forEach((tf,i)=>{ this.data[tf]=got[i]; });
+    }catch(e){}
+    this._loading=false; this.render();
+  },
+  render(){
+    if(!this.el) return;
+    this.el.hidden=!this.visible(); if(!this.visible()) return;
+    const arrw=b=>b>0?'▲':b<0?'▼':'↔', bcol=b=>b>0?'#26a69a':b<0?'#ef5350':'#f7d33f';
+    const rcol=r=>r==null?'#586074':r>=70?'#ef5350':r<=30?'#26a69a':'#9aa4b8';
+    let rows='', score=0, tot=0, up=[], dn=[], obN=0, osN=0, loaded=0;
+    for(const tf of this.tfs){
+      const a=this.data[tf], lab=this.L[tf];
+      if(!a){ rows+='<div class="sum-row"><span class="sum-tf">'+lab+'</span><span class="sum-rsi">carregando…</span></div>'; continue; }
+      loaded++; score+=a.bias*this.W[tf]; tot+=this.W[tf];
+      if(a.bias>0) up.push(lab); else if(a.bias<0) dn.push(lab);
+      if(a.rsi!=null&&a.rsi>=70) obN++; if(a.rsi!=null&&a.rsi<=30) osN++;
+      rows+='<div class="sum-row"><span class="sum-tf">'+lab+'</span>'+
+        '<span class="sum-b" style="color:'+bcol(a.bias)+'">'+arrw(a.bias)+' '+a.biasTxt+'</span>'+
+        '<span class="sum-rsi">RSI <b style="color:'+rcol(a.rsi)+'">'+(a.rsi==null?'—':a.rsi.toFixed(0))+'</b></span>'+
+        '<span class="sum-chg" style="color:'+(a.chg>=0?'#26a69a':'#ef5350')+'">'+(a.chg>=0?'+':'')+a.chg.toFixed(1)+'%</span></div>';
+    }
+    let syn;
+    if(!loaded){ syn='<b>—</b> aguardando dados dos períodos…'; }
+    else {
+      const norm=tot?score/tot:0;
+      let verdict, vcol;
+      if(norm>0.35){ verdict='Predomínio COMPRADOR'; vcol='#26a69a'; }
+      else if(norm<-0.35){ verdict='Predomínio VENDEDOR'; vcol='#ef5350'; }
+      else { verdict='Mercado MISTO / lateral'; vcol='#f7d33f'; }
+      let extra='';
+      if(up.length&&dn.length) extra=' Alta em '+up.join('/')+', baixa em '+dn.join('/')+' (divergência entre prazos).';
+      else if(up.length) extra=' Períodos alinhados em alta: '+up.join(', ')+'.';
+      else if(dn.length) extra=' Períodos alinhados em baixa: '+dn.join(', ')+'.';
+      if(obN>=2) extra+=' ⚠ '+obN+' prazos sobrecomprados (RSI≥70).';
+      if(osN>=2) extra+=' ⚠ '+osN+' prazos sobrevendidos (RSI≤30).';
+      syn='<b style="color:'+vcol+'">'+verdict+'</b> —'+extra;
+    }
+    // fase do BTC Cycle
+    let cyc=''; try{ const ci=CYCLE.info(); const cc=ci.bull?'#26a69a':'#ef5350';
+      cyc='<div class="sum-cyc">BTC Cycle: <b style="color:'+cc+'">'+(ci.bull?'BULL':'BEAR')+' '+ci.pct.toFixed(0)+'%</b> — '+
+        (ci.bull?('~'+ci.dToPeak+'d até o topo'):('fase final, ~'+ci.dToEnd+'d até o novo ciclo'))+'</div>'; }catch(e){}
+    this.el.innerHTML='<div class="mtf-title"><span>Resumo Multi-TF</span><b>'+symLabel(S.symbol)+'</b></div>'+
+      rows+'<div class="sum-syn">'+syn+'</div>'+cyc;
+  },
+  set(on){
+    if(this.timer){ clearInterval(this.timer); this.timer=null; }
+    if(on){ this.render(); this.refresh().catch(()=>{}); this.timer=setInterval(()=>this.refresh().catch(()=>{}), 60000); }
+    else this.render();
   }
 };
 
@@ -1867,6 +2036,7 @@ function redraw(){
   CYCLE.draw();
   OB.draw();
   PATTERNS.draw();
+  RSI.draw();
   TRUMP.draw();
   EXPLOSION.draw();
   drawCountdown();
@@ -2051,7 +2221,7 @@ document.addEventListener('click', e=>{
 $('#tfSel').addEventListener('change', e=>{ S.tf=e.target.value; store.save(); loadData(); });
 
 // ---- ativo da tela principal (BTC / ETH / SOL) ----
-$('#mainAsset').addEventListener('change', e=>{ S.symbol=e.target.value; store.save(); loadData(); MTFOB.refresh().catch(()=>{}); PATTERNS.detect(); });
+$('#mainAsset').addEventListener('change', e=>{ S.symbol=e.target.value; store.save(); loadData(); MTFOB.refresh().catch(()=>{}); SUMMARY.refresh().catch(()=>{}); PATTERNS.detect(); });
 
 // ---- tela cheia (entra/sai; o botão vira "voltar" quando em tela cheia) ----
 const fsBtn=$('#fsBtn');
@@ -2069,7 +2239,7 @@ fsBtn.addEventListener('click', toggleFS);
 document.addEventListener('fullscreenchange', syncFSIcon);
 document.addEventListener('webkitfullscreenchange', syncFSIcon);
 
-$('#src').addEventListener('change', e=>{ S.source=e.target.value; store.save(); loadData(); MTFOB.refresh().catch(()=>{}); });
+$('#src').addEventListener('change', e=>{ S.source=e.target.value; store.save(); loadData(); MTFOB.refresh().catch(()=>{}); SUMMARY.refresh().catch(()=>{}); });
 $('#emaOn').addEventListener('change', renderEMA);
 $('#emaLen').addEventListener('change', renderEMA);
 
@@ -2100,6 +2270,18 @@ function syncLiq(){
   LIQ.compute(); store.save();
 }
 ['liqOn','liqLook','liqGamma'].forEach(id=>{ const el=$('#'+id); if(el) el.addEventListener('change', syncLiq); });
+
+// ---- RSI (oscilador na faixa inferior) ----
+function syncRSI(){
+  RSI.cfg.on=$('#rsiOn').checked;
+  RSI.cfg.len=Math.max(2,Math.min(50,+$('#rsiLen').value||14));
+  RSI.compute(); store.save();
+}
+['rsiOn','rsiLen'].forEach(id=>{ const el=$('#'+id); if(el) el.addEventListener('change', syncRSI); });
+
+// ---- Resumo Multi-TF ----
+function syncSummary(){ SUMMARY.cfg.on=$('#sumOn').checked; SUMMARY.set(SUMMARY.cfg.on); store.save(); }
+$('#sumOn').addEventListener('change', syncSummary);
 
 // ---- Posts do Trump (Truth Social) ----
 function syncTrump(){
@@ -2455,6 +2637,8 @@ $('#cycleDays').addEventListener('change', syncCycle);
     $('#liqOn').checked=LIQ.cfg.on; if($('#liqLook'))$('#liqLook').value=LIQ.cfg.look; if($('#liqGamma'))$('#liqGamma').value=Math.round(LIQ.cfg.gamma*100); }
   LIQ.compute();
   if(saved.trump){ TRUMP.cfg.on=!!saved.trump.on; $('#trumpOn').checked=TRUMP.cfg.on; if(TRUMP.cfg.on) syncTrump(); }
+  if(saved.rsi){ Object.assign(RSI.cfg, saved.rsi); $('#rsiOn').checked=RSI.cfg.on; if($('#rsiLen'))$('#rsiLen').value=RSI.cfg.len; RSI.compute(); }
+  if(saved.sum){ SUMMARY.cfg.on=!!saved.sum.on; $('#sumOn').checked=SUMMARY.cfg.on; if(SUMMARY.cfg.on) SUMMARY.set(true); }
   if(saved.sound){ SOUND.on=true; $('#soundOn').checked=true; }  // áudio libera no 1º clique
   if(saved.cycle){ Object.assign(CYCLE.cfg, saved.cycle);
     $('#cycleOn').checked=CYCLE.cfg.on; $('#cycleAnchor').value=CYCLE.cfg.anchor; $('#cycleDays').value=CYCLE.cfg.days; }
