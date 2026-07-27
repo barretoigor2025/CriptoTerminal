@@ -1128,10 +1128,26 @@ function rsiOf(closes, len){
    (adicionável/removível). Segue o zoom/scroll ancorando cada ponto por tempo.
    ========================================================================= */
 const RSI = {
-  cfg:{ on:false, len:14 },
-  vals:[],
+  cfg:{ on:false, len:14, ma1:9, ma2:21 },
+  vals:[], ma1arr:[], ma2arr:[],
+  // divisão vertical da tela em painéis (frações da altura) — igual ao TradingView:
+  // preço em cima, volume no meio, RSI embaixo, cada um no seu "frame"
+  PANES:{ price:{top:.05, bottom:.42}, vol:{top:.61, bottom:.20}, div1:.595, div2:.81, rsiTop:.82, rsiBot:.985 },
+  PANES_OFF:{ price:{top:.08, bottom:.22}, vol:{top:.85, bottom:0} },
+  // aplica as margens das escalas conforme o RSI estiver ligado (abre/fecha o frame do RSI)
+  panes(on){
+    const p = on ? this.PANES : this.PANES_OFF;
+    try{ chart.priceScale('right').applyOptions({ scaleMargins:{top:p.price.top, bottom:p.price.bottom} }); }catch(_){}
+    try{ chart.priceScale('vol').applyOptions({ scaleMargins:{top:p.vol.top, bottom:p.vol.bottom} }); }catch(_){}
+  },
+  sma(len){
+    const v=this.vals, n=v.length, out=new Array(n).fill(null); let sum=0, q=[];
+    for(let i=0;i<n;i++){ if(v[i]==null){ out[i]=null; continue; }
+      q.push(v[i]); sum+=v[i]; if(q.length>len) sum-=q.shift(); if(q.length===len) out[i]=sum/len; }
+    return out;
+  },
   compute(){
-    this.vals=[];
+    this.vals=[]; this.ma1arr=[]; this.ma2arr=[];
     if(!this.cfg.on) return;
     const c=S.candles, n=c.length, len=Math.max(2,this.cfg.len); if(n<len+1) return;
     const out=new Array(n).fill(null);
@@ -1141,34 +1157,55 @@ const RSI = {
       g=(g*(len-1)+Math.max(d,0))/len; l=(l*(len-1)+Math.max(-d,0))/len;
       out[i]= l===0?100:100-100/(1+g/l); }
     this.vals=out;
+    this.ma1arr=this.sma(this.cfg.ma1);   // média rápida do RSI
+    this.ma2arr=this.sma(this.cfg.ma2);   // média lenta do RSI
   },
-  band(){ const H=cv.clientHeight; return { top:H*0.795, bot:H*0.99 }; },   // faixa inferior (sobre o volume)
+  band(){ const H=cv.clientHeight; return { top:H*this.PANES.rsiTop, bot:H*this.PANES.rsiBot }; },
   yOf(v){ const b=this.band(); return b.bot - (Math.max(0,Math.min(100,v))/100)*(b.bot-b.top); },
+  poly(arr, color, w){
+    const c=S.candles, n=c.length;
+    ctx.strokeStyle=color; ctx.lineWidth=w; ctx.beginPath(); let started=false;
+    for(let i=0;i<n;i++){ const v=arr[i]; if(v==null) continue; const x=xOf(c[i].time); if(x==null) continue;
+      const y=this.yOf(v); if(!started){ctx.moveTo(x,y);started=true;} else ctx.lineTo(x,y); }
+    ctx.stroke();
+  },
   draw(){
     if(!this.cfg.on || !this.vals.length) return;
-    const c=S.candles, n=c.length;
+    const H=cv.clientHeight, W=cv.clientWidth;
     let rsw=0; try{ rsw=chart.priceScale('right').width()||0; }catch(_){}
-    const rightEdge=cv.clientWidth-rsw-1;
-    const y70=this.yOf(70), y50=this.yOf(50), y30=this.yOf(30);
+    const rightEdge=W-rsw-1;
     ctx.save();
-    // níveis 70 / 50 / 30
+    // tapa a coluna do eixo de preço nas faixas de baixo (ali os números seriam
+    // extrapolação do preço; volume e RSI não usam essa escala) — fundo = --ink
+    if(rsw>0){ const yTop=Math.round(H*this.PANES.div1);
+      ctx.fillStyle=(getComputedStyle(document.documentElement).getPropertyValue('--ink').trim()||'#0a0d13');
+      ctx.fillRect(rightEdge+1, yTop, W-rightEdge, H-yTop); }
+    // divisórias entre os painéis (aspecto de frames separados)
+    ctx.strokeStyle='rgba(120,132,152,.28)'; ctx.lineWidth=1; ctx.setLineDash([]);
+    for(const yf of [this.PANES.div1, this.PANES.div2]){ const y=Math.round(H*yf)+.5;
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(rightEdge,y); ctx.stroke(); }
+    // níveis 70 / 50 / 30 do RSI
+    const y70=this.yOf(70), y50=this.yOf(50), y30=this.yOf(30);
     ctx.lineWidth=1; ctx.setLineDash([3,4]);
     ctx.strokeStyle='rgba(239,83,80,.30)';  ctx.beginPath(); ctx.moveTo(0,y70); ctx.lineTo(rightEdge,y70); ctx.stroke();
     ctx.strokeStyle='rgba(38,166,154,.30)';  ctx.beginPath(); ctx.moveTo(0,y30); ctx.lineTo(rightEdge,y30); ctx.stroke();
     ctx.strokeStyle='rgba(150,160,180,.16)'; ctx.beginPath(); ctx.moveTo(0,y50); ctx.lineTo(rightEdge,y50); ctx.stroke();
     ctx.setLineDash([]);
-    // linha do RSI
-    ctx.strokeStyle='#b17ce0'; ctx.lineWidth=1.6; ctx.beginPath(); let started=false;
-    for(let i=0;i<n;i++){ const v=this.vals[i]; if(v==null) continue; const x=xOf(c[i].time); if(x==null) continue;
-      const y=this.yOf(v); if(!started){ctx.moveTo(x,y);started=true;} else ctx.lineTo(x,y); }
-    ctx.stroke();
-    // rótulos e valor atual
-    let last=null; for(let i=n-1;i>=0;i--){ if(this.vals[i]!=null){ last=this.vals[i]; break; } }
+    // as duas médias primeiro (ficam atrás), depois o RSI por cima
+    this.poly(this.ma2arr, '#4dd0e1', 1.2);   // média lenta
+    this.poly(this.ma1arr, '#ffd54f', 1.2);   // média rápida
+    this.poly(this.vals,   '#b17ce0', 1.7);   // RSI
+    // rótulos e valores atuais
+    const lastOf=a=>{ for(let i=a.length-1;i>=0;i--) if(a[i]!=null) return a[i]; return null; };
+    const rv=lastOf(this.vals), m1=lastOf(this.ma1arr), m2=lastOf(this.ma2arr);
     ctx.font="9px 'IBM Plex Mono', monospace"; ctx.textBaseline='middle';
     ctx.fillStyle='rgba(239,83,80,.7)';  ctx.fillText('70', 3, y70);
     ctx.fillStyle='rgba(38,166,154,.7)'; ctx.fillText('30', 3, y30);
-    if(last!=null){ const col=last>=70?'#ef5350':last<=30?'#26a69a':'#b17ce0';
-      ctx.fillStyle=col; ctx.fillText('RSI '+this.cfg.len+' · '+last.toFixed(1), 22, this.band().top-1); }
+    let x=6; const yLbl=H*this.PANES.rsiTop+7;
+    const chip=(t,col)=>{ ctx.fillStyle=col; ctx.fillText(t,x,yLbl); x+=ctx.measureText(t).width+8; };
+    if(rv!=null) chip('RSI '+this.cfg.len+' '+rv.toFixed(1), rv>=70?'#ef5350':rv<=30?'#26a69a':'#b17ce0');
+    if(m1!=null) chip('MM'+this.cfg.ma1+' '+m1.toFixed(1), '#ffd54f');
+    if(m2!=null) chip('MM'+this.cfg.ma2+' '+m2.toFixed(1), '#4dd0e1');
     ctx.restore();
   }
 };
@@ -2275,6 +2312,7 @@ function syncLiq(){
 function syncRSI(){
   RSI.cfg.on=$('#rsiOn').checked;
   RSI.cfg.len=Math.max(2,Math.min(50,+$('#rsiLen').value||14));
+  RSI.panes(RSI.cfg.on);   // abre/fecha o frame inferior do RSI
   RSI.compute(); store.save();
 }
 ['rsiOn','rsiLen'].forEach(id=>{ const el=$('#'+id); if(el) el.addEventListener('change', syncRSI); });
@@ -2637,7 +2675,7 @@ $('#cycleDays').addEventListener('change', syncCycle);
     $('#liqOn').checked=LIQ.cfg.on; if($('#liqLook'))$('#liqLook').value=LIQ.cfg.look; if($('#liqGamma'))$('#liqGamma').value=Math.round(LIQ.cfg.gamma*100); }
   LIQ.compute();
   if(saved.trump){ TRUMP.cfg.on=!!saved.trump.on; $('#trumpOn').checked=TRUMP.cfg.on; if(TRUMP.cfg.on) syncTrump(); }
-  if(saved.rsi){ Object.assign(RSI.cfg, saved.rsi); $('#rsiOn').checked=RSI.cfg.on; if($('#rsiLen'))$('#rsiLen').value=RSI.cfg.len; RSI.compute(); }
+  if(saved.rsi){ Object.assign(RSI.cfg, saved.rsi); $('#rsiOn').checked=RSI.cfg.on; if($('#rsiLen'))$('#rsiLen').value=RSI.cfg.len; RSI.panes(RSI.cfg.on); RSI.compute(); }
   if(saved.sum){ SUMMARY.cfg.on=!!saved.sum.on; $('#sumOn').checked=SUMMARY.cfg.on; if(SUMMARY.cfg.on) SUMMARY.set(true); }
   if(saved.sound){ SOUND.on=true; $('#soundOn').checked=true; }  // áudio libera no 1º clique
   if(saved.cycle){ Object.assign(CYCLE.cfg, saved.cycle);
