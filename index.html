@@ -267,6 +267,7 @@
   .sum-chg{margin-left:auto;font-weight:600}
   .sum-syn{margin-top:6px;padding-top:5px;border-top:1px solid rgba(255,255,255,.10);font-family:"IBM Plex Mono",monospace;font-size:9.5px;line-height:1.4;color:var(--muted)}
   .sum-syn b{color:var(--txt)}
+  .sum-ob{font-family:"IBM Plex Mono",monospace;font-size:8.5px;line-height:1.3;padding:0 0 4px 24px;opacity:.92;border-bottom:1px solid rgba(255,255,255,.04)}
   .sum-cyc{margin-top:4px;font-family:"IBM Plex Mono",monospace;font-size:9px;line-height:1.35;color:var(--muted-2)}
 
   /* tooltip dos posts do Trump (Truth Social) */
@@ -1345,7 +1346,15 @@ const SUMMARY = {
     else { bias=0; biasTxt='lateral'; }
     const rsi=rsiOf(closes,14);
     const chg=(price/closes[Math.max(0,n-15)]-1)*100;
-    return {bias, biasTxt, rsi, chg, price};
+    // Order Block daquele prazo (mesclado do antigo card Multi-TF)
+    let ob=null; try{ if(typeof OB!=='undefined'&&typeof MTFOB!=='undefined') ob=MTFOB.evalTF(price, OB.computeArr(c)); }catch(e){}
+    return {bias, biasTxt, rsi, chg, price, ob};
+  },
+  obLine(ob){
+    if(!ob||ob.kind==='load'||ob.kind==='none') return '';
+    const dem=ob.bias===1, col=dem?'#26a69a':'#ef5350', word=dem?'compra':'venda';
+    if(ob.kind==='inside') return '<div class="sum-ob" style="color:'+col+'">'+(dem?'🟢':'🔴')+' OB '+word+' · dentro '+ob.health+'%'+(ob.dying?' <span style="color:#ef5350">morrendo</span>':'')+'</div>';
+    return '<div class="sum-ob" style="color:'+col+'">'+(ob.above?'⬆':'⬇')+' OB '+word+' · entrando '+ob.distPct.toFixed(2)+'%</div>';
   },
   async refresh(){
     if(!this.visible()||this._loading) return; this._loading=true;
@@ -1371,7 +1380,8 @@ const SUMMARY = {
       rows+='<div class="sum-row"><span class="sum-tf">'+lab+'</span>'+
         '<span class="sum-b" style="color:'+bcol(a.bias)+'">'+arrw(a.bias)+' '+a.biasTxt+'</span>'+
         '<span class="sum-rsi">RSI <b style="color:'+rcol(a.rsi)+'">'+(a.rsi==null?'—':a.rsi.toFixed(0))+'</b></span>'+
-        '<span class="sum-chg" style="color:'+(a.chg>=0?'#26a69a':'#ef5350')+'">'+(a.chg>=0?'+':'')+a.chg.toFixed(1)+'%</span></div>';
+        '<span class="sum-chg" style="color:'+(a.chg>=0?'#26a69a':'#ef5350')+'">'+(a.chg>=0?'+':'')+a.chg.toFixed(1)+'%</span></div>'+
+        this.obLine(a.ob);
     }
     let syn;
     if(!loaded){ syn='<b>—</b> aguardando dados dos períodos…'; }
@@ -1966,21 +1976,10 @@ const CYCLE = {
     return { pct:pct*100, bull, dToPeak:Math.round(dToPeak), dToEnd:Math.round(dToEnd) };
   },
   // atualiza o card DOM (ao vivo, sem refresh)
-  renderBox(){
-    const box=$('#cyclebox'); if(!box) return;
-    box.hidden = !this.cfg.on;
-    if(!this.cfg.on) return;
-    const i=this.info(), col=i.bull?'#26a69a':'#ef5350';
-    const meses=d=>(d/30.44).toFixed(1);
-    const note = i.bull
-      ? `No padrão · ainda em <b style="color:${col}">ALTA</b> — faltam ~${i.dToPeak}d (~${meses(i.dToPeak)} meses) até o topo (0.75)`
-      : `<b style="color:${col}">FASE FINAL (BEAR)</b> — faltam ~${i.dToEnd}d (~${meses(i.dToEnd)} meses) até o novo ciclo (1.0)`;
-    box.innerHTML =
-      '<div class="cb-top"><span class="cb-tag">BTC TIME CYCLE</span><span class="cb-phase" style="color:'+col+'">'+(i.bull?'BULL':'BEAR')+'</span></div>'+
-      '<div class="cb-row"><span class="cb-pct" style="color:'+col+'">'+i.pct.toFixed(1)+'%</span><span class="cb-sub">do ciclo de '+this.cfg.days+'d</span></div>'+
-      '<div class="cb-bar"><i style="width:'+Math.max(0,Math.min(100,i.pct))+'%;background:'+col+'"></i><b style="left:75%"></b></div>'+
-      '<div class="cb-note">'+note+'</div>';
-  }
+  // o CARD do ciclo foi removido (a leitura agora vive dentro do Resumo Multi-TF,
+  // evitando card duplicado). O indicador continua desenhando as faixas no gráfico
+  // (CYCLE.draw) e alimentando CYCLE.info().
+  renderBox(){ const box=$('#cyclebox'); if(box) box.hidden=true; }
 };
 
 /* efeito de explosão quando um Order Block é destruído (saúde 0) */
@@ -2838,7 +2837,7 @@ $('#soundOn').addEventListener('change', e=>SOUND.enable(e.target.checked));
    ========================================================================= */
 const MTFOB = {
   tfs:['1h','4h','1d'], data:{}, timer:null, el:$('#mtfob'),
-  visible(){ return OB.cfg.on; },
+  visible(){ return false; },   // card mesclado no Resumo Multi-TF; evalTF continua servindo de fonte
   // penetração viva do preço na zona (0=fora, 1=atravessou tudo)
   livePen(o, price){
     const h=o.top-o.btm; if(h<=0) return 0;
