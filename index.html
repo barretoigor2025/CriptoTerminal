@@ -289,6 +289,11 @@
     .cb-note,.mtf-state,.pt-say{font-size:8px}
   }
 
+  /* botão de acesso ao comparador — borda fina pulsando em vermelho */
+  @keyframes cmpPulse{0%{box-shadow:0 0 0 0 rgba(224,50,46,.6)}70%{box-shadow:0 0 0 6px rgba(224,50,46,0)}100%{box-shadow:0 0 0 0 rgba(224,50,46,0)}}
+  #cmpBtn{border:1px solid #e0322e !important;color:#e0322e;animation:cmpPulse 1.9s ease-out infinite}
+  #cmpBtn:hover{background:rgba(224,50,46,.12)}
+
   /* comparador (ambiente separado) */
   .cmp-modal{position:fixed;inset:0;z-index:60;background:var(--ink);display:flex;flex-direction:column}
   .cmp-modal[hidden]{display:none}
@@ -315,6 +320,19 @@
   .cmp-corr .cc-read b{color:var(--txt)}
   .cmp-note{padding:7px 14px;border-top:1px solid var(--hair);font-family:"IBM Plex Mono",monospace;font-size:10px;line-height:1.4;color:var(--muted-2)}
   .cmp-note b{color:var(--muted)}
+  /* responsivo: celular */
+  @media (max-width:680px){
+    .cmp-head{flex-wrap:wrap;padding:8px 10px;gap:8px}
+    .cmp-title{font-size:12px;width:100%}
+    .cmp-title span{display:none}
+    .cmp-ranges button{padding:4px 9px;font-size:11px}
+    .cmp-legend{padding:6px 10px;gap:6px}
+    .cmp-chip{padding:3px 8px;font-size:10px}
+    .cmp-corr{padding:6px 10px;max-height:34vh;overflow-y:auto}
+    .cmp-corr .cc{font-size:10px;padding:3px 7px}
+    .cmp-note{display:none}
+  }
+  @media (max-width:680px) and (orientation:landscape){ .cmp-corr{max-height:26vh} }
 
   /* error banner */
   .banner{
@@ -581,6 +599,9 @@
       <button data-tf="1d" class="active">D</button><button data-tf="1wk">S</button><button data-tf="1mo">M</button>
     </div>
     <div class="cmp-spacer"></div>
+    <button class="icon-btn" id="cmpFs" title="Tela cheia" aria-label="Tela cheia">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+    </button>
     <button class="icon-btn" id="cmpClose" title="Fechar" aria-label="Fechar">
       <svg viewBox="0 0 24 24" width="16" height="16" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
@@ -1356,14 +1377,22 @@ const COMPARE = {
     {id:'gold', label:'Ouro',    color:'#ffd54f', on:false, sym:'GC=F'},
     {id:'dxy',  label:'DXY',     color:'#9aa4b8', on:false, sym:'DX-Y.NYB'},
   ],
-  // cada TF: intervalo/faixa do Yahoo, intervalo nativo da Binance p/ BTC, e se precisa agregar
+  // cada TF: fonte Hyperliquid (BTC, rápida/CORS), Binance e Yahoo, e se precisa agregar
   TF:{
-    '1h': {bi:'1h', yi:'60m', yr:'1mo', aggTo:null,   intra:true,  tsec:3600},
-    '4h': {bi:'4h', yi:'60m', yr:'3mo', aggTo:14400,  intra:true,  tsec:14400},
-    '6h': {bi:'6h', yi:'60m', yr:'6mo', aggTo:21600,  intra:true,  tsec:21600},
-    '1d': {bi:'1d', yi:'1d',  yr:'1y',  aggTo:null,   intra:false, tsec:86400},
-    '1wk':{bi:'1w', yi:'1wk', yr:'5y',  aggTo:null,   intra:false, tsec:604800},
-    '1mo':{bi:'1M', yi:'1mo', yr:'max', aggTo:null,   intra:false, tsec:2592000},
+    '1h': {hi:'1h', hAgg:null,  hdays:45,   bi:'1h', yi:'60m', yr:'1mo', yAgg:null,  intra:true,  tsec:3600},
+    '4h': {hi:'4h', hAgg:null,  hdays:150,  bi:'4h', yi:'60m', yr:'3mo', yAgg:14400, intra:true,  tsec:14400},
+    '6h': {hi:'1h', hAgg:21600, hdays:220,  bi:'6h', yi:'60m', yr:'6mo', yAgg:21600, intra:true,  tsec:21600},
+    '1d': {hi:'1d', hAgg:null,  hdays:500,  bi:'1d', yi:'1d',  yr:'1y',  yAgg:null,  intra:false, tsec:86400},
+    '1wk':{hi:'1w', hAgg:null,  hdays:2200, bi:'1w', yi:'1wk', yr:'5y',  yAgg:null,  intra:false, tsec:604800},
+    '1mo':{hi:'1M', hAgg:null,  hdays:4000, bi:'1M', yi:'1mo', yr:'max', yAgg:null,  intra:false, tsec:2592000},
+  },
+  async hyper(coin, interval, days){
+    const now=Date.now(), start=now-(days||400)*86400000;
+    try{ const r=await fetch('https://api.hyperliquid.xyz/info',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({type:'candleSnapshot',req:{coin, interval, startTime:start, endTime:now}})});
+      if(!r.ok) return null; const d=await r.json(); if(!Array.isArray(d)||!d.length) return null;
+      return d.map(k=>({t:Math.floor(k.t/1000), close:+k.c}));
+    }catch(e){ return null; }
   },
   async yahoo(sym, interval, range){
     const url='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?range='+range+'&interval='+interval;
@@ -1393,9 +1422,12 @@ const COMPARE = {
     for(const r of rows){ const b=Math.floor(r.t/sec)*sec; m.set(b, r.close); }
     return [...m.entries()].sort((a,b)=>a[0]-b[0]).map(([t,close])=>({t,close})); },
   async fetchAsset(a, tf){
-    if(a.id==='btc'){ const b=await this.binance(tf.bi); if(b) return b;
-      const y=await this.yahoo('BTC-USD', tf.yi, tf.yr); return tf.aggTo?this.agg(y,tf.aggTo):y; }
-    const y=await this.yahoo(a.sym, tf.yi, tf.yr); return tf.aggTo?this.agg(y,tf.aggTo):y;
+    if(a.id==='btc'){
+      let h=await this.hyper('BTC', tf.hi, tf.hdays); if(h&&h.length>5) return tf.hAgg?this.agg(h,tf.hAgg):h;
+      const b=await this.binance(tf.bi); if(b&&b.length>5) return b;
+      const y=await this.yahoo('BTC-USD', tf.yi, tf.yr); return y?(tf.yAgg?this.agg(y,tf.yAgg):y):null;
+    }
+    const y=await this.yahoo(a.sym, tf.yi, tf.yr); return y?(tf.yAgg?this.agg(y,tf.yAgg):y):null;
   },
   async show(){
     $('#cmpModal').hidden=false;
@@ -1417,34 +1449,41 @@ const COMPARE = {
     $('#cmpLegend').innerHTML=this.assets.map(a=>
       '<span class="cmp-chip'+(a.on?'':' off')+'" data-cmp="'+a.id+'"><span class="cdot" style="background:'+a.color+'"></span>'+a.label+' <span class="cval" id="cval_'+a.id+'"></span></span>').join('');
   },
+  // carregamento INCREMENTAL: cada ativo é plotado assim que chega (BTC pela
+  // Hyperliquid aparece na hora; NASDAQ/JPY entram quando o Yahoo responde)
   async load(){
-    if(this._loading) return; this._loading=true;
-    const tf=this.TF[this.tf];
-    $('#cmpCorr').innerHTML='<span class="cc-t">correlação</span><span class="cc-read">buscando dados…</span>';
-    const jobs=this.assets.filter(a=>a.on).map(async a=>{ const k=a.id+'_'+this.tf; if(this.data[k]===undefined) this.data[k]=await this.fetchAsset(a, tf); });
-    await Promise.all(jobs);
-    this._loading=false; this.render();
-  },
-  render(){
     if(!this.chart) return;
-    try{ this.chart.applyOptions({timeScale:{timeVisible:this.TF[this.tf].intra}}); }catch(e){}
-    for(const id in this.series){ try{ this.chart.removeSeries(this.series[id]); }catch(e){} }
-    this.series={}; const norm={};
-    for(const a of this.assets){
-      const cval=$('#cval_'+a.id);
-      if(!a.on){ if(cval) cval.textContent=''; continue; }
-      const rows=this.data[a.id+'_'+this.tf];
-      if(!rows||!rows.length){ if(cval){ cval.textContent='—'; cval.style.color='var(--muted-2)'; } continue; }
-      const base=rows[0].close;
-      const data=rows.map(p=>({time:p.t, value:+(p.close/base*100).toFixed(3)}));
-      const s=this.chart.addLineSeries({color:a.color, lineWidth:2, priceLineVisible:false, lastValueVisible:true, crosshairMarkerRadius:3});
-      s.setData(data); this.series[a.id]=s; norm[a.id]=rows;
-      const lastNorm=data[data.length-1].value;
-      if(cval){ cval.textContent=(lastNorm>=100?'+':'')+(lastNorm-100).toFixed(1)+'%'; cval.style.color=lastNorm>=100?'#26a69a':'#ef5350'; }
-    }
-    try{ this.chart.timeScale().fitContent(); }catch(e){}
-    this.renderCorr(norm);
+    const tf=this.TF[this.tf], seq=(this._seq=(this._seq||0)+1);
+    this._loading=true;
+    for(const id in this.series){ try{ this.chart.removeSeries(this.series[id]); }catch(e){} } this.series={};
+    this.assets.forEach(a=>{ const cv=$('#cval_'+a.id); if(cv){ cv.textContent=a.on?'…':''; cv.style.color='var(--muted-2)'; } });
+    $('#cmpCorr').innerHTML='<span class="cc-t">correlação</span><span class="cc-read">buscando dados…</span>';
+    try{ this.chart.applyOptions({timeScale:{timeVisible:tf.intra}}); }catch(e){}
+    await Promise.all(this.assets.filter(a=>a.on).map(async a=>{
+      const k=a.id+'_'+this.tf;
+      if(this.data[k]===undefined) this.data[k]=await this.fetchAsset(a, tf);
+      if(seq!==this._seq) return;
+      this.plotOne(a);
+      try{ this.chart.timeScale().fitContent(); }catch(e){}
+    }));
+    if(seq!==this._seq) return;
+    this._loading=false;
+    this.renderCorr(this.normCache());
   },
+  plotOne(a){
+    const cval=$('#cval_'+a.id);
+    if(this.series[a.id]){ try{ this.chart.removeSeries(this.series[a.id]); }catch(e){} delete this.series[a.id]; }
+    if(!a.on){ if(cval) cval.textContent=''; return; }
+    const rows=this.data[a.id+'_'+this.tf];
+    if(!rows||!rows.length){ if(cval){ cval.textContent='—'; cval.style.color='var(--muted-2)'; } return; }
+    const base=rows[0].close;
+    const data=rows.map(p=>({time:p.t, value:+(p.close/base*100).toFixed(3)}));
+    const s=this.chart.addLineSeries({color:a.color, lineWidth:2, priceLineVisible:false, lastValueVisible:true, crosshairMarkerRadius:3});
+    s.setData(data); this.series[a.id]=s;
+    const last=data[data.length-1].value;
+    if(cval){ cval.textContent=(last>=100?'+':'')+(last-100).toFixed(1)+'%'; cval.style.color=last>=100?'#26a69a':'#ef5350'; }
+  },
+  normCache(){ const n={}; for(const a of this.assets){ if(!a.on) continue; const r=this.data[a.id+'_'+this.tf]; if(r&&r.length) n[a.id]=r; } return n; },
   // correlação de Pearson entre os RETORNOS dos ativos, numa grade de tempo comum
   renderCorr(norm){
     const box=$('#cmpCorr'); if(!box) return;
@@ -2470,6 +2509,11 @@ document.addEventListener('webkitfullscreenchange', syncFSIcon);
 // ---- Comparador (ambiente separado) ----
 $('#cmpBtn').addEventListener('click', ()=>COMPARE.show().catch(()=>{}));
 $('#cmpClose').addEventListener('click', ()=>COMPARE.hide());
+$('#cmpFs').addEventListener('click', ()=>{ const m=$('#cmpModal');
+  if(document.fullscreenElement||document.webkitFullscreenElement){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
+  else { (m.requestFullscreen||m.webkitRequestFullscreen||(()=>{})).call(m); }
+  setTimeout(()=>{ const el=$('#cmpChart'); if(COMPARE.chart&&el) COMPARE.chart.applyOptions({width:el.clientWidth, height:el.clientHeight}); }, 120);
+});
 $('#cmpTfs').addEventListener('click', e=>{ const b=e.target.closest('button'); if(b) COMPARE.setTf(b.dataset.tf); });
 $('#cmpLegend').addEventListener('click', e=>{ const c=e.target.closest('[data-cmp]'); if(c) COMPARE.toggle(c.dataset.cmp); });
 document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !$('#cmpModal').hidden) COMPARE.hide(); });
