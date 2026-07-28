@@ -541,6 +541,7 @@
     </div>
 
     <select class="hsel" id="src" title="Fonte de dados">
+      <option value="hyperliquid">Hyperliquid</option>
       <option value="binance">Binance</option>
       <option value="bybit">Bybit</option>
     </select>
@@ -626,7 +627,7 @@ const PULSE_STATIC = !!(window.matchMedia && window.matchMedia('(prefers-reduced
 
 /* ---------- estado global ---------- */
 const S = {
-  source: 'binance',
+  source: 'hyperliquid',   // fonte padrão: Hyperliquid (rápida, CORS liberado)
   symbol: 'BTCUSDT',    // ativo da tela principal (BTC/ETH/SOL…)
   tf: '1h',
   candles: [],          // {time, open, high, low, close, volume}
@@ -693,6 +694,30 @@ const SOURCES = {
       sock.onmessage = e=>{
         const k = JSON.parse(e.data).k;
         onCandle({time:k.t/1000, open:+k.o, high:+k.h, low:+k.l, close:+k.c, volume:+k.v}, k.x);
+      };
+      return sock;
+    }
+  },
+  hyperliquid:{
+    tfMap:{'1m':'1m','5m':'5m','15m':'15m','1h':'1h','4h':'4h','1d':'1d','1w':'1w','1M':'1M'},
+    coin(sym){ return (sym||'BTCUSDT').replace(/USDT$/,'').replace(/USD$/,''); },
+    perMs:{'1m':60000,'5m':300000,'15m':900000,'1h':3600000,'4h':14400000,'1d':86400000,'1w':604800000,'1M':2592000000},
+    async rest(tf, symbol='BTCUSDT'){
+      const now=Date.now(), per=this.perMs[tf]||3600000, start=now-per*1000;
+      const r=await fetch('https://api.hyperliquid.xyz/info',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({type:'candleSnapshot',req:{coin:this.coin(symbol),interval:this.tfMap[tf],startTime:start,endTime:now}})});
+      if(!r.ok) throw new Error('http '+r.status);
+      const d=await r.json(); if(!Array.isArray(d)||!d.length) throw new Error('sem dados na Hyperliquid p/ '+this.coin(symbol));
+      return d.map(k=>({time:Math.floor(k.t/1000), open:+k.o, high:+k.h, low:+k.l, close:+k.c, volume:+k.v}));
+    },
+    ws(tf, onCandle, symbol='BTCUSDT'){
+      const sock=new WebSocket('wss://api.hyperliquid.xyz/ws'); let prev=null;
+      sock.onopen=()=> sock.send(JSON.stringify({method:'subscribe',subscription:{type:'candle',coin:this.coin(symbol),interval:this.tfMap[tf]}}));
+      sock.onmessage=e=>{ let m; try{ m=JSON.parse(e.data); }catch(_){ return; }
+        if(m.channel!=='candle'||!m.data) return; const k=m.data;
+        const c={time:Math.floor(k.t/1000), open:+k.o, high:+k.h, low:+k.l, close:+k.c, volume:+k.v};
+        if(prev && c.time>prev.time) onCandle(prev, true);   // o candle anterior fechou
+        prev=c; onCandle(c, false);
       };
       return sock;
     }
@@ -1210,6 +1235,8 @@ const RSI = {
     const p = on ? this.PANES : this.PANES_OFF;
     try{ chart.priceScale('right').applyOptions({ scaleMargins:{top:p.price.top, bottom:p.price.bottom} }); }catch(_){}
     try{ chart.priceScale('vol').applyOptions({ scaleMargins:{top:p.vol.top, bottom:p.vol.bottom} }); }catch(_){}
+    // no modo frames o volume é redesenhado no overlay (fundo preto próprio); esconde o nativo
+    try{ if(typeof volSeries!=='undefined') volSeries.applyOptions({ visible: !on }); }catch(_){}
   },
   sma(len){
     const v=this.vals, n=v.length, out=new Array(n).fill(null); let sum=0, q=[];
@@ -1231,7 +1258,8 @@ const RSI = {
     this.ma1arr=this.sma(this.cfg.ma1);   // média rápida do RSI
     this.ma2arr=this.sma(this.cfg.ma2);   // média lenta do RSI
   },
-  band(){ const H=cv.clientHeight; return { top:H*this.PANES.rsiTop, bot:H*this.PANES.rsiBot }; },
+  band(){ const H=cv.clientHeight; let tax=0; try{ tax=chart.timeScale().height()||0; }catch(_){}
+    return { top:H*this.PANES.rsiTop, bot:Math.min(H*this.PANES.rsiBot, H-tax-2) }; },
   yOf(v){ const b=this.band(); return b.bot - (Math.max(0,Math.min(100,v))/100)*(b.bot-b.top); },
   poly(arr, color, w){
     const c=S.candles, n=c.length;
@@ -1246,15 +1274,29 @@ const RSI = {
     let rsw=0; try{ rsw=chart.priceScale('right').width()||0; }catch(_){}
     const rightEdge=W-rsw-1;
     ctx.save();
-    // tapa a coluna do eixo de preço nas faixas de baixo (ali os números seriam
-    // extrapolação do preço; volume e RSI não usam essa escala) — fundo = --ink
-    if(rsw>0){ const yTop=Math.round(H*this.PANES.div1);
-      ctx.fillStyle=(getComputedStyle(document.documentElement).getPropertyValue('--ink').trim()||'#0a0d13');
-      ctx.fillRect(rightEdge+1, yTop, W-rightEdge, H-yTop); }
-    // divisórias entre os painéis (aspecto de frames separados)
-    ctx.strokeStyle='rgba(120,132,152,.28)'; ctx.lineWidth=1; ctx.setLineDash([]);
-    for(const yf of [this.PANES.div1, this.PANES.div2]){ const y=Math.round(H*yf)+.5;
-      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(rightEdge,y); ctx.stroke(); }
+    let taxH=0; try{ taxH=chart.timeScale().height()||0; }catch(_){}
+    const yDiv1=Math.round(H*this.PANES.div1), yDiv2=Math.round(H*this.PANES.div2), yFbot=H-taxH;
+    // FUNDO PRETO próprio dos frames de volume e RSI (cobre o grid do preço que
+    // "vazava" por trás e deixava o visual bagunçado)
+    ctx.fillStyle='#070a11';
+    ctx.fillRect(0, yDiv1, W, yDiv2-yDiv1);      // frame do volume
+    ctx.fillRect(0, yDiv2, W, yFbot-yDiv2);      // frame do RSI
+    // barras de VOLUME desenhadas aqui (a série nativa fica escondida no modo frames)
+    (()=>{ const c=S.candles, n=c.length; if(!n) return;
+      let lo=0,hi=n-1; try{ const vr=chart.timeScale().getVisibleLogicalRange(); if(vr){ lo=Math.max(0,Math.floor(vr.from)); hi=Math.min(n-1,Math.ceil(vr.to)); } }catch(_){}
+      let mx=0; for(let i=lo;i<=hi;i++) if(c[i].volume>mx) mx=c[i].volume; if(mx<=0) mx=1;
+      let bs=6; try{ bs=chart.timeScale().options().barSpacing||6; }catch(_){}
+      const bw=Math.max(1, bs*0.66), vTop=yDiv1+7, vBot=yDiv2-2, vh=vBot-vTop;
+      for(let i=0;i<n;i++){ const x=xOf(c[i].time); if(x==null||x<-bw||x>rightEdge+bw) continue;
+        const h=Math.max(.5,(c[i].volume/mx)*vh);
+        ctx.fillStyle=c[i].close>=c[i].open?'rgba(38,166,154,.55)':'rgba(239,83,80,.55)';
+        ctx.fillRect(x-bw/2, vBot-h, bw, h); }
+    })();
+    // divisórias entre os painéis + rótulo do volume
+    ctx.strokeStyle='rgba(120,132,152,.32)'; ctx.lineWidth=1; ctx.setLineDash([]);
+    for(const yy of [yDiv1, yDiv2]){ const y=yy+.5; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+    ctx.font="9px 'IBM Plex Mono', monospace"; ctx.textBaseline='top';
+    ctx.fillStyle='rgba(150,160,180,.55)'; ctx.fillText('VOLUME', 6, yDiv1+4);
     // níveis 70 / 50 / 30 do RSI
     const y70=this.yOf(70), y50=this.yOf(50), y30=this.yOf(30);
     ctx.lineWidth=1; ctx.setLineDash([3,4]);
