@@ -191,6 +191,7 @@
   }
   .leftstack > div{ width:158px; }   /* cards lado a lado, estreitos */
   .leftstack > .sumbox{ width:288px; }   /* o card de resumo é mais longo */
+  .leftstack > .patternbox{ width:196px; }   /* padrões: cabe a ilustração + texto */
   .leftstack::-webkit-scrollbar{display:none}
 
   /* card BTC Time Cycle — compacto (altura/fonte reduzidas) */
@@ -240,6 +241,9 @@
   }
   .pt-name{font-size:11px !important}
   .pt-say{font-size:9px !important}
+  .pt-illus{margin:2px 0 7px}
+  .pt-svg{width:100%;height:56px;display:block;background:#0b0f18;border:1px solid var(--hair-2);border-radius:7px;padding:3px}
+  .pt-illcap{font-family:"IBM Plex Mono",monospace;font-size:8px;color:var(--muted-2);text-align:center;margin-top:3px;text-transform:uppercase;letter-spacing:.3px}
   .patternbox[hidden]{display:none}
   .pt-title{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.5px;text-transform:uppercase;
     color:var(--muted-2);margin-bottom:5px;display:flex;justify-content:space-between;align-items:center}
@@ -575,8 +579,8 @@
     <div class="leftstack">
       <div class="cyclebox" id="cyclebox" hidden></div>
       <div class="mtfob" id="mtfob" hidden></div>
-      <div class="patternbox" id="patternbox" hidden></div>
       <div class="sumbox" id="sumbox" hidden></div>
+      <div class="patternbox" id="patternbox" hidden></div>
     </div>
     <div class="trumptip" id="trumptip" hidden></div>
 
@@ -1259,8 +1263,11 @@ const RSI = {
     this.ma1arr=this.sma(this.cfg.ma1);   // média rápida do RSI
     this.ma2arr=this.sma(this.cfg.ma2);   // média lenta do RSI
   },
+  // frames de VOLUME e RSI com a MESMA altura: divide o espaço abaixo do preço
+  // (de div1 até o topo do eixo de tempo) em duas metades iguais.
   band(){ const H=cv.clientHeight; let tax=0; try{ tax=chart.timeScale().height()||0; }catch(_){}
-    return { top:H*this.PANES.rsiTop, bot:Math.min(H*this.PANES.rsiBot, H-tax-2) }; },
+    const v0=H*this.PANES.div1, botAll=H-tax, mid=(v0+botAll)/2, pad=(botAll-mid)*0.06;
+    return { v0, mid, botAll, top:mid+pad, bot:botAll-pad }; },
   yOf(v){ const b=this.band(); return b.bot - (Math.max(0,Math.min(100,v))/100)*(b.bot-b.top); },
   poly(arr, color, w){
     const c=S.candles, n=c.length;
@@ -1275,8 +1282,8 @@ const RSI = {
     let rsw=0; try{ rsw=chart.priceScale('right').width()||0; }catch(_){}
     const rightEdge=W-rsw-1;
     ctx.save();
-    let taxH=0; try{ taxH=chart.timeScale().height()||0; }catch(_){}
-    const yDiv1=Math.round(H*this.PANES.div1), yDiv2=Math.round(H*this.PANES.div2), yFbot=H-taxH;
+    const bnd=this.band();
+    const yDiv1=Math.round(bnd.v0), yDiv2=Math.round(bnd.mid), yFbot=Math.round(bnd.botAll);
     // FUNDO PRETO próprio dos frames de volume e RSI (cobre o grid do preço que
     // "vazava" por trás e deixava o visual bagunçado)
     ctx.fillStyle='#070a11';
@@ -1315,7 +1322,7 @@ const RSI = {
     ctx.font="9px 'IBM Plex Mono', monospace"; ctx.textBaseline='middle';
     ctx.fillStyle='rgba(239,83,80,.7)';  ctx.fillText('70', 3, y70);
     ctx.fillStyle='rgba(38,166,154,.7)'; ctx.fillText('30', 3, y30);
-    let x=6; const yLbl=H*this.PANES.rsiTop+7;
+    let x=6; const yLbl=yDiv2+7;
     const chip=(t,col)=>{ ctx.fillStyle=col; ctx.fillText(t,x,yLbl); x+=ctx.measureText(t).width+8; };
     if(rv!=null) chip('RSI '+this.cfg.len+' '+rv.toFixed(1), rv>=70?'#ef5350':rv<=30?'#26a69a':'#b17ce0');
     if(m1!=null) chip('MM'+this.cfg.ma1+' '+m1.toFixed(1), '#ffd54f');
@@ -2172,6 +2179,38 @@ const PATTERNS = {
   },
 
   // ---- card DOM ----------------------------------------------------------
+  // ilustração esquemática "de livro" do padrão (SVG), com rompimento e alvo
+  svg(d){
+    const struct='#8b9dff', pxc='#cbd3e1';
+    const dir = (d.dir==='bull'||d.bias==='bull')?1 : (d.dir==='bear'||d.bias==='bear')?-1 : 0;
+    const acc = dir>0?'#26a69a':dir<0?'#ef5350':'#f7d33f';
+    const L=(pts,c,w,dash)=>'<polyline points="'+pts+'" fill="none" stroke="'+c+'" stroke-width="'+w+'"'+(dash?' stroke-dasharray="'+dash+'"':'')+' stroke-linejoin="round" stroke-linecap="round"/>';
+    const tgt=y=>'<line x1="6" y1="'+y+'" x2="124" y2="'+y+'" stroke="'+acc+'" stroke-width="1" stroke-dasharray="3 3" opacity=".85"/>';
+    const aUp=(x,y)=>'<path d="M'+x+','+y+' l0,-9" stroke="'+acc+'" stroke-width="1.6"/><path d="M'+(x-3.4)+','+(y-6)+' L'+x+','+(y-11)+' L'+(x+3.4)+','+(y-6)+' Z" fill="'+acc+'"/>';
+    const aDn=(x,y)=>'<path d="M'+x+','+y+' l0,9" stroke="'+acc+'" stroke-width="1.6"/><path d="M'+(x-3.4)+','+(y+6)+' L'+x+','+(y+11)+' L'+(x+3.4)+','+(y+6)+' Z" fill="'+acc+'"/>';
+    let g='';
+    if(d.kind==='dbl'){
+      if(/Fundo/.test(d.name)){ g+=L('8,14 30,44 52,26 74,44 96,26 116,10',pxc,1.6)+tgt(26)+tgt(11)+aUp(106,22); }
+      else { g+=L('8,44 30,14 52,32 74,14 96,32 116,48',pxc,1.6)+tgt(32)+tgt(48)+aDn(106,36); }
+    } else if(d.kind==='channel'){
+      let up='8,22 120,22', lo='8,42 120,42';
+      if(/alta/.test(d.name)){ up='8,30 120,12'; lo='8,50 120,32'; }
+      else if(/baixa/.test(d.name)){ up='8,12 120,30'; lo='8,32 120,50'; }
+      g+=L(up,struct,1.3)+L(lo,struct,1.3)+L('8,40 30,26 52,40 74,26 96,38 118,26',pxc,1.4);
+    } else if(d.kind==='wedge'||d.kind==='tri'){
+      let up='8,16 118,26', lo='8,44 118,34';
+      if(d.kind==='tri'&&/ascendente/.test(d.name)){ up='8,18 118,18'; lo='8,46 118,22'; }
+      else if(d.kind==='tri'&&/descendente/.test(d.name)){ up='8,18 118,42'; lo='8,46 118,46'; }
+      else if(/Cunha ascendente/.test(d.name)){ up='8,34 118,14'; lo='8,50 118,24'; }
+      else if(/Cunha descendente/.test(d.name)){ up='8,14 118,34'; lo='8,26 118,50'; }
+      g+=L(up,struct,1.3)+L(lo,struct,1.3)+L('8,40 26,22 44,38 62,26 80,34 96,30',pxc,1.4);
+      const by=dir>0?22:dir<0?38:30; g+=L('96,30 108,'+by,acc,1.6)+(dir>0?aUp(108,by):dir<0?aDn(108,by):'')+(dir?tgt(dir>0?10:50):'');
+    } else if(d.kind==='ew'){
+      if(/↑/.test(d.name)){ g+=L('8,50 26,34 40,42 66,16 82,26 106,8',pxc,1.6)+L('106,8 114,22 120,14 126,30',acc,1.3,'3 3'); }
+      else { g+=L('8,10 26,26 40,18 66,44 82,34 106,52',pxc,1.6)+L('106,52 114,38 120,46 126,30',acc,1.3,'3 3'); }
+    } else { g+=L('8,40 30,24 52,38 74,22 96,34 118,20',pxc,1.5); }
+    return '<svg class="pt-svg" viewBox="0 0 132 58" preserveAspectRatio="none">'+g+'</svg>';
+  },
   renderCard(){
     const box=$('#patternbox'); if(!box) return;
     box.hidden=!this.cfg.on;
@@ -2179,10 +2218,13 @@ const PATTERNS = {
     const chip=s=> s==='confirmed'?['CONFIRMADO','#26a69a']:s==='broke'?['FALHOU','#ef5350']:['FORMANDO','#f7d33f'];
     const arr=b=> b==='bull'?'▲':b==='bear'?'▼':'↔';
     const col=b=> b==='bull'?'#26a69a':b==='bear'?'#ef5350':'#f7d33f';
-    let rows;
+    let illus='', rows;
     if(!this.found.length){
       rows='<div class="pt-empty">nenhuma formação clara agora — observando os pivôs…</div>';
     } else {
+      const top=this.found[0];
+      illus='<div class="pt-illus">'+this.svg(top)+
+        '<div class="pt-illcap">figura de livro · '+(top.target!=null?'alvo ~'+fmtPx(top.target):'ilustrativo')+'</div></div>';
       rows=this.found.map(d=>{
         const [ctxt,ccol]=chip(d.status);
         return '<div class="pt-row">'+
@@ -2194,7 +2236,7 @@ const PATTERNS = {
         '</div>';
       }).join('');
     }
-    box.innerHTML='<div class="pt-title"><span>Padrões Gráficos</span><b>'+symLabel(S.symbol)+'</b></div>'+rows;
+    box.innerHTML='<div class="pt-title"><span>Padrões Gráficos</span><b>'+symLabel(S.symbol)+'</b></div>'+illus+rows;
   },
 
   // ---- desenho no gráfico ------------------------------------------------
@@ -2204,6 +2246,8 @@ const PATTERNS = {
     const rightEdge=cv.clientWidth-rsw-1;
     const STRUCT='#8b9dff';
     for(const d of this.found){                   // já vêm deduplicados por região
+      // blindagem contra padrão malformado (não trava o loop de render)
+      if((d.kind==='dbl'&&!d.pts)||(d.kind==='ew'&&!d.w)||((d.kind==='tri'||d.kind==='wedge'||d.kind==='channel')&&!d.win)) continue;
       // Elliott SEMPRE é desenhado quando detectado (o usuário quer ver de onde vem a leitura)
       const bc = d.bias==='bull'?'#26a69a':d.bias==='bear'?'#ef5350':'#f7d33f';
       if(d.kind==='dbl'){
