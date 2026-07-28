@@ -289,6 +289,25 @@
     .cb-note,.mtf-state,.pt-say{font-size:8px}
   }
 
+  /* comparador (ambiente separado) */
+  .cmp-modal{position:fixed;inset:0;z-index:60;background:var(--ink);display:flex;flex-direction:column}
+  .cmp-modal[hidden]{display:none}
+  .cmp-head{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--hair);background:linear-gradient(180deg,var(--panel),var(--panel-2))}
+  .cmp-title{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:14px;color:var(--txt)}
+  .cmp-title span{font-family:"IBM Plex Mono",monospace;font-weight:400;font-size:10px;color:var(--muted-2)}
+  .cmp-ranges{display:flex;gap:4px}
+  .cmp-ranges button{background:var(--panel-2);color:var(--muted);border:1px solid var(--hair);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer}
+  .cmp-ranges button.active{background:var(--btc);color:#111;border-color:var(--btc)}
+  .cmp-spacer{flex:1}
+  .cmp-legend{display:flex;flex-wrap:wrap;gap:8px;padding:8px 14px;border-bottom:1px solid var(--hair)}
+  .cmp-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid var(--hair);background:var(--panel-2);color:var(--muted);font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;cursor:pointer;user-select:none}
+  .cmp-chip .cdot{width:9px;height:9px;border-radius:50%}
+  .cmp-chip.off{opacity:.4}
+  .cmp-chip .cval{color:var(--txt);font-weight:700}
+  .cmp-chart{flex:1;min-height:0;position:relative}
+  .cmp-note{padding:7px 14px;border-top:1px solid var(--hair);font-family:"IBM Plex Mono",monospace;font-size:10px;line-height:1.4;color:var(--muted-2)}
+  .cmp-note b{color:var(--muted)}
+
   /* error banner */
   .banner{
     position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:8;
@@ -507,6 +526,10 @@
       <button data-n="6" title="6 painéis"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="6" height="7"/><rect x="9" y="4" width="6" height="7"/><rect x="16" y="4" width="6" height="7"/><rect x="2" y="13" width="6" height="7"/><rect x="9" y="13" width="6" height="7"/><rect x="16" y="13" width="6" height="7"/></svg></button>
     </div>
 
+    <button class="icon-btn" id="cmpBtn" title="Comparar ativos (BTC · NASDAQ · JPY)" aria-label="Comparar">
+      <svg viewBox="0 0 24 24" width="16" height="16" stroke-width="1.9" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 3 5-8 4 5"/><path d="M3 21h18"/></svg>
+    </button>
+
     <button class="icon-btn" id="fsBtn" title="Tela cheia" aria-label="Tela cheia">
       <svg viewBox="0 0 24 24" width="16" height="16" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
     </button>
@@ -540,6 +563,24 @@
 
 <!-- GRID de múltiplos ativos (preenchido por JS nos layouts 2/4/6) -->
 <div id="grid"></div>
+
+<!-- COMPARADOR de ativos (ambiente separado, normalizado base 100) -->
+<div class="cmp-modal" id="cmpModal" hidden>
+  <div class="cmp-head">
+    <div class="cmp-title">Comparar movimento <span>· base 100 (normalizado)</span></div>
+    <div class="cmp-ranges" id="cmpRanges">
+      <button data-r="3mo">3M</button><button data-r="6mo" class="active">6M</button>
+      <button data-r="1y">1A</button><button data-r="2y">2A</button>
+    </div>
+    <div class="cmp-spacer"></div>
+    <button class="icon-btn" id="cmpClose" title="Fechar" aria-label="Fechar">
+      <svg viewBox="0 0 24 24" width="16" height="16" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <div class="cmp-legend" id="cmpLegend"></div>
+  <div class="cmp-chart" id="cmpChart"></div>
+  <div class="cmp-note" id="cmpNote">Todos os ativos começam em 100 no início do período — assim dá pra comparar a <b>movimentação relativa</b> na mesma escala. NASDAQ e USD/JPY são diários (sem fim de semana).</div>
+</div>
 
 <script>
 /* =========================================================================
@@ -1288,6 +1329,97 @@ const SUMMARY = {
     if(on){ this.render(); this.refresh().catch(()=>{}); this.timer=setInterval(()=>this.refresh().catch(()=>{}), 60000); }
     else this.render();
   }
+};
+
+/* =========================================================================
+   COMPARADOR — ambiente separado (modal) que sobrepõe vários ativos na MESMA
+   escala, normalizados em base 100 no início do período, para comparar o
+   MOVIMENTO. BTC vem da Binance (fallback Yahoo BTC-USD); NASDAQ (^IXIC),
+   USD/JPY (JPY=X) e os demais vêm do Yahoo Finance via proxy CORS (com retry).
+   ========================================================================= */
+const COMPARE = {
+  chart:null, series:{}, range:'6mo', data:{}, _loading:false, _ro:null,
+  assets:[
+    {id:'btc',  label:'BTC',     color:'#f7931a', on:true,  sym:'BTCUSDT'},
+    {id:'ndx',  label:'NASDAQ',  color:'#4dd0e1', on:true,  sym:'^IXIC'},
+    {id:'jpy',  label:'USD/JPY', color:'#e0322e', on:true,  sym:'JPY=X'},
+    {id:'spx',  label:'S&P 500', color:'#8b9dff', on:false, sym:'^GSPC'},
+    {id:'gold', label:'Ouro',    color:'#ffd54f', on:false, sym:'GC=F'},
+    {id:'dxy',  label:'DXY',     color:'#9aa4b8', on:false, sym:'DX-Y.NYB'},
+  ],
+  rangeDays:{'3mo':92,'6mo':184,'1y':366,'2y':732},
+  toDate(sec){ const d=new Date(sec*1000); return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0'); },
+  async yahoo(sym){
+    const url='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?range='+this.range+'&interval=1d';
+    const mks=[ u=>['https://api.allorigins.win/get?url='+encodeURIComponent(u),'get'],
+                u=>['https://api.allorigins.win/raw?url='+encodeURIComponent(u),'raw'],
+                u=>['https://corsproxy.io/?url='+encodeURIComponent(u),'raw'] ];
+    for(let attempt=0; attempt<4; attempt++){
+      const [purl,mode]=mks[Math.min(attempt,mks.length-1)](url);
+      try{
+        const r=await fetch(purl,{cache:'no-store'}); if(!r.ok) continue;
+        let j; if(mode==='get'){ const w=await r.json(); j=JSON.parse(w.contents); } else j=await r.json();
+        const res=j&&j.chart&&j.chart.result&&j.chart.result[0]; if(!res) continue;
+        const ts=res.timestamp||[], cl=(res.indicators&&res.indicators.quote&&res.indicators.quote[0].close)||[];
+        const out=[]; for(let i=0;i<ts.length;i++){ if(cl[i]==null) continue; out.push({date:this.toDate(ts[i]), close:cl[i]}); }
+        if(out.length>5) return out;
+      }catch(e){}
+    }
+    return null;
+  },
+  async binanceDaily(sym){
+    try{ const c=await SOURCES.binance.rest('1d', sym);
+      const cut=Date.now()/1000 - this.rangeDays[this.range]*86400;
+      return c.filter(x=>x.time>=cut).map(x=>({date:this.toDate(x.time), close:x.close}));
+    }catch(e){ return null; }
+  },
+  async fetchAsset(a){ return a.id==='btc' ? ((await this.binanceDaily('BTCUSDT'))||(await this.yahoo('BTC-USD'))) : this.yahoo(a.sym); },
+  async show(){
+    const m=$('#cmpModal'); m.hidden=false;
+    if(!this.chart){
+      this.chart=LightweightCharts.createChart($('#cmpChart'),{
+        layout:{background:{color:'transparent'}, textColor:'#7f8a9e', fontFamily:"'IBM Plex Mono', monospace", fontSize:11},
+        grid:{vertLines:{color:'rgba(255,255,255,.04)'}, horzLines:{color:'rgba(255,255,255,.05)'}},
+        rightPriceScale:{borderColor:'#1d2534'}, timeScale:{borderColor:'#1d2534', timeVisible:false},
+        crosshair:{mode:LightweightCharts.CrosshairMode.Normal},
+      });
+      this._ro=new ResizeObserver(()=>{ const el=$('#cmpChart'); if(this.chart&&el) this.chart.applyOptions({width:el.clientWidth, height:el.clientHeight}); });
+      this._ro.observe($('#cmpChart'));
+    }
+    const el=$('#cmpChart'); this.chart.applyOptions({width:el.clientWidth, height:el.clientHeight});
+    this.renderLegend(); await this.load();
+  },
+  hide(){ $('#cmpModal').hidden=true; },
+  renderLegend(){
+    $('#cmpLegend').innerHTML=this.assets.map(a=>
+      '<span class="cmp-chip'+(a.on?'':' off')+'" data-cmp="'+a.id+'"><span class="cdot" style="background:'+a.color+'"></span>'+a.label+' <span class="cval" id="cval_'+a.id+'"></span></span>').join('');
+  },
+  async load(){
+    if(this._loading) return; this._loading=true;
+    const jobs=this.assets.filter(a=>a.on).map(async a=>{ const k=a.id+'_'+this.range; if(!this.data[k]) this.data[k]=await this.fetchAsset(a); });
+    await Promise.all(jobs);
+    this._loading=false; this.render();
+  },
+  render(){
+    if(!this.chart) return;
+    for(const id in this.series){ try{ this.chart.removeSeries(this.series[id]); }catch(e){} }
+    this.series={};
+    for(const a of this.assets){
+      const cval=$('#cval_'+a.id);
+      if(!a.on){ if(cval) cval.textContent=''; continue; }
+      const rows=this.data[a.id+'_'+this.range];
+      if(!rows||!rows.length){ if(cval) cval.textContent='—'; continue; }
+      const base=rows[0].close;
+      const data=rows.map(p=>({time:p.date, value:+(p.close/base*100).toFixed(2)}));
+      const s=this.chart.addLineSeries({color:a.color, lineWidth:2, priceLineVisible:false, lastValueVisible:true, crosshairMarkerRadius:3});
+      s.setData(data); this.series[a.id]=s;
+      const lastNorm=data[data.length-1].value;
+      if(cval){ cval.textContent=(lastNorm>=100?'+':'')+(lastNorm-100).toFixed(1)+'%'; cval.style.color=lastNorm>=100?'#26a69a':'#ef5350'; }
+    }
+    try{ this.chart.timeScale().fitContent(); }catch(e){}
+  },
+  toggle(id){ const a=this.assets.find(x=>x.id===id); if(!a) return; a.on=!a.on; this.renderLegend(); this.load(); },
+  setRange(r){ if(!this.rangeDays[r]) return; this.range=r; document.querySelectorAll('#cmpRanges button').forEach(b=>b.classList.toggle('active', b.dataset.r===r)); this.load(); }
 };
 
 function line(x1,y1,x2,y2,color,dash){
@@ -2275,6 +2407,13 @@ function syncFSIcon(){ fsBtn.innerHTML = inFS()?ICON_COMPRESS:ICON_EXPAND; fsBtn
 fsBtn.addEventListener('click', toggleFS);
 document.addEventListener('fullscreenchange', syncFSIcon);
 document.addEventListener('webkitfullscreenchange', syncFSIcon);
+
+// ---- Comparador (ambiente separado) ----
+$('#cmpBtn').addEventListener('click', ()=>COMPARE.show().catch(()=>{}));
+$('#cmpClose').addEventListener('click', ()=>COMPARE.hide());
+$('#cmpRanges').addEventListener('click', e=>{ const b=e.target.closest('button'); if(b) COMPARE.setRange(b.dataset.r); });
+$('#cmpLegend').addEventListener('click', e=>{ const c=e.target.closest('[data-cmp]'); if(c) COMPARE.toggle(c.dataset.cmp); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !$('#cmpModal').hidden) COMPARE.hide(); });
 
 $('#src').addEventListener('change', e=>{ S.source=e.target.value; store.save(); loadData(); MTFOB.refresh().catch(()=>{}); SUMMARY.refresh().catch(()=>{}); });
 $('#emaOn').addEventListener('change', renderEMA);
