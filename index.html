@@ -305,6 +305,14 @@
   .cmp-chip.off{opacity:.4}
   .cmp-chip .cval{color:var(--txt);font-weight:700}
   .cmp-chart{flex:1;min-height:0;position:relative}
+  .cmp-corr{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 14px;border-top:1px solid var(--hair);background:var(--panel-2)}
+  .cmp-corr .cc-t{font-family:"IBM Plex Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted-2);margin-right:2px}
+  .cmp-corr .cc{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:7px;border:1px solid var(--hair);background:var(--panel);font-family:"IBM Plex Mono",monospace;font-size:11px}
+  .cmp-corr .cc .pair{color:var(--muted)}
+  .cmp-corr .cc .r{font-weight:700}
+  .cmp-corr .cc .lab{font-size:9.5px;color:var(--muted-2)}
+  .cmp-corr .cc-read{flex-basis:100%;font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--muted);line-height:1.4;margin-top:1px}
+  .cmp-corr .cc-read b{color:var(--txt)}
   .cmp-note{padding:7px 14px;border-top:1px solid var(--hair);font-family:"IBM Plex Mono",monospace;font-size:10px;line-height:1.4;color:var(--muted-2)}
   .cmp-note b{color:var(--muted)}
 
@@ -568,9 +576,9 @@
 <div class="cmp-modal" id="cmpModal" hidden>
   <div class="cmp-head">
     <div class="cmp-title">Comparar movimento <span>· base 100 (normalizado)</span></div>
-    <div class="cmp-ranges" id="cmpRanges">
-      <button data-r="3mo">3M</button><button data-r="6mo" class="active">6M</button>
-      <button data-r="1y">1A</button><button data-r="2y">2A</button>
+    <div class="cmp-ranges" id="cmpTfs">
+      <button data-tf="1h">1h</button><button data-tf="4h">4h</button><button data-tf="6h">6h</button>
+      <button data-tf="1d" class="active">D</button><button data-tf="1wk">S</button><button data-tf="1mo">M</button>
     </div>
     <div class="cmp-spacer"></div>
     <button class="icon-btn" id="cmpClose" title="Fechar" aria-label="Fechar">
@@ -579,7 +587,8 @@
   </div>
   <div class="cmp-legend" id="cmpLegend"></div>
   <div class="cmp-chart" id="cmpChart"></div>
-  <div class="cmp-note" id="cmpNote">Todos os ativos começam em 100 no início do período — assim dá pra comparar a <b>movimentação relativa</b> na mesma escala. NASDAQ e USD/JPY são diários (sem fim de semana).</div>
+  <div class="cmp-corr" id="cmpCorr"></div>
+  <div class="cmp-note" id="cmpNote">Todos os ativos começam em 100 no início do período — assim dá pra comparar a <b>movimentação relativa</b> na mesma escala. Mercado tradicional (NASDAQ, JPY…) não abre fim de semana/madrugada, então há buracos nos prazos curtos.</div>
 </div>
 
 <script>
@@ -1338,7 +1347,7 @@ const SUMMARY = {
    USD/JPY (JPY=X) e os demais vêm do Yahoo Finance via proxy CORS (com retry).
    ========================================================================= */
 const COMPARE = {
-  chart:null, series:{}, range:'6mo', data:{}, _loading:false, _ro:null,
+  chart:null, series:{}, tf:'1d', data:{}, _loading:false, _ro:null,
   assets:[
     {id:'btc',  label:'BTC',     color:'#f7931a', on:true,  sym:'BTCUSDT'},
     {id:'ndx',  label:'NASDAQ',  color:'#4dd0e1', on:true,  sym:'^IXIC'},
@@ -1347,10 +1356,17 @@ const COMPARE = {
     {id:'gold', label:'Ouro',    color:'#ffd54f', on:false, sym:'GC=F'},
     {id:'dxy',  label:'DXY',     color:'#9aa4b8', on:false, sym:'DX-Y.NYB'},
   ],
-  rangeDays:{'3mo':92,'6mo':184,'1y':366,'2y':732},
-  toDate(sec){ const d=new Date(sec*1000); return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0'); },
-  async yahoo(sym){
-    const url='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?range='+this.range+'&interval=1d';
+  // cada TF: intervalo/faixa do Yahoo, intervalo nativo da Binance p/ BTC, e se precisa agregar
+  TF:{
+    '1h': {bi:'1h', yi:'60m', yr:'1mo', aggTo:null,   intra:true,  tsec:3600},
+    '4h': {bi:'4h', yi:'60m', yr:'3mo', aggTo:14400,  intra:true,  tsec:14400},
+    '6h': {bi:'6h', yi:'60m', yr:'6mo', aggTo:21600,  intra:true,  tsec:21600},
+    '1d': {bi:'1d', yi:'1d',  yr:'1y',  aggTo:null,   intra:false, tsec:86400},
+    '1wk':{bi:'1w', yi:'1wk', yr:'5y',  aggTo:null,   intra:false, tsec:604800},
+    '1mo':{bi:'1M', yi:'1mo', yr:'max', aggTo:null,   intra:false, tsec:2592000},
+  },
+  async yahoo(sym, interval, range){
+    const url='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?range='+range+'&interval='+interval;
     const mks=[ u=>['https://api.allorigins.win/get?url='+encodeURIComponent(u),'get'],
                 u=>['https://api.allorigins.win/raw?url='+encodeURIComponent(u),'raw'],
                 u=>['https://corsproxy.io/?url='+encodeURIComponent(u),'raw'] ];
@@ -1361,26 +1377,33 @@ const COMPARE = {
         let j; if(mode==='get'){ const w=await r.json(); j=JSON.parse(w.contents); } else j=await r.json();
         const res=j&&j.chart&&j.chart.result&&j.chart.result[0]; if(!res) continue;
         const ts=res.timestamp||[], cl=(res.indicators&&res.indicators.quote&&res.indicators.quote[0].close)||[];
-        const out=[]; for(let i=0;i<ts.length;i++){ if(cl[i]==null) continue; out.push({date:this.toDate(ts[i]), close:cl[i]}); }
-        if(out.length>5) return out;
+        const out=[]; for(let i=0;i<ts.length;i++){ if(cl[i]==null) continue; out.push({t:ts[i], close:cl[i]}); }
+        if(out.length>3) return out;
       }catch(e){}
     }
     return null;
   },
-  async binanceDaily(sym){
-    try{ const c=await SOURCES.binance.rest('1d', sym);
-      const cut=Date.now()/1000 - this.rangeDays[this.range]*86400;
-      return c.filter(x=>x.time>=cut).map(x=>({date:this.toDate(x.time), close:x.close}));
+  async binance(interval){
+    try{ const r=await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval='+interval+'&limit=1000'); if(!r.ok) return null;
+      const d=await r.json(); if(!Array.isArray(d)) return null;   // ex.: bloqueio de região devolve objeto
+      return d.map(k=>({t:k[0]/1000, close:+k[4]}));
     }catch(e){ return null; }
   },
-  async fetchAsset(a){ return a.id==='btc' ? ((await this.binanceDaily('BTCUSDT'))||(await this.yahoo('BTC-USD'))) : this.yahoo(a.sym); },
+  agg(rows, sec){ if(!rows) return null; const m=new Map();
+    for(const r of rows){ const b=Math.floor(r.t/sec)*sec; m.set(b, r.close); }
+    return [...m.entries()].sort((a,b)=>a[0]-b[0]).map(([t,close])=>({t,close})); },
+  async fetchAsset(a, tf){
+    if(a.id==='btc'){ const b=await this.binance(tf.bi); if(b) return b;
+      const y=await this.yahoo('BTC-USD', tf.yi, tf.yr); return tf.aggTo?this.agg(y,tf.aggTo):y; }
+    const y=await this.yahoo(a.sym, tf.yi, tf.yr); return tf.aggTo?this.agg(y,tf.aggTo):y;
+  },
   async show(){
-    const m=$('#cmpModal'); m.hidden=false;
+    $('#cmpModal').hidden=false;
     if(!this.chart){
       this.chart=LightweightCharts.createChart($('#cmpChart'),{
         layout:{background:{color:'transparent'}, textColor:'#7f8a9e', fontFamily:"'IBM Plex Mono', monospace", fontSize:11},
         grid:{vertLines:{color:'rgba(255,255,255,.04)'}, horzLines:{color:'rgba(255,255,255,.05)'}},
-        rightPriceScale:{borderColor:'#1d2534'}, timeScale:{borderColor:'#1d2534', timeVisible:false},
+        rightPriceScale:{borderColor:'#1d2534'}, timeScale:{borderColor:'#1d2534', timeVisible:true},
         crosshair:{mode:LightweightCharts.CrosshairMode.Normal},
       });
       this._ro=new ResizeObserver(()=>{ const el=$('#cmpChart'); if(this.chart&&el) this.chart.applyOptions({width:el.clientWidth, height:el.clientHeight}); });
@@ -1396,30 +1419,66 @@ const COMPARE = {
   },
   async load(){
     if(this._loading) return; this._loading=true;
-    const jobs=this.assets.filter(a=>a.on).map(async a=>{ const k=a.id+'_'+this.range; if(!this.data[k]) this.data[k]=await this.fetchAsset(a); });
+    const tf=this.TF[this.tf];
+    $('#cmpCorr').innerHTML='<span class="cc-t">correlação</span><span class="cc-read">buscando dados…</span>';
+    const jobs=this.assets.filter(a=>a.on).map(async a=>{ const k=a.id+'_'+this.tf; if(this.data[k]===undefined) this.data[k]=await this.fetchAsset(a, tf); });
     await Promise.all(jobs);
     this._loading=false; this.render();
   },
   render(){
     if(!this.chart) return;
+    try{ this.chart.applyOptions({timeScale:{timeVisible:this.TF[this.tf].intra}}); }catch(e){}
     for(const id in this.series){ try{ this.chart.removeSeries(this.series[id]); }catch(e){} }
-    this.series={};
+    this.series={}; const norm={};
     for(const a of this.assets){
       const cval=$('#cval_'+a.id);
       if(!a.on){ if(cval) cval.textContent=''; continue; }
-      const rows=this.data[a.id+'_'+this.range];
-      if(!rows||!rows.length){ if(cval) cval.textContent='—'; continue; }
+      const rows=this.data[a.id+'_'+this.tf];
+      if(!rows||!rows.length){ if(cval){ cval.textContent='—'; cval.style.color='var(--muted-2)'; } continue; }
       const base=rows[0].close;
-      const data=rows.map(p=>({time:p.date, value:+(p.close/base*100).toFixed(2)}));
+      const data=rows.map(p=>({time:p.t, value:+(p.close/base*100).toFixed(3)}));
       const s=this.chart.addLineSeries({color:a.color, lineWidth:2, priceLineVisible:false, lastValueVisible:true, crosshairMarkerRadius:3});
-      s.setData(data); this.series[a.id]=s;
+      s.setData(data); this.series[a.id]=s; norm[a.id]=rows;
       const lastNorm=data[data.length-1].value;
       if(cval){ cval.textContent=(lastNorm>=100?'+':'')+(lastNorm-100).toFixed(1)+'%'; cval.style.color=lastNorm>=100?'#26a69a':'#ef5350'; }
     }
     try{ this.chart.timeScale().fitContent(); }catch(e){}
+    this.renderCorr(norm);
+  },
+  // correlação de Pearson entre os RETORNOS dos ativos, numa grade de tempo comum
+  renderCorr(norm){
+    const box=$('#cmpCorr'); if(!box) return;
+    const ids=this.assets.filter(a=>a.on && norm[a.id] && norm[a.id].length>4).map(a=>a.id);
+    if(ids.length<2){ box.innerHTML='<span class="cc-t">correlação</span><span class="cc-read">Ligue ao menos 2 ativos com dados para ver a correlação.</span>'; return; }
+    // grade comum = união dos timestamps; forward-fill cada série
+    const set=new Set(); ids.forEach(id=>norm[id].forEach(p=>set.add(p.t)));
+    const grid=[...set].sort((a,b)=>a-b);
+    const ff={}; for(const id of ids){ const rows=norm[id]; let j=0, last=null; const arr=[];
+      for(const t of grid){ while(j<rows.length && rows[j].t<=t){ last=rows[j].close; j++; } arr.push(last); } ff[id]=arr; }
+    // corta o começo até todos terem valor; calcula retornos
+    let start=0; for(let i=0;i<grid.length;i++){ if(ids.every(id=>ff[id][i]!=null)){ start=i; break; } }
+    const ret={}; for(const id of ids){ const a=[]; for(let i=start+1;i<grid.length;i++){ const p=ff[id][i-1], c=ff[id][i]; a.push(p?c/p-1:0); } ret[id]=a; }
+    const pear=(a,b)=>{ const n=Math.min(a.length,b.length); if(n<3) return null; let sa=0,sb=0; for(let i=0;i<n;i++){sa+=a[i];sb+=b[i];} const ma=sa/n,mb=sb/n;
+      let cov=0,va=0,vb=0; for(let i=0;i<n;i++){const da=a[i]-ma,db=b[i]-mb; cov+=da*db; va+=da*da; vb+=db*db;} return (va<=0||vb<=0)?null:cov/Math.sqrt(va*vb); };
+    const lbl=r=>{ const x=Math.abs(r); const s=r>=0?'':'-'; if(x>=.6) return['forte '+(r>=0?'+':'−'), r>=0?'#26a69a':'#ef5350']; if(x>=.3) return['moderada '+(r>=0?'+':'−'), r>=0?'#8fd6a0':'#f0928f']; return['fraca/nula', '#9aa4b8']; };
+    const label=id=>this.assets.find(a=>a.id===id).label;
+    const pairs=[];
+    for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){ const r=pear(ret[ids[i]],ret[ids[j]]); if(r==null) continue; pairs.push({a:ids[i],b:ids[j],r}); }
+    if(!pairs.length){ box.innerHTML='<span class="cc-t">correlação</span><span class="cc-read">Sem dados suficientes alinhados neste prazo.</span>'; return; }
+    pairs.sort((x,y)=>Math.abs(y.r)-Math.abs(x.r));
+    let html='<span class="cc-t">Correlação · '+this.tf.replace('1wk','S').replace('1mo','M').replace('1d','D')+'</span>';
+    for(const p of pairs.slice(0,6)){ const [txt,col]=lbl(p.r);
+      html+='<span class="cc"><span class="pair">'+label(p.a)+' ↔ '+label(p.b)+'</span> <span class="r" style="color:'+col+'">'+(p.r>=0?'+':'')+p.r.toFixed(2)+'</span> <span class="lab">'+txt+'</span></span>'; }
+    // leitura geral
+    const top=pairs[0], bot=pairs[pairs.length-1];
+    let read='';
+    if(top){ read+='<b>'+label(top.a)+'</b> e <b>'+label(top.b)+'</b> '+(top.r>=0?'estão se movendo JUNTOS':'estão INVERSOS')+' ('+(top.r>=0?'+':'')+top.r.toFixed(2)+')'+(Math.abs(top.r)>=.6?' — correlação forte.':(Math.abs(top.r)>=.3?' — correlação moderada.':' — mas fraca.')); }
+    if(bot && bot!==top && Math.abs(bot.r)<.3) read+=' Já <b>'+label(bot.a)+'</b> e <b>'+label(bot.b)+'</b> estão praticamente <b>descorrelacionados</b> ('+(bot.r>=0?'+':'')+bot.r.toFixed(2)+').';
+    html+='<span class="cc-read">'+read+'</span>';
+    box.innerHTML=html;
   },
   toggle(id){ const a=this.assets.find(x=>x.id===id); if(!a) return; a.on=!a.on; this.renderLegend(); this.load(); },
-  setRange(r){ if(!this.rangeDays[r]) return; this.range=r; document.querySelectorAll('#cmpRanges button').forEach(b=>b.classList.toggle('active', b.dataset.r===r)); this.load(); }
+  setTf(tf){ if(!this.TF[tf]) return; this.tf=tf; document.querySelectorAll('#cmpTfs button').forEach(b=>b.classList.toggle('active', b.dataset.tf===tf)); this.load(); }
 };
 
 function line(x1,y1,x2,y2,color,dash){
@@ -2411,7 +2470,7 @@ document.addEventListener('webkitfullscreenchange', syncFSIcon);
 // ---- Comparador (ambiente separado) ----
 $('#cmpBtn').addEventListener('click', ()=>COMPARE.show().catch(()=>{}));
 $('#cmpClose').addEventListener('click', ()=>COMPARE.hide());
-$('#cmpRanges').addEventListener('click', e=>{ const b=e.target.closest('button'); if(b) COMPARE.setRange(b.dataset.r); });
+$('#cmpTfs').addEventListener('click', e=>{ const b=e.target.closest('button'); if(b) COMPARE.setTf(b.dataset.tf); });
 $('#cmpLegend').addEventListener('click', e=>{ const c=e.target.closest('[data-cmp]'); if(c) COMPARE.toggle(c.dataset.cmp); });
 document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !$('#cmpModal').hidden) COMPARE.hide(); });
 
