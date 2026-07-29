@@ -188,7 +188,12 @@
     position:absolute;top:8px;left:8px;z-index:5;display:flex;flex-direction:row;flex-wrap:wrap;align-items:flex-start;gap:6px;
     width:auto;max-width:calc(100% - 16px);max-height:calc(100% - 16px);
     overflow-y:auto;overflow-x:hidden;scrollbar-width:none;
+    transition:transform .9s cubic-bezier(.22,1,.36,1), opacity .6s ease;
+    transform-origin:top left;
   }
+  /* recolhido: sobe pra fora da tela (volta descendo ao reabrir) */
+  .leftstack.collapsed{ transform:translateY(-118%); opacity:0; pointer-events:none; }
+  #stackBtn.active{ border-color:var(--btc);color:var(--btc) }
   .leftstack > div{ width:158px; }   /* cards lado a lado, estreitos */
   .leftstack > .sumbox{ width:288px; }   /* o card de resumo é mais longo */
   .leftstack > .patternbox{ width:196px; }   /* padrões: cabe a ilustração + texto */
@@ -557,6 +562,10 @@
       <button data-n="4" title="4 painéis"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8"/><rect x="13" y="3" width="8" height="8"/><rect x="3" y="13" width="8" height="8"/><rect x="13" y="13" width="8" height="8"/></svg></button>
       <button data-n="6" title="6 painéis"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="6" height="7"/><rect x="9" y="4" width="6" height="7"/><rect x="16" y="4" width="6" height="7"/><rect x="2" y="13" width="6" height="7"/><rect x="9" y="13" width="6" height="7"/><rect x="16" y="13" width="6" height="7"/></svg></button>
     </div>
+
+    <button class="icon-btn" id="stackBtn" title="Recolher / mostrar os painéis" aria-label="Recolher painéis">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="6" rx="1.2"/><rect x="3" y="13" width="11" height="5" rx="1.2"/></svg>
+    </button>
 
     <button class="icon-btn" id="cmpBtn" title="Comparar ativos (BTC · NASDAQ · JPY)" aria-label="Comparar">
       <svg viewBox="0 0 24 24" width="16" height="16" stroke-width="1.9" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 3 5-8 4 5"/><path d="M3 21h18"/></svg>
@@ -2592,6 +2601,15 @@ document.addEventListener('fullscreenchange', syncFSIcon);
 document.addEventListener('webkitfullscreenchange', syncFSIcon);
 
 // ---- Comparador (ambiente separado) ----
+// ---- recolher / mostrar os painéis do canto (com animação) ----
+function setStackCollapsed(v){
+  const ls=$('.leftstack'); if(ls) ls.classList.toggle('collapsed', v);
+  const bt=$('#stackBtn'); if(bt){ bt.classList.toggle('active', v); bt.title = v?'Mostrar os painéis':'Recolher os painéis'; }
+  try{ localStorage.setItem('ib_stackCollapsed', v?'1':'0'); }catch(e){}
+}
+$('#stackBtn').addEventListener('click', ()=> setStackCollapsed(!$('.leftstack').classList.contains('collapsed')) );
+try{ if(localStorage.getItem('ib_stackCollapsed')==='1') setStackCollapsed(true); }catch(e){}
+
 $('#cmpBtn').addEventListener('click', ()=>COMPARE.show().catch(()=>{}));
 $('#cmpClose').addEventListener('click', ()=>COMPARE.hide());
 $('#cmpFs').addEventListener('click', ()=>{ const m=$('#cmpModal');
