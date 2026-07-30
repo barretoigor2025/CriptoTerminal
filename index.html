@@ -28,6 +28,33 @@
     --btc:#f7931a;          /* laranja Bitcoin — cor-assinatura */
     --draw:#41b3ff;         /* cor dos desenhos do usuário */
     --draw-fill:rgba(65,179,255,.10);
+    /* fundos dos cards de leitura (viram claros no tema claro) */
+    --card-bg:rgba(13,18,27,.92);
+    --card-bg2:rgba(13,18,27,.94);
+    --svg-bg:#0b0f18;
+    --card-shadow:0 4px 16px rgba(0,0,0,.35);
+    --tip-bg:rgba(13,18,27,.97);
+  }
+  /* ---------- TEMA CLARO (mesma organização, paleta do CoinMarketCap) ---------- */
+  :root[data-theme="light"]{
+    --ink:#eff2f5;          /* fundo da página */
+    --panel:#ffffff;        /* topbar e cards */
+    --panel-2:#f7f9fb;
+    --hair:#e2e8f0;
+    --hair-2:#cfd8e3;
+    --txt:#0d1421;
+    --muted:#616e85;
+    --muted-2:#8a95a7;
+    --bull:#16c784;         /* verde CMC */
+    --bear:#ea3943;         /* vermelho CMC */
+    --btc:#f7931a;
+    --draw:#2f7bff;
+    --draw-fill:rgba(47,123,255,.10);
+    --card-bg:rgba(255,255,255,.97);
+    --card-bg2:#ffffff;
+    --svg-bg:#f1f4f8;
+    --card-shadow:0 4px 16px rgba(15,23,42,.10);
+    --tip-bg:rgba(255,255,255,.98);
   }
   *{box-sizing:border-box}
   /* trava o zoom/scroll da PÁGINA: o zoom fica só no gráfico (Lightweight Charts) */
@@ -99,7 +126,7 @@
   .status .led.err{background:var(--bear);box-shadow:0 0 8px var(--bear)}
 
   /* ---------- BODY ROW ---------- */
-  .row{flex:1;display:flex;min-height:0}
+  .row{flex:1;display:flex;min-height:0;gap:9px;padding:9px;background:var(--ink)}
 
   /* ---------- MENU DE INDICADORES (header, estilo TradingView) ---------- */
   .ind-menu-wrap{position:relative}
@@ -176,8 +203,10 @@
     font-family:"IBM Plex Mono",monospace;font-size:11px;padding:5px 7px;width:100%;
   }
 
-  /* ---------- CHART AREA ---------- */
-  .stage{flex:1;position:relative;min-width:0;background:var(--ink)}
+  /* ---------- CHART AREA (card grande) ---------- */
+  .stage{flex:1;position:relative;min-width:0;background:var(--panel-2);
+    border:1px solid var(--hair);border-radius:13px;overflow:hidden;
+    box-shadow:var(--card-shadow)}
   #chart{position:absolute;inset:0}
   /* overlay ACIMA das canvas internas do gráfico (que usam z-index 1 e 2),
      senão os toques/cliques de desenho não chegam nele */
@@ -185,23 +214,23 @@
 
   /* ---------- COLUNA DE MOSTRADORES (cards de leitura, à direita do gráfico) ---------- */
   .sidepanel{
-    flex:0 0 340px; width:340px; min-width:0; background:var(--panel-2);
-    border-left:1px solid var(--hair); overflow:hidden;
+    flex:0 0 330px; width:330px; min-width:0; background:transparent; overflow:hidden;
     transition:flex-basis .5s cubic-bezier(.22,1,.36,1), width .5s cubic-bezier(.22,1,.36,1), opacity .35s ease;
   }
-  .sidepanel.collapsed{ flex-basis:0; width:0; opacity:0; border-left:0; }
-  .side-inner{ width:340px; height:100%; overflow-y:auto; overflow-x:hidden; padding:10px; display:flex; flex-direction:column; gap:10px; scrollbar-width:thin; }
+  .sidepanel.collapsed{ flex-basis:0; width:0; opacity:0; }
+  .side-inner{ width:330px; height:100%; overflow-y:auto; overflow-x:hidden; padding:0 2px 0 0; display:flex; flex-direction:column; gap:9px; scrollbar-width:thin; }
   .side-inner > div{ width:100%; }
   .side-empty{ font-family:"IBM Plex Mono",monospace; font-size:11px; line-height:1.5; color:var(--muted-2); padding:16px 13px; border:1px dashed var(--hair-2); border-radius:9px; text-align:center; }
   .side-empty b{ color:var(--muted); }
   #stackBtn.active{ border-color:var(--btc);color:var(--btc) }
+  #themeBtn.active{ border-color:var(--btc);color:var(--btc) }
   .side-inner::-webkit-scrollbar{width:7px}
   .side-inner::-webkit-scrollbar-thumb{background:var(--hair-2);border-radius:4px}
 
   /* card BTC Time Cycle — compacto (altura/fonte reduzidas) */
   .cyclebox{
-    width:100%;background:rgba(13,18,27,.92);border:1px solid var(--hair-2);border-radius:9px;
-    padding:6px 8px;backdrop-filter:blur(4px);box-shadow:0 4px 16px rgba(0,0,0,.35);
+    width:100%;background:var(--card-bg);border:1px solid var(--hair-2);border-radius:9px;
+    padding:6px 8px;backdrop-filter:blur(4px);box-shadow:var(--card-shadow);
   }
   .cyclebox[hidden]{display:none}
   .cb-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
@@ -218,8 +247,8 @@
 
   /* card Order Blocks Multi-TF (confluência 1h / 4h / 1D vs. preço atual) — compacto */
   .mtfob{
-    width:100%;background:rgba(13,18,27,.92);border:1px solid var(--hair);border-radius:9px;
-    padding:6px 8px;backdrop-filter:blur(4px);
+    width:100%;background:var(--card-bg);border:1px solid var(--hair);border-radius:9px;
+    padding:6px 8px;backdrop-filter:blur(4px);box-shadow:var(--card-shadow);
   }
   .mtfob[hidden]{display:none}
   .mtf-title{
@@ -240,13 +269,13 @@
 
   /* card Padrões Gráficos (figuras clássicas detectadas + status/probabilidade) */
   .patternbox{
-    width:100%;background:rgba(13,18,27,.92);border:1px solid var(--hair);border-radius:9px;
-    padding:6px 8px;backdrop-filter:blur(4px);
+    width:100%;background:var(--card-bg);border:1px solid var(--hair);border-radius:9px;
+    padding:6px 8px;backdrop-filter:blur(4px);box-shadow:var(--card-shadow);
   }
   .pt-name{font-size:11px !important}
   .pt-say{font-size:9px !important}
   .pt-illus{margin:2px 0 7px}
-  .pt-svg{width:100%;height:56px;display:block;background:#0b0f18;border:1px solid var(--hair-2);border-radius:7px;padding:3px}
+  .pt-svg{width:100%;height:56px;display:block;background:var(--svg-bg);border:1px solid var(--hair-2);border-radius:7px;padding:3px}
   .pt-illcap{font-family:"IBM Plex Mono",monospace;font-size:8px;color:var(--muted-2);text-align:center;margin-top:3px;text-transform:uppercase;letter-spacing:.3px}
   .patternbox[hidden]{display:none}
   .pt-title{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.5px;text-transform:uppercase;
@@ -264,8 +293,8 @@
   .pt-say{font-family:"IBM Plex Mono",monospace;font-size:9.5px;line-height:1.35;color:var(--muted)}
 
   /* card Resumo Multi-TF (1h/4h/D/Semanal + síntese) — um pouco mais largo */
-  .sumbox{width:100%;background:rgba(13,18,27,.94);border:1px solid var(--hair);border-radius:9px;
-    padding:7px 9px;backdrop-filter:blur(4px)}
+  .sumbox{width:100%;background:var(--card-bg2);border:1px solid var(--hair);border-radius:9px;
+    padding:7px 9px;backdrop-filter:blur(4px);box-shadow:var(--card-shadow)}
   .sumbox[hidden]{display:none}
   .sum-row{display:flex;align-items:center;gap:7px;padding:3px 0;border-top:1px solid rgba(255,255,255,.05);font-family:"IBM Plex Mono",monospace;font-size:9.5px}
   .sum-row:first-of-type{border-top:none}
@@ -279,8 +308,8 @@
   .sum-cyc{margin-top:4px;font-family:"IBM Plex Mono",monospace;font-size:9px;line-height:1.35;color:var(--muted-2)}
 
   /* tooltip dos posts do Trump (Truth Social) */
-  .trumptip{position:absolute;z-index:7;max-width:300px;background:rgba(13,18,27,.97);
-    border:1px solid #e0322e;border-radius:9px;padding:8px 10px;box-shadow:0 6px 22px rgba(0,0,0,.55);pointer-events:auto}
+  .trumptip{position:absolute;z-index:7;max-width:300px;background:var(--tip-bg);
+    border:1px solid #e0322e;border-radius:9px;padding:8px 10px;box-shadow:var(--card-shadow);pointer-events:auto}
   .trumptip[hidden]{display:none}
   .trumptip .tt-h{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--muted);margin-bottom:4px}
   .trumptip .tt-cat{color:#f7b32b;text-transform:uppercase;letter-spacing:.3px}
@@ -293,8 +322,8 @@
   /* celular: coluna vira uma faixa embaixo do gráfico */
   @media (max-width:760px){
     .row{flex-direction:column}
-    .sidepanel{flex:0 0 auto; width:100%; height:44vh; border-left:0; border-top:1px solid var(--hair)}
-    .sidepanel.collapsed{height:0; flex-basis:0; border-top:0}
+    .sidepanel{flex:0 0 auto; width:100%; height:44vh}
+    .sidepanel.collapsed{height:0; flex-basis:0}
     .side-inner{width:100%}
   }
 
@@ -570,6 +599,10 @@
       <svg viewBox="0 0 24 24" width="16" height="16" stroke-width="1.9" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 3 5-8 4 5"/><path d="M3 21h18"/></svg>
     </button>
 
+    <button class="icon-btn" id="themeBtn" title="Tema claro" aria-label="Alternar tema claro/escuro">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+    </button>
+
     <button class="icon-btn" id="fsBtn" title="Tela cheia" aria-label="Tela cheia">
       <svg viewBox="0 0 24 24" width="16" height="16" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
     </button>
@@ -816,6 +849,50 @@ chart.priceScale('vol').applyOptions({ scaleMargins:{top:.85, bottom:0} });
 
 /* série de linha reutilizável para indicadores de sobreposição (overlay) */
 const emaSeries = chart.addLineSeries({ color:'#f7931a', lineWidth:2, priceLineVisible:false, lastValueVisible:false });
+
+/* =========================================================================
+   TEMA CLARO / ESCURO  — o botão sol/lua no topo troca a paleta inteira.
+   O shell (CSS) troca via data-theme; o gráfico e a canvas de overlay leem
+   de THEME.cur (cores que não dá pra expressar em CSS por serem desenhadas).
+   ========================================================================= */
+const THEMES = {
+  dark:{
+    text:'#7f8a9e', grid:'rgba(29,37,52,.55)', border:'#1d2534',
+    cross:'#41b3ff66', crossLbl:'#1d2534',
+    up:'#26a69a', down:'#ef5350',
+    frameBg:'#070a11', frameLine:'rgba(120,132,152,.32)', volLbl:'rgba(150,160,180,.55)',
+    ma200:'#ffffff'
+  },
+  light:{
+    text:'#616e85', grid:'rgba(160,172,190,.40)', border:'#cfd8e3',
+    cross:'#2f7bff77', crossLbl:'#e2e8f0',
+    up:'#16c784', down:'#ea3943',
+    frameBg:'#f1f4f8', frameLine:'rgba(120,132,152,.35)', volLbl:'rgba(97,110,133,.75)',
+    ma200:'#131722'
+  }
+};
+const THEME = { name:'dark', cur:THEMES.dark };
+function applyTheme(name, save){
+  const light = name==='light';
+  THEME.name = light?'light':'dark';
+  THEME.cur = light?THEMES.light:THEMES.dark; const T=THEME.cur;
+  document.documentElement.setAttribute('data-theme', THEME.name);
+  try{
+    chart.applyOptions({
+      layout:{ textColor:T.text },
+      grid:{ vertLines:{color:T.grid}, horzLines:{color:T.grid} },
+      rightPriceScale:{ borderColor:T.border },
+      timeScale:{ borderColor:T.border },
+      crosshair:{ vertLine:{color:T.cross, labelBackgroundColor:T.crossLbl},
+                  horzLine:{color:T.cross, labelBackgroundColor:T.crossLbl} }
+    });
+    candleSeries.applyOptions({ upColor:T.up, downColor:T.down, wickUpColor:T.up, wickDownColor:T.down });
+    if(typeof MA!=='undefined' && MA.series && MA.series[200]) MA.series[200].applyOptions({ color:T.ma200 });
+  }catch(_){}
+  // botão sol/lua
+  const b=$('#themeBtn'); if(b){ b.classList.toggle('active', light); b.title = light?'Tema escuro':'Tema claro'; }
+  if(save!==false){ try{ localStorage.setItem('ib_theme', THEME.name); }catch(_){}}
+}
 
 /* =========================================================================
    INDICADORES  — registry extensível
@@ -1110,7 +1187,10 @@ const LIQ = {
     const ys=new Array(R+1);
     for(let r=0;r<=R;r++) ys[r]=yOf(this.pMin+(r/R)*span);
     ctx.save();
-    ctx.beginPath(); ctx.rect(0,0,W,Hc); ctx.clip();   // nunca vaza da área do gráfico
+    // quando o RSI está ligado, o preço ocupa só o frame de cima: recorta o mapa
+    // no fundo do painel de preço p/ ele NUNCA vazar sobre o volume/RSI.
+    let clipBot=Hc; try{ if(typeof RSI!=='undefined' && RSI.cfg.on) clipBot=RSI.band().v0; }catch(_){}
+    ctx.beginPath(); ctx.rect(0,0,W,clipBot); ctx.clip();   // nunca vaza da área do gráfico
     ctx.imageSmoothingEnabled=true;
     for(let r=0;r<R;r++){
       const yB=ys[r], yT=ys[r+1];               // yT (preço maior) fica acima de yB
@@ -1297,7 +1377,7 @@ const RSI = {
     const yDiv1=Math.round(bnd.v0), yDiv2=Math.round(bnd.mid), yFbot=Math.round(bnd.botAll);
     // FUNDO PRETO próprio dos frames de volume e RSI (cobre o grid do preço que
     // "vazava" por trás e deixava o visual bagunçado)
-    ctx.fillStyle='#070a11';
+    ctx.fillStyle=THEME.cur.frameBg;
     ctx.fillRect(0, yDiv1, W, yDiv2-yDiv1);      // frame do volume
     ctx.fillRect(0, yDiv2, W, yFbot-yDiv2);      // frame do RSI
     // barras de VOLUME desenhadas aqui (a série nativa fica escondida no modo frames)
@@ -1312,10 +1392,10 @@ const RSI = {
         ctx.fillRect(x-bw/2, vBot-h, bw, h); }
     })();
     // divisórias entre os painéis + rótulo do volume
-    ctx.strokeStyle='rgba(120,132,152,.32)'; ctx.lineWidth=1; ctx.setLineDash([]);
+    ctx.strokeStyle=THEME.cur.frameLine; ctx.lineWidth=1; ctx.setLineDash([]);
     for(const yy of [yDiv1, yDiv2]){ const y=yy+.5; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
     ctx.font="9px 'IBM Plex Mono', monospace"; ctx.textBaseline='top';
-    ctx.fillStyle='rgba(150,160,180,.55)'; ctx.fillText('VOLUME', 6, yDiv1+4);
+    ctx.fillStyle=THEME.cur.volLbl; ctx.fillText('VOLUME', 6, yDiv1+4);
     // níveis 70 / 50 / 30 do RSI
     const y70=this.yOf(70), y50=this.yOf(50), y30=this.yOf(30);
     ctx.lineWidth=1; ctx.setLineDash([3,4]);
@@ -1502,10 +1582,11 @@ const COMPARE = {
   async show(){
     $('#cmpModal').hidden=false;
     if(!this.chart){
+      const T=THEME.cur;
       this.chart=LightweightCharts.createChart($('#cmpChart'),{
-        layout:{background:{color:'transparent'}, textColor:'#7f8a9e', fontFamily:"'IBM Plex Mono', monospace", fontSize:11},
-        grid:{vertLines:{color:'rgba(255,255,255,.04)'}, horzLines:{color:'rgba(255,255,255,.05)'}},
-        rightPriceScale:{borderColor:'#1d2534'}, timeScale:{borderColor:'#1d2534', timeVisible:true},
+        layout:{background:{color:'transparent'}, textColor:T.text, fontFamily:"'IBM Plex Mono', monospace", fontSize:11},
+        grid:{vertLines:{color:T.grid}, horzLines:{color:T.grid}},
+        rightPriceScale:{borderColor:T.border}, timeScale:{borderColor:T.border, timeVisible:true},
         crosshair:{mode:LightweightCharts.CrosshairMode.Normal},
       });
       this._ro=new ResizeObserver(()=>{ const el=$('#cmpChart'); if(this.chart&&el) this.chart.applyOptions({width:el.clientWidth, height:el.clientHeight}); });
@@ -2611,6 +2692,10 @@ function setStackCollapsed(v){
 }
 $('#stackBtn').addEventListener('click', ()=> setStackCollapsed(!$('#sidepanel').classList.contains('collapsed')) );
 try{ if(localStorage.getItem('ib_stackCollapsed')==='1') setStackCollapsed(true); }catch(e){}
+
+// ---- alternância de tema claro / escuro (sol / lua) ----
+$('#themeBtn').addEventListener('click', ()=> applyTheme(THEME.name==='light'?'dark':'light') );
+try{ applyTheme(localStorage.getItem('ib_theme')==='light'?'light':'dark', false); }catch(e){ applyTheme('dark', false); }
 
 $('#cmpBtn').addEventListener('click', ()=>COMPARE.show().catch(()=>{}));
 $('#cmpClose').addEventListener('click', ()=>COMPARE.hide());
