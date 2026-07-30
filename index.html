@@ -183,21 +183,20 @@
      senão os toques/cliques de desenho não chegam nele */
   #overlay{position:absolute;inset:0;pointer-events:none;z-index:4}
 
-  /* ---------- PILHA DO CANTO SUP. ESQ. (Ciclo + Order Blocks Multi-TF) ---------- */
-  .leftstack{
-    position:absolute;top:8px;left:8px;z-index:5;display:flex;flex-direction:row;flex-wrap:wrap;align-items:flex-start;gap:6px;
-    width:auto;max-width:calc(100% - 16px);max-height:calc(100% - 16px);
-    overflow-y:auto;overflow-x:hidden;scrollbar-width:none;
-    transition:transform .9s cubic-bezier(.22,1,.36,1), opacity .6s ease;
-    transform-origin:top left;
+  /* ---------- COLUNA DE MOSTRADORES (cards de leitura, à direita do gráfico) ---------- */
+  .sidepanel{
+    flex:0 0 340px; width:340px; min-width:0; background:var(--panel-2);
+    border-left:1px solid var(--hair); overflow:hidden;
+    transition:flex-basis .5s cubic-bezier(.22,1,.36,1), width .5s cubic-bezier(.22,1,.36,1), opacity .35s ease;
   }
-  /* recolhido: sobe pra fora da tela (volta descendo ao reabrir) */
-  .leftstack.collapsed{ transform:translateY(-118%); opacity:0; pointer-events:none; }
+  .sidepanel.collapsed{ flex-basis:0; width:0; opacity:0; border-left:0; }
+  .side-inner{ width:340px; height:100%; overflow-y:auto; overflow-x:hidden; padding:10px; display:flex; flex-direction:column; gap:10px; scrollbar-width:thin; }
+  .side-inner > div{ width:100%; }
+  .side-empty{ font-family:"IBM Plex Mono",monospace; font-size:11px; line-height:1.5; color:var(--muted-2); padding:16px 13px; border:1px dashed var(--hair-2); border-radius:9px; text-align:center; }
+  .side-empty b{ color:var(--muted); }
   #stackBtn.active{ border-color:var(--btc);color:var(--btc) }
-  .leftstack > div{ width:158px; }   /* cards lado a lado, estreitos */
-  .leftstack > .sumbox{ width:288px; }   /* o card de resumo é mais longo */
-  .leftstack > .patternbox{ width:196px; }   /* padrões: cabe a ilustração + texto */
-  .leftstack::-webkit-scrollbar{display:none}
+  .side-inner::-webkit-scrollbar{width:7px}
+  .side-inner::-webkit-scrollbar-thumb{background:var(--hair-2);border-radius:4px}
 
   /* card BTC Time Cycle — compacto (altura/fonte reduzidas) */
   .cyclebox{
@@ -288,15 +287,15 @@
   .trumptip .tt-b{font-size:11.5px;line-height:1.4;color:var(--txt)}
   .trumptip .tt-a{display:inline-block;margin-top:5px;font-size:10px;color:#41b3ff;text-decoration:none}
 
-  body.grid-on .leftstack{display:none}
-  /* telas estreitas / celular na horizontal: encolhe a pilha e nunca deixa vazar */
-  @media (max-width:560px){ .leftstack{gap:5px} .leftstack > div{width:144px} .cb-pct{font-size:14px} }
-  @media (orientation:landscape) and (max-height:560px){
-    .leftstack{gap:5px;transform:scale(.92);transform-origin:top left}
-    .leftstack > div{width:140px}
-    .cyclebox,.mtfob,.patternbox{padding:5px 7px}
-    .cb-pct{font-size:13px}
-    .cb-note,.mtf-state,.pt-say{font-size:8px}
+  body.grid-on .sidepanel{display:none}
+  /* mostra a mensagem "vazio" só quando NENHUM card está visível */
+  .side-inner:has(> div:not(.side-empty):not([hidden])) .side-empty{ display:none; }
+  /* celular: coluna vira uma faixa embaixo do gráfico */
+  @media (max-width:760px){
+    .row{flex-direction:column}
+    .sidepanel{flex:0 0 auto; width:100%; height:44vh; border-left:0; border-top:1px solid var(--hair)}
+    .sidepanel.collapsed{height:0; flex-basis:0; border-top:0}
+    .side-inner{width:100%}
   }
 
   /* botão de acesso ao comparador — borda fina pulsando em vermelho */
@@ -580,17 +579,10 @@
 </header>
 
 <div class="row">
-  <!-- CHART (barra de desenho removida a pedido — motor de desenho continua no código, dormente) -->
+  <!-- CARD GRANDE: o gráfico do ativo (preço + volume + RSI dentro dele) -->
   <div class="stage">
     <div id="chart"></div>
     <canvas id="overlay"></canvas>
-
-    <div class="leftstack">
-      <div class="cyclebox" id="cyclebox" hidden></div>
-      <div class="mtfob" id="mtfob" hidden></div>
-      <div class="sumbox" id="sumbox" hidden></div>
-      <div class="patternbox" id="patternbox" hidden></div>
-    </div>
     <div class="trumptip" id="trumptip" hidden></div>
 
     <div class="banner" id="banner">
@@ -598,8 +590,18 @@
       <p id="bannerMsg">Não consegui carregar os candles desta fonte. Pode ser bloqueio de região ou CORS. Tente outra fonte.</p>
       <button id="bannerBtn">Tentar Bybit</button>
     </div>
-
   </div>
+
+  <!-- COLUNA DE MOSTRADORES: cards de leitura do mercado, à direita do gráfico -->
+  <aside class="sidepanel" id="sidepanel">
+    <div class="side-inner">
+      <div class="cyclebox" id="cyclebox" hidden></div>
+      <div class="mtfob" id="mtfob" hidden></div>
+      <div class="sumbox" id="sumbox" hidden></div>
+      <div class="patternbox" id="patternbox" hidden></div>
+      <div class="side-empty" id="sideEmpty">Ligue os indicadores em <b>Indicadores</b> para preencher os painéis de leitura do mercado (Resumo Multi-TF, Padrões Gráficos…).</div>
+    </div>
+  </aside>
 </div>
 
 <!-- GRID de múltiplos ativos (preenchido por JS nos layouts 2/4/6) -->
@@ -2601,13 +2603,13 @@ document.addEventListener('fullscreenchange', syncFSIcon);
 document.addEventListener('webkitfullscreenchange', syncFSIcon);
 
 // ---- Comparador (ambiente separado) ----
-// ---- recolher / mostrar os painéis do canto (com animação) ----
+// ---- recolher / mostrar a coluna de mostradores (com animação; o gráfico expande) ----
 function setStackCollapsed(v){
-  const ls=$('.leftstack'); if(ls) ls.classList.toggle('collapsed', v);
+  const ls=$('#sidepanel'); if(ls) ls.classList.toggle('collapsed', v);
   const bt=$('#stackBtn'); if(bt){ bt.classList.toggle('active', v); bt.title = v?'Mostrar os painéis':'Recolher os painéis'; }
   try{ localStorage.setItem('ib_stackCollapsed', v?'1':'0'); }catch(e){}
 }
-$('#stackBtn').addEventListener('click', ()=> setStackCollapsed(!$('.leftstack').classList.contains('collapsed')) );
+$('#stackBtn').addEventListener('click', ()=> setStackCollapsed(!$('#sidepanel').classList.contains('collapsed')) );
 try{ if(localStorage.getItem('ib_stackCollapsed')==='1') setStackCollapsed(true); }catch(e){}
 
 $('#cmpBtn').addEventListener('click', ()=>COMPARE.show().catch(()=>{}));
