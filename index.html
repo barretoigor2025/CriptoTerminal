@@ -58,7 +58,11 @@
   }
   *{box-sizing:border-box}
   /* trava o zoom/scroll da PÁGINA: o zoom fica só no gráfico (Lightweight Charts) */
-  html,body{height:100%;margin:0;overscroll-behavior:none;touch-action:manipulation}
+  /* text-size-adjust:100% impede o "font boosting" dos navegadores de celular
+     (Samsung Internet / Chrome), que inflava os textos do topo e engordava a
+     barra superior — comendo espaço que agora sobra pro gráfico e indicadores */
+  html,body{height:100%;margin:0;overscroll-behavior:none;touch-action:manipulation;
+    -webkit-text-size-adjust:100%;text-size-adjust:100%}
   body{
     background:var(--ink);
     color:var(--txt);
@@ -74,9 +78,9 @@
 
   /* ---------- TOP BAR ---------- */
   header{
-    min-height:46px;flex:0 0 auto;
-    display:flex;align-items:center;flex-wrap:wrap;gap:7px 10px;
-    padding:6px 10px;
+    min-height:40px;flex:0 0 auto;
+    display:flex;align-items:center;flex-wrap:wrap;gap:5px 8px;
+    padding:4px 10px;
     background:linear-gradient(180deg,var(--panel),var(--panel-2));
     border-bottom:1px solid var(--hair);
     z-index:10;
@@ -107,14 +111,14 @@
   .hsel{
     background:var(--panel-2);color:var(--txt);border:1px solid var(--hair);
     border-radius:8px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;font-weight:500;
-    padding:6px 7px;cursor:pointer;
+    padding:5px 7px;cursor:pointer;
   }
   .hsel:hover{border-color:var(--hair-2)}
   #tfSel{color:var(--btc);font-weight:600}
 
   .icon-btn{
     display:flex;align-items:center;justify-content:center;
-    width:32px;height:30px;border-radius:8px;
+    width:30px;height:28px;border-radius:8px;
     background:var(--panel-2);color:var(--muted);border:1px solid var(--hair);cursor:pointer;transition:.12s;
   }
   .icon-btn:hover{color:var(--txt);border-color:var(--hair-2)}
@@ -134,7 +138,7 @@
     display:flex;align-items:center;gap:5px;
     background:var(--panel-2);color:var(--txt);border:1px solid var(--hair);
     border-radius:8px;font-family:"Space Grotesk",sans-serif;font-size:11.5px;font-weight:500;
-    padding:6px 9px;cursor:pointer;transition:.12s;white-space:nowrap;
+    padding:5px 9px;cursor:pointer;transition:.12s;white-space:nowrap;
   }
   .ind-btn:hover{border-color:var(--hair-2);color:#fff}
   .ind-btn.active{border-color:var(--btc);color:var(--btc)}
