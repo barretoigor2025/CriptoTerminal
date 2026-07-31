@@ -218,11 +218,11 @@
 
   /* ---------- COLUNA DE MOSTRADORES (cards de leitura, à direita do gráfico) ---------- */
   .sidepanel{
-    flex:0 0 330px; width:330px; min-width:0; background:transparent; overflow:hidden;
+    flex:0 0 286px; width:286px; min-width:0; background:transparent; overflow:hidden;
     transition:flex-basis .5s cubic-bezier(.22,1,.36,1), width .5s cubic-bezier(.22,1,.36,1), opacity .35s ease;
   }
   .sidepanel.collapsed{ flex-basis:0; width:0; opacity:0; }
-  .side-inner{ width:330px; height:100%; overflow-y:auto; overflow-x:hidden; padding:0 2px 0 0; display:flex; flex-direction:column; gap:9px; scrollbar-width:thin; }
+  .side-inner{ width:286px; height:100%; overflow-y:auto; overflow-x:hidden; padding:0 2px 0 0; display:flex; flex-direction:column; gap:9px; scrollbar-width:thin; }
   .side-inner > div{ width:100%; }
   .side-empty{ font-family:"IBM Plex Mono",monospace; font-size:11px; line-height:1.5; color:var(--muted-2); padding:16px 13px; border:1px dashed var(--hair-2); border-radius:9px; text-align:center; }
   .side-empty b{ color:var(--muted); }
@@ -295,6 +295,27 @@
   .pt-prob{color:var(--muted)}.pt-prob b{color:var(--txt)}
   .pt-vol{color:var(--muted-2)}
   .pt-say{font-family:"IBM Plex Mono",monospace;font-size:9.5px;line-height:1.35;color:var(--muted)}
+
+  /* card Sentimento — Ciclo BTC (bear/bull %) + índice Fear & Greed com ponteiro */
+  .fgbox{width:100%;background:var(--card-bg2);border:1px solid var(--hair);border-radius:9px;
+    padding:8px 9px;backdrop-filter:blur(4px);box-shadow:var(--card-shadow)}
+  .fgbox[hidden]{display:none}
+  .fg-title{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted-2)}
+  .fg-wrap{display:flex;gap:9px;align-items:stretch;margin-top:6px}
+  .fg-cycle{flex:0 0 84px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+    background:var(--panel-2);border:1px solid var(--hair);border-radius:8px;padding:6px 4px}
+  .fg-c-tag{font-family:"IBM Plex Mono",monospace;font-size:8px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted-2)}
+  .fg-c-pct{font-family:"Space Grotesk",sans-serif;font-size:17px;font-weight:700;line-height:1.05;margin:2px 0}
+  .fg-c-sub{font-family:"IBM Plex Mono",monospace;font-size:8px;color:var(--muted)}
+  .fg-fng{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:6px}
+  .fg-f-top{display:flex;justify-content:space-between;align-items:baseline}
+  .fg-f-tag{font-family:"IBM Plex Mono",monospace;font-size:8px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted-2)}
+  .fg-f-val{font-family:"Space Grotesk",sans-serif;font-size:22px;font-weight:700;line-height:1}
+  .fg-bar{position:relative;height:8px;border-radius:5px;
+    background:linear-gradient(90deg,#ea3943 0%,#f7931a 30%,#f7d33f 50%,#16c784 72%,#0ea5e9 100%)}
+  .fg-ptr{position:absolute;top:-3px;width:3px;height:14px;background:var(--txt);border-radius:2px;
+    transform:translateX(-50%);box-shadow:0 0 0 2px var(--card-bg2)}
+  .fg-f-lab{font-family:"IBM Plex Mono",monospace;font-size:9.5px;font-weight:600}
 
   /* card Resumo Multi-TF (1h/4h/D/Semanal + síntese) — um pouco mais largo */
   .sumbox{width:100%;background:var(--card-bg2);border:1px solid var(--hair);border-radius:9px;
@@ -634,6 +655,7 @@
     <div class="side-inner">
       <div class="cyclebox" id="cyclebox" hidden></div>
       <div class="mtfob" id="mtfob" hidden></div>
+      <div class="fgbox" id="fgbox" hidden></div>
       <div class="sumbox" id="sumbox" hidden></div>
       <div class="patternbox" id="patternbox" hidden></div>
       <div class="side-empty" id="sideEmpty">Ligue os indicadores em <b>Indicadores</b> para preencher os painéis de leitura do mercado (Resumo Multi-TF, Padrões Gráficos…).</div>
@@ -1326,16 +1348,17 @@ function rsiOf(closes, len){
 const RSI = {
   cfg:{ on:false, len:14, ma1:9, ma2:21 },
   vals:[], ma1arr:[], ma2arr:[],
-  // divisão vertical da tela em painéis (frações da altura) — igual ao TradingView:
-  // preço em cima, volume no meio, RSI embaixo, cada um no seu "frame"
-  PANES:{ price:{top:.05, bottom:.42}, vol:{top:.61, bottom:.20}, div1:.595, div2:.81, rsiTop:.82, rsiBot:.985 },
+  // UM único frame embaixo (separado do gráfico de preço) com VOLUME + RSI
+  // SOBREPOSTOS — mais baixo que antes, sobrando mais altura pro preço.
+  // price.bottom reserva a faixa de baixo; frameTop é onde esse frame começa.
+  PANES:{ price:{top:.04, bottom:.23}, frameTop:.77 },
   PANES_OFF:{ price:{top:.08, bottom:.22}, vol:{top:.85, bottom:0} },
-  // aplica as margens das escalas conforme o RSI estiver ligado (abre/fecha o frame do RSI)
+  // aplica as margens das escalas conforme o RSI estiver ligado (abre/fecha o frame)
   panes(on){
     const p = on ? this.PANES : this.PANES_OFF;
     try{ chart.priceScale('right').applyOptions({ scaleMargins:{top:p.price.top, bottom:p.price.bottom} }); }catch(_){}
-    try{ chart.priceScale('vol').applyOptions({ scaleMargins:{top:p.vol.top, bottom:p.vol.bottom} }); }catch(_){}
-    // no modo frames o volume é redesenhado no overlay (fundo preto próprio); esconde o nativo
+    if(!on){ try{ chart.priceScale('vol').applyOptions({ scaleMargins:{top:this.PANES_OFF.vol.top, bottom:0} }); }catch(_){} }
+    // no modo frame o volume é redesenhado no overlay (junto do RSI); esconde o nativo
     try{ if(typeof volSeries!=='undefined') volSeries.applyOptions({ visible: !on }); }catch(_){}
   },
   sma(len){
@@ -1358,11 +1381,10 @@ const RSI = {
     this.ma1arr=this.sma(this.cfg.ma1);   // média rápida do RSI
     this.ma2arr=this.sma(this.cfg.ma2);   // média lenta do RSI
   },
-  // frames de VOLUME e RSI com a MESMA altura: divide o espaço abaixo do preço
-  // (de div1 até o topo do eixo de tempo) em duas metades iguais.
+  // frame único (volume + RSI juntos), logo abaixo do preço até o topo do eixo de tempo
   band(){ const H=cv.clientHeight; let tax=0; try{ tax=chart.timeScale().height()||0; }catch(_){}
-    const v0=H*this.PANES.div1, botAll=H-tax, mid=(v0+botAll)/2, pad=(botAll-mid)*0.06;
-    return { v0, mid, botAll, top:mid+pad, bot:botAll-pad }; },
+    const v0=H*this.PANES.frameTop, botAll=H-tax, pad=(botAll-v0)*0.07;
+    return { v0, botAll, top:v0+pad, bot:botAll-pad }; },
   yOf(v){ const b=this.band(); return b.bot - (Math.max(0,Math.min(100,v))/100)*(b.bot-b.top); },
   poly(arr, color, w){
     const c=S.candles, n=c.length;
@@ -1378,34 +1400,30 @@ const RSI = {
     const rightEdge=W-rsw-1;
     ctx.save();
     const bnd=this.band();
-    const yDiv1=Math.round(bnd.v0), yDiv2=Math.round(bnd.mid), yFbot=Math.round(bnd.botAll);
-    // FUNDO PRETO próprio dos frames de volume e RSI (cobre o grid do preço que
-    // "vazava" por trás e deixava o visual bagunçado)
+    const yTopF=Math.round(bnd.v0), yFbot=Math.round(bnd.botAll);
+    // fundo próprio do frame (separa do gráfico de preço; cobre o grid que vazava)
     ctx.fillStyle=THEME.cur.frameBg;
-    ctx.fillRect(0, yDiv1, W, yDiv2-yDiv1);      // frame do volume
-    ctx.fillRect(0, yDiv2, W, yFbot-yDiv2);      // frame do RSI
-    // barras de VOLUME desenhadas aqui (a série nativa fica escondida no modo frames)
+    ctx.fillRect(0, yTopF, W, yFbot-yTopF);
+    // VOLUME — barras faint do fundo do frame p/ cima, ATRÁS do RSI (sobrepostos)
     (()=>{ const c=S.candles, n=c.length; if(!n) return;
       let lo=0,hi=n-1; try{ const vr=chart.timeScale().getVisibleLogicalRange(); if(vr){ lo=Math.max(0,Math.floor(vr.from)); hi=Math.min(n-1,Math.ceil(vr.to)); } }catch(_){}
       let mx=0; for(let i=lo;i<=hi;i++) if(c[i].volume>mx) mx=c[i].volume; if(mx<=0) mx=1;
       let bs=6; try{ bs=chart.timeScale().options().barSpacing||6; }catch(_){}
-      const bw=Math.max(1, bs*0.66), vTop=yDiv1+7, vBot=yDiv2-2, vh=vBot-vTop;
+      const bw=Math.max(1, bs*0.66), vBot=yFbot-1, vh=(yFbot-yTopF)*0.92;
       for(let i=0;i<n;i++){ const x=xOf(c[i].time); if(x==null||x<-bw||x>rightEdge+bw) continue;
         const h=Math.max(.5,(c[i].volume/mx)*vh);
-        ctx.fillStyle=c[i].close>=c[i].open?'rgba(38,166,154,.55)':'rgba(239,83,80,.55)';
+        ctx.fillStyle=c[i].close>=c[i].open?'rgba(38,166,154,.26)':'rgba(239,83,80,.26)';
         ctx.fillRect(x-bw/2, vBot-h, bw, h); }
     })();
-    // divisórias entre os painéis + rótulo do volume
+    // divisória do topo do frame
     ctx.strokeStyle=THEME.cur.frameLine; ctx.lineWidth=1; ctx.setLineDash([]);
-    for(const yy of [yDiv1, yDiv2]){ const y=yy+.5; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
-    ctx.font="9px 'IBM Plex Mono', monospace"; ctx.textBaseline='top';
-    ctx.fillStyle=THEME.cur.volLbl; ctx.fillText('VOLUME', 6, yDiv1+4);
+    ctx.beginPath(); ctx.moveTo(0,yTopF+.5); ctx.lineTo(W,yTopF+.5); ctx.stroke();
     // níveis 70 / 50 / 30 do RSI
     const y70=this.yOf(70), y50=this.yOf(50), y30=this.yOf(30);
     ctx.lineWidth=1; ctx.setLineDash([3,4]);
-    ctx.strokeStyle='rgba(239,83,80,.30)';  ctx.beginPath(); ctx.moveTo(0,y70); ctx.lineTo(rightEdge,y70); ctx.stroke();
-    ctx.strokeStyle='rgba(38,166,154,.30)';  ctx.beginPath(); ctx.moveTo(0,y30); ctx.lineTo(rightEdge,y30); ctx.stroke();
-    ctx.strokeStyle='rgba(150,160,180,.16)'; ctx.beginPath(); ctx.moveTo(0,y50); ctx.lineTo(rightEdge,y50); ctx.stroke();
+    ctx.strokeStyle='rgba(239,83,80,.28)';  ctx.beginPath(); ctx.moveTo(0,y70); ctx.lineTo(rightEdge,y70); ctx.stroke();
+    ctx.strokeStyle='rgba(38,166,154,.28)';  ctx.beginPath(); ctx.moveTo(0,y30); ctx.lineTo(rightEdge,y30); ctx.stroke();
+    ctx.strokeStyle='rgba(150,160,180,.14)'; ctx.beginPath(); ctx.moveTo(0,y50); ctx.lineTo(rightEdge,y50); ctx.stroke();
     ctx.setLineDash([]);
     // as duas médias primeiro (ficam atrás), depois o RSI por cima
     this.poly(this.ma2arr, '#4dd0e1', 1.2);   // média lenta
@@ -1417,9 +1435,10 @@ const RSI = {
     ctx.font="9px 'IBM Plex Mono', monospace"; ctx.textBaseline='middle';
     ctx.fillStyle='rgba(239,83,80,.7)';  ctx.fillText('70', 3, y70);
     ctx.fillStyle='rgba(38,166,154,.7)'; ctx.fillText('30', 3, y30);
-    let x=6; const yLbl=yDiv2+7;
+    ctx.textBaseline='top'; let x=6; const yLbl=yTopF+4;
     const chip=(t,col)=>{ ctx.fillStyle=col; ctx.fillText(t,x,yLbl); x+=ctx.measureText(t).width+8; };
-    if(rv!=null) chip('RSI '+this.cfg.len+' '+rv.toFixed(1), rv>=70?'#ef5350':rv<=30?'#26a69a':'#b17ce0');
+    chip('VOL·RSI', THEME.cur.volLbl);
+    if(rv!=null) chip((this.cfg.len)+' '+rv.toFixed(1), rv>=70?'#ef5350':rv<=30?'#26a69a':'#b17ce0');
     if(m1!=null) chip('MM'+this.cfg.ma1+' '+m1.toFixed(1), '#ffd54f');
     if(m2!=null) chip('MM'+this.cfg.ma2+' '+m2.toFixed(1), '#4dd0e1');
     ctx.restore();
@@ -1512,6 +1531,61 @@ const SUMMARY = {
     if(this.timer){ clearInterval(this.timer); this.timer=null; }
     if(on){ this.render(); this.refresh().catch(()=>{}); this.timer=setInterval(()=>this.refresh().catch(()=>{}), 60000); }
     else this.render();
+  }
+};
+
+/* =========================================================================
+   SENTIMENTO DO MERCADO — quadro do Ciclo BTC (bear/bull %) + índice
+   Fear & Greed da cripto (0–100, com ponteiro). O Ciclo vem do CYCLE.info()
+   (cálculo por tempo, sempre disponível); o Fear & Greed vem da API pública
+   alternative.me (com proxy CORS de reserva). Acompanha o Resumo Multi-TF.
+   ========================================================================= */
+function fgClass(v){
+  if(v<25) return ['Medo extremo','#ea3943'];
+  if(v<45) return ['Medo','#f7931a'];
+  if(v<55) return ['Neutro','#f7d33f'];
+  if(v<75) return ['Ganância','#16c784'];
+  return ['Ganância extrema','#0ea5e9'];
+}
+const FG = {
+  el:$('#fgbox'), data:null, timer:null, on:false,
+  async fetch(){
+    const get=async u=>{ const r=await fetch(u,{cache:'no-store'}); if(!r.ok) throw 0; return r.json(); };
+    const url='https://api.alternative.me/fng/?limit=1';
+    try{ const j=await get(url); if(j&&j.data&&j.data[0]) return j.data[0]; }catch(e){}
+    try{ const j=await get('https://api.allorigins.win/raw?url='+encodeURIComponent(url)); if(j&&j.data&&j.data[0]) return j.data[0]; }catch(e){}
+    return null;
+  },
+  async load(){ try{ this.data=await this.fetch(); }catch(e){ this.data=null; } this.render(); },
+  set(on){
+    this.on=on;
+    if(this.timer){ clearInterval(this.timer); this.timer=null; }
+    if(on){ this.render(); this.load(); this.timer=setInterval(()=>this.load(), 5*60*1000); }
+    else if(this.el) this.el.hidden=true;
+  },
+  render(){
+    if(!this.el) return;
+    if(!this.on){ this.el.hidden=true; return; }
+    this.el.hidden=false;
+    let cPct='—', cLab='—', cCol='var(--muted)', cSub='';
+    try{ const ci=CYCLE.info(); cCol=ci.bull?'#16c784':'#ea3943'; cLab=ci.bull?'BULL':'BEAR';
+      cPct=ci.pct.toFixed(0)+'%'; cSub=ci.bull?('~'+ci.dToPeak+'d p/ topo'):('~'+ci.dToEnd+'d p/ fim'); }catch(e){}
+    let fVal='—', fLab='indisponível', fCol='var(--muted-2)', ptr=50;
+    if(this.data){ const v=+this.data.value; fVal=v; ptr=Math.max(0,Math.min(100,v)); const cl=fgClass(v); fLab=cl[0]; fCol=cl[1]; }
+    this.el.innerHTML=
+      '<div class="fg-title">Sentimento do mercado</div>'+
+      '<div class="fg-wrap">'+
+        '<div class="fg-cycle">'+
+          '<div class="fg-c-tag">Ciclo BTC</div>'+
+          '<div class="fg-c-pct" style="color:'+cCol+'">'+cLab+' '+cPct+'</div>'+
+          '<div class="fg-c-sub">'+cSub+'</div>'+
+        '</div>'+
+        '<div class="fg-fng">'+
+          '<div class="fg-f-top"><span class="fg-f-tag">Fear &amp; Greed</span><span class="fg-f-val" style="color:'+fCol+'">'+fVal+'</span></div>'+
+          '<div class="fg-bar"><i class="fg-ptr" style="left:'+ptr+'%"></i></div>'+
+          '<div class="fg-f-lab" style="color:'+fCol+'">'+fLab+'</div>'+
+        '</div>'+
+      '</div>';
   }
 };
 
@@ -2020,13 +2094,16 @@ const OB = {
     ctx.font="9px 'IBM Plex Mono', monospace";
     let wmax=0; for(const t of lines){ const m=ctx.measureText(t).width; if(m>wmax)wmax=m; }
     const padX=5, padY=3, lh=11, bw=wmax+padX*2, bh=lines.length*lh+padY*2;
+    // fundo do painel de PREÇO (não deixa o rótulo vazar sobre o frame de volume/RSI
+    // nem abaixo da borda do card)
+    let paneBot=cv.clientHeight; try{ if(typeof RSI!=='undefined' && RSI.cfg.on) paneBot=RSI.band().v0-2; }catch(_){}
     let x=rightX-bw-4, yy=y-bh/2;
-    if(yy<2) yy=2; if(yy+bh>cv.clientHeight-2) yy=cv.clientHeight-2-bh;
+    if(yy+bh>paneBot-2) yy=paneBot-2-bh; if(yy<2) yy=2;
     ctx.beginPath();
     const r=5;
     ctx.moveTo(x+r,yy); ctx.arcTo(x+bw,yy,x+bw,yy+bh,r); ctx.arcTo(x+bw,yy+bh,x,yy+bh,r);
     ctx.arcTo(x,yy+bh,x,yy,r); ctx.arcTo(x,yy,x+bw,yy,r); ctx.closePath();
-    ctx.fillStyle='rgba(13,18,27,.88)'; ctx.fill();
+    ctx.fillStyle=THEME.cur.frameBg; ctx.globalAlpha=0.94; ctx.fill(); ctx.globalAlpha=1;
     ctx.strokeStyle=col; ctx.lineWidth=1; ctx.stroke();
     ctx.fillStyle=col; ctx.textBaseline='middle';
     lines.forEach((t,i)=> ctx.fillText(t, x+padX, yy+padY+lh*i+lh/2));
@@ -2754,7 +2831,7 @@ function syncRSI(){
 ['rsiOn','rsiLen'].forEach(id=>{ const el=$('#'+id); if(el) el.addEventListener('change', syncRSI); });
 
 // ---- Resumo Multi-TF ----
-function syncSummary(){ SUMMARY.cfg.on=$('#sumOn').checked; SUMMARY.set(SUMMARY.cfg.on); store.save(); }
+function syncSummary(){ SUMMARY.cfg.on=$('#sumOn').checked; SUMMARY.set(SUMMARY.cfg.on); FG.set(SUMMARY.cfg.on); store.save(); }
 $('#sumOn').addEventListener('change', syncSummary);
 
 // ---- Posts do Trump (Truth Social) ----
@@ -3112,7 +3189,7 @@ $('#cycleDays').addEventListener('change', syncCycle);
   LIQ.compute();
   if(saved.trump){ TRUMP.cfg.on=!!saved.trump.on; $('#trumpOn').checked=TRUMP.cfg.on; if(TRUMP.cfg.on) syncTrump(); }
   if(saved.rsi){ Object.assign(RSI.cfg, saved.rsi); $('#rsiOn').checked=RSI.cfg.on; if($('#rsiLen'))$('#rsiLen').value=RSI.cfg.len; RSI.panes(RSI.cfg.on); RSI.compute(); }
-  if(saved.sum){ SUMMARY.cfg.on=!!saved.sum.on; $('#sumOn').checked=SUMMARY.cfg.on; if(SUMMARY.cfg.on) SUMMARY.set(true); }
+  if(saved.sum){ SUMMARY.cfg.on=!!saved.sum.on; $('#sumOn').checked=SUMMARY.cfg.on; if(SUMMARY.cfg.on){ SUMMARY.set(true); FG.set(true); } }
   if(saved.sound){ SOUND.on=true; $('#soundOn').checked=true; }  // áudio libera no 1º clique
   if(saved.cycle){ Object.assign(CYCLE.cfg, saved.cycle);
     $('#cycleOn').checked=CYCLE.cfg.on; $('#cycleAnchor').value=CYCLE.cfg.anchor; $('#cycleDays').value=CYCLE.cfg.days; }
