@@ -298,22 +298,22 @@
 
   /* card Sentimento — Ciclo BTC (bear/bull %) + índice Fear & Greed com ponteiro */
   .fgbox{width:100%;background:var(--card-bg2);border:1px solid var(--hair);border-radius:9px;
-    padding:8px 9px;backdrop-filter:blur(4px);box-shadow:var(--card-shadow)}
+    padding:6px 9px;backdrop-filter:blur(4px);box-shadow:var(--card-shadow)}
   .fgbox[hidden]{display:none}
   .fg-title{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted-2)}
-  .fg-wrap{display:flex;gap:9px;align-items:stretch;margin-top:6px}
-  .fg-cycle{flex:0 0 84px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
-    background:var(--panel-2);border:1px solid var(--hair);border-radius:8px;padding:6px 4px}
+  .fg-wrap{display:flex;gap:9px;align-items:stretch;margin-top:4px}
+  .fg-cycle{flex:0 0 80px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+    background:var(--panel-2);border:1px solid var(--hair);border-radius:8px;padding:4px 4px}
   .fg-c-tag{font-family:"IBM Plex Mono",monospace;font-size:8px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted-2)}
-  .fg-c-pct{font-family:"Space Grotesk",sans-serif;font-size:17px;font-weight:700;line-height:1.05;margin:2px 0}
+  .fg-c-pct{font-family:"Space Grotesk",sans-serif;font-size:15px;font-weight:700;line-height:1.02;margin:1px 0}
   .fg-c-sub{font-family:"IBM Plex Mono",monospace;font-size:8px;color:var(--muted)}
-  .fg-fng{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:6px}
+  .fg-fng{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:4px}
   .fg-f-top{display:flex;justify-content:space-between;align-items:baseline}
   .fg-f-tag{font-family:"IBM Plex Mono",monospace;font-size:8px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted-2)}
-  .fg-f-val{font-family:"Space Grotesk",sans-serif;font-size:22px;font-weight:700;line-height:1}
-  .fg-bar{position:relative;height:8px;border-radius:5px;
+  .fg-f-val{font-family:"Space Grotesk",sans-serif;font-size:19px;font-weight:700;line-height:1}
+  .fg-bar{position:relative;height:7px;border-radius:5px;
     background:linear-gradient(90deg,#ea3943 0%,#f7931a 30%,#f7d33f 50%,#16c784 72%,#0ea5e9 100%)}
-  .fg-ptr{position:absolute;top:-3px;width:3px;height:14px;background:var(--txt);border-radius:2px;
+  .fg-ptr{position:absolute;top:-3px;width:3px;height:13px;background:var(--txt);border-radius:2px;
     transform:translateX(-50%);box-shadow:0 0 0 2px var(--card-bg2)}
   .fg-f-lab{font-family:"IBM Plex Mono",monospace;font-size:9.5px;font-weight:600}
 
@@ -2557,14 +2557,19 @@ function drawCountdown(){
 
 function redraw(){
   ctx.clearRect(0,0,cv.width,cv.height);
+  // Quando o RSI está ligado, o gráfico de PREÇO ocupa só a faixa de cima. TUDO que
+  // pertence ao preço (mapa de liquidez, faixas do ciclo, order blocks, padrões,
+  // marcadores, desenhos do usuário) é recortado nessa faixa — assim NADA vaza por
+  // trás/abaixo do frame de VOL·RSI, que fica encaixado no rodapé do card.
+  let paneBot=cv.clientHeight; try{ if(RSI.cfg.on) paneBot=RSI.band().v0; }catch(_){}
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0,0,cv.clientWidth,paneBot); ctx.clip();
   LIQ.draw();
   CYCLE.draw();
   OB.draw();
   PATTERNS.draw();
-  RSI.draw();
   TRUMP.draw();
   EXPLOSION.draw();
-  drawCountdown();
   for(const d of S.drawings){
     if(d.type==='trend') drawTrend(d);
     else if(d.type==='hline') drawHLine(d);
@@ -2594,6 +2599,10 @@ function redraw(){
     }
     for(const p of S.pending){ const x=xOf(p.time),y=yOf(p.price); if(x!=null&&y!=null) dot(x,y); }
   }
+  ctx.restore();
+  // frame do VOL·RSI (camada de baixo, fora do recorte do preço) + countdown
+  RSI.draw();
+  drawCountdown();
   requestAnimationFrame(redraw);
 }
 requestAnimationFrame(redraw);
