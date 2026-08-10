@@ -874,7 +874,7 @@ const chart = LightweightCharts.createChart(stage,{
     horzLine:{color:'#41b3ff66', width:1, style:2, labelBackgroundColor:'#1d2534'} },
   rightPriceScale:{ borderColor:'#1d2534', scaleMargins:{top:.08, bottom:.22},
     mode:LightweightCharts.PriceScaleMode.Logarithmic, autoScale:false },  /* log + escala manual */
-  timeScale:{ borderColor:'#1d2534', timeVisible:true, secondsVisible:false, rightOffset:12 },  /* abertura à direita p/ o preço continuar + espaço das etiquetas das médias */
+  timeScale:{ borderColor:'#1d2534', timeVisible:true, secondsVisible:false, rightOffset:16 },  /* abertura à direita p/ o preço continuar + espaço das etiquetas (nome+valor) das médias */
   handleScale:true, handleScroll:true,
   autoSize:true,   /* o gráfico se ajusta sozinho ao container em qualquer tela */
 });
@@ -1049,10 +1049,12 @@ const MALABELS = {
     const c=S.candles, xLast=c.length?xOf(c[c.length-1].time):null;
     let bs=6; try{ bs=chart.timeScale().options().barSpacing||6; }catch(_){}
     const aheadX=(xLast!=null?xLast:rightEdge) + bs*2;
+    const fmtV=v=>{ const a=Math.abs(v); const d=a>=1000?0:a>=1?2:a>=0.01?4:6;
+      return '$'+v.toLocaleString('en-US',{minimumFractionDigits:d, maximumFractionDigits:d}); };
     const arr=[]; let maxBw=0;
     for(const it of this.items){ let y=yOf(it.v); if(y==null) continue;
       y=Math.max(9, Math.min(paneBot-9, y));
-      const label=it.txt+' '+tf, bw=ctx.measureText(label).width+12;
+      const label=it.txt+' '+tf+'  '+fmtV(it.v), bw=ctx.measureText(label).width+12;
       if(bw>maxBw) maxBw=bw; arr.push({color:it.color, label, bw, y}); }
     if(!arr.length){ ctx.restore(); return; }
     arr.sort((a,b)=>a.y-b.y);
