@@ -1014,6 +1014,58 @@ const MA = {
 };
 MA.init();
 
+/* último valor de uma média (SMA/EMA) sobre os closes atuais */
+function lastMAValue(type, len){
+  const c=S.candles, n=c.length; if(n<len) return null;
+  if(type==='EMA'){ const k=2/(len+1); let e=c[0].close; for(let i=1;i<n;i++) e=c[i].close*k+e*(1-k); return e; }
+  let s=0; for(let i=n-len;i<n;i++) s+=c[i].close; return s/len;
+}
+function tfShort(tf){ return ({'1d':'1D','1w':'1S','1M':'1M','1y':'1A'})[tf] || tf; }
+
+/* =========================================================================
+   ETIQUETAS DAS MÉDIAS — pílulas flutuantes no fim de cada linha (estilo
+   TradingView): mostram TIPO + período + timeframe, na cor da média, no nível
+   de preço onde a linha termina. Empilham sem se sobrepor.
+   ========================================================================= */
+const MALABELS = {
+  _t:0, items:[],
+  recompute(){
+    this.items=[];
+    try{ if($('#emaOn') && $('#emaOn').checked){ const len=Math.max(2,+$('#emaLen').value||21);
+      const v=lastMAValue('EMA',len); if(v!=null) this.items.push({v, color:'#f7931a', txt:'EMA '+len}); } }catch(_){}
+    for(const p of MA.periods){ if(MA.cfg.on[p]){ const v=lastMAValue(MA.cfg.type,p);
+      if(v!=null){ let col=MA.colors[p]; if(p===200) col=THEME.cur.ma200; this.items.push({v, color:col, txt:MA.cfg.type+' '+p}); } } }
+  },
+  draw(){
+    const now=performance.now();
+    if(now-this._t>200){ this.recompute(); this._t=now; }
+    if(!this.items.length) return;
+    let rsw=0; try{ rsw=chart.priceScale('right').width()||0; }catch(_){}
+    const rightEdge=cv.clientWidth-rsw-2;
+    let paneBot=cv.clientHeight-4; try{ if(RSI.cfg.on) paneBot=RSI.band().v0-4; }catch(_){}
+    const tf=tfShort(S.tf);
+    const arr=[];
+    for(const it of this.items){ let y=yOf(it.v); if(y==null) continue;
+      y=Math.max(9, Math.min(paneBot-9, y)); arr.push({color:it.color, txt:it.txt, y}); }
+    if(!arr.length) return;
+    arr.sort((a,b)=>a.y-b.y);
+    const bh=14, gap=1;
+    for(let i=1;i<arr.length;i++){ if(arr[i].y < arr[i-1].y+bh+gap) arr[i].y = arr[i-1].y+bh+gap; }
+    ctx.save(); ctx.font="9px 'IBM Plex Mono', ui-monospace, monospace"; ctx.textBaseline='middle';
+    const bg = THEME.name==='light' ? 'rgba(255,255,255,.92)' : 'rgba(10,13,19,.82)';
+    for(const it of arr){
+      const label=it.txt+' '+tf, tw=ctx.measureText(label).width, padX=6, bw=tw+padX*2, r=4;
+      const x=rightEdge-bw, y=it.y, top=y-bh/2;
+      ctx.beginPath(); ctx.moveTo(x+r,top);
+      ctx.arcTo(x+bw,top,x+bw,top+bh,r); ctx.arcTo(x+bw,top+bh,x,top+bh,r);
+      ctx.arcTo(x,top+bh,x,top,r); ctx.arcTo(x,top,x+bw,top,r); ctx.closePath();
+      ctx.fillStyle=bg; ctx.fill(); ctx.strokeStyle=it.color; ctx.lineWidth=1; ctx.stroke();
+      ctx.fillStyle=it.color; ctx.textAlign='left'; ctx.fillText(label, x+padX, y+.5);
+    }
+    ctx.restore();
+  }
+};
+
 /* =========================================================================
    CARREGAMENTO + TEMPO REAL
    ========================================================================= */
@@ -2740,6 +2792,7 @@ function redraw(){
   OB.draw();
   BATTLE.draw();
   PATTERNS.draw();
+  MALABELS.draw();
   TRUMP.draw();
   EXPLOSION.draw();
   for(const d of S.drawings){
