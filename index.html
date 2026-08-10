@@ -541,6 +541,12 @@
         </div>
 
         <div class="ind-row">
+          <label class="sw"><input type="checkbox" id="battleOn"><span></span></label>
+          <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,var(--bull),var(--bear))"></span>Batalha 🐂×🐻</span>
+          <span class="ind-params">velocímetro no gráfico, acima do OB · touro × urso ao vivo</span>
+        </div>
+
+        <div class="ind-row">
           <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,#ffd54f,#4dd0e1,#fff,#ba68c8,#7e9cff)"></span>Médias Móveis</span>
           <span class="ind-params">tipo
             <select id="maType" title="Tipo de média">
@@ -725,7 +731,7 @@ const S = {
 
 /* ---------- persistência (localStorage com proteção) ---------- */
 const store = {
-  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, symbol:S.symbol, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined), pat:(typeof PATTERNS!=='undefined'?PATTERNS.cfg:undefined), liq:(typeof LIQ!=='undefined'?LIQ.cfg:undefined), trump:(typeof TRUMP!=='undefined'?{on:TRUMP.cfg.on}:undefined), rsi:(typeof RSI!=='undefined'?RSI.cfg:undefined), sum:(typeof SUMMARY!=='undefined'?{on:SUMMARY.cfg.on}:undefined)})); }catch(e){} },
+  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, symbol:S.symbol, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined), pat:(typeof PATTERNS!=='undefined'?PATTERNS.cfg:undefined), battle:(typeof BATTLE!=='undefined'?{on:BATTLE.cfg.on}:undefined), liq:(typeof LIQ!=='undefined'?LIQ.cfg:undefined), trump:(typeof TRUMP!=='undefined'?{on:TRUMP.cfg.on}:undefined), rsi:(typeof RSI!=='undefined'?RSI.cfg:undefined), sum:(typeof SUMMARY!=='undefined'?{on:SUMMARY.cfg.on}:undefined)})); }catch(e){} },
   load(){ try{ return JSON.parse(localStorage.getItem('ib_term')||'{}'); }catch(e){ return {}; } }
 };
 
@@ -2121,6 +2127,118 @@ const OB = {
 };
 
 /* =========================================================================
+   BATALHA TOURO × URSO — velocímetro ao vivo desenhado NO gráfico, logo acima
+   do Order Block do momento (o mais próximo do preço) e um pouco à esquerda da
+   vela atual. Mede quem está dominando a briga combinando: força/saúde dos
+   Order Blocks perto do preço (40%), pressão de volume comprador×vendedor das
+   últimas velas (30%), momentum RSI+EMA (20%) e o corpo das velas recentes
+   (10%). Resultado −100 (urso) … +100 (touro). A agulha gira suavizada e pulsa.
+   ========================================================================= */
+const BATTLE = {
+  cfg:{ on:false },
+  score:0, shown:0, anchor:null, _t:0,
+  visible(){ return this.cfg.on; },
+  clamp(v){ return Math.max(-1, Math.min(1, v)); },
+  // pressão de volume: comprador (fecha no topo da vela) × vendedor (fecha no fundo)
+  volComp(){ const c=S.candles, n=c.length; if(n<6) return 0;
+    const w=Math.min(20,n); let bv=0, sv=0;
+    for(let i=n-w;i<n;i++){ const x=c[i], rng=Math.max(1e-9,x.high-x.low), pos=(x.close-x.low)/rng;
+      if(x.close>=x.open) bv+=x.volume*(0.35+0.65*pos); else sv+=x.volume*(0.35+0.65*(1-pos)); }
+    const t=bv+sv; return t>0?(bv-sv)/t:0; },
+  // momentum: RSI vs 50 + inclinação da EMA20
+  momComp(){ const c=S.candles, n=c.length; if(n<22) return 0;
+    const closes=c.map(x=>x.close); const rsi=rsiOf(closes,14); let r=0; if(rsi!=null) r=(rsi-50)/50;
+    const k=2/21; let e=closes[0]; const a=[e]; for(let i=1;i<n;i++){ e=closes[i]*k+e*(1-k); a.push(e); }
+    const back=Math.min(10,n-2), slope=(a[n-1]-a[n-1-back])/(a[n-1-back]||1);
+    return this.clamp(r*0.6 + this.clamp(slope*120)*0.4); },
+  // corpo das velas recentes (verde/vermelho + onde fecharam)
+  bodyComp(){ const c=S.candles, n=c.length; if(n<4) return 0;
+    const w=Math.min(6,n); let s=0,t=0;
+    for(let i=n-w;i<n;i++){ const x=c[i], rng=Math.max(1e-9,x.high-x.low); s+=(x.close-x.open)/rng; t++; }
+    return this.clamp((s/t)*1.6); },
+  // Order Blocks: demanda (bull, sustenta) menos oferta (bear, pressiona), pesado
+  // por força × saúde × proximidade do preço. Também elege o OB "do momento".
+  obComp(){ const c=S.candles, n=c.length; if(!n) return {v:0, anchor:null};
+    const price=c[n-1].close; let sb=0, ss=0, best=null, bestW=-1;
+    const acc=(list,sign)=>{ for(const o of list){ const eff=(o.strength/100)*(OB.health(o)/100);
+      const dist=Math.abs(price-o.avg)/price, w=1/(1+dist*70);
+      if(sign>0) sb+=eff*w; else ss+=eff*w;
+      if(w>bestW){ bestW=w; best=o; } } };
+    acc(OB.bull,1); acc(OB.bear,-1);
+    const tot=sb+ss; return { v: tot>0?(sb-ss)/tot:0, anchor:best }; },
+  compute(){
+    const ob=this.obComp(); this.anchor=ob.anchor;
+    const hasOB=(OB.bull.length+OB.bear.length)>0;
+    const wOB=hasOB?0.40:0, wV=0.30, wM=0.20, wB=0.10, norm=wOB+wV+wM+wB;
+    const raw=(ob.v*wOB + this.volComp()*wV + this.momComp()*wM + this.bodyComp()*wB)/norm;
+    this.score=Math.max(-100, Math.min(100, raw*100));
+    return this.score; },
+  stateTxt(v){ const a=Math.abs(v); if(a<12) return 'empate';
+    const s=v>0?'touro':'urso'; return a<40?('vantagem '+s):a<70?(s+'s à frente'):('domínio '+s); },
+  draw(){
+    if(!this.cfg.on) return;
+    const c=S.candles, n=c.length; if(!n) return;
+    const now=performance.now();
+    if(now-this._t>200){ this.compute(); this._t=now; }
+    this.shown += (this.score-this.shown)*0.08;
+    const v=Math.max(-100, Math.min(100, this.shown));
+    // âncora: acima do OB do momento; sem OB, acima do último preço
+    const xLast=xOf(c[n-1].time);
+    let obTopY=null; if(this.anchor){ const yt=yOf(this.anchor.top); if(yt!=null) obTopY=yt; }
+    if(obTopY==null){ const yp=yOf(c[n-1].close); obTopY = yp!=null ? yp-4 : 60; }
+    const R=26;
+    let cx=(xLast!=null?xLast:cv.clientWidth-90) - (R+16);   // levemente à esquerda da vela atual
+    const yBase = obTopY - 30;                                // flutua acima do OB (com hasteligando), longe do rótulo
+    // recorta dentro do painel de preço
+    let paneTop=6; const minCy=paneTop+R+4;
+    let cy = Math.max(minCy, yBase);
+    let rsw=0; try{ rsw=chart.priceScale('right').width()||0; }catch(_){}
+    const rightLimit=cv.clientWidth-rsw-6; if(cx>rightLimit-R) cx=rightLimit-R; if(cx<R+6) cx=R+6;
+    this.render(cx, cy, R, v, now, obTopY);
+  },
+  render(cx, cy, R, v, now, obTopY){
+    const bull='#26a69a', bear='#ef5350', amber='#f7d33f', txt='#e7ebf2';
+    const A = s => Math.PI + (s+100)/200*Math.PI;   // ângulo canvas: -100→π (esq), 0→3π/2 (topo), +100→2π (dir)
+    const win = v>12?bull:v<-12?bear:amber;
+    ctx.save();
+    // fundo escuro arredondado p/ legibilidade sobre as velas
+    const bx=cx-R-6, by=cy-R-7, bw=(R+6)*2, bh=R+24, rr=8;
+    ctx.beginPath();
+    ctx.moveTo(bx+rr,by); ctx.arcTo(bx+bw,by,bx+bw,by+bh,rr); ctx.arcTo(bx+bw,by+bh,bx,by+bh,rr);
+    ctx.arcTo(bx,by+bh,bx,by,rr); ctx.arcTo(bx,by,bx+bw,by,rr); ctx.closePath();
+    ctx.fillStyle='rgba(10,13,19,.82)'; ctx.fill();
+    ctx.strokeStyle='rgba(40,50,69,.9)'; ctx.lineWidth=1; ctx.stroke();
+    // stem ligando o gauge ao topo do OB
+    if(obTopY!=null && obTopY>by+bh){ ctx.strokeStyle='rgba(120,132,152,.5)'; ctx.lineWidth=1; ctx.setLineDash([2,3]);
+      ctx.beginPath(); ctx.moveTo(cx, by+bh); ctx.lineTo(cx, obTopY); ctx.stroke(); ctx.setLineDash([]); }
+    // trilha + segmentos
+    ctx.lineCap='round'; ctx.lineWidth=5.5;
+    ctx.strokeStyle='rgba(40,50,69,.9)'; ctx.beginPath(); ctx.arc(cx,cy,R,Math.PI,2*Math.PI); ctx.stroke();
+    const seg=(s1,s2,col)=>{ ctx.strokeStyle=col; ctx.beginPath(); ctx.arc(cx,cy,R,A(s1),A(s2)); ctx.stroke(); };
+    seg(-100,-24,bear); seg(-20,20,amber); seg(24,100,bull);
+    // agulha (com leve pulso de brilho na cor do vencedor)
+    const ang=A(v), nx=cx+Math.cos(ang)*(R-3), ny=cy+Math.sin(ang)*(R-3);
+    const beat = 0.55+0.45*Math.sin(now/(Math.abs(v)>12?220:520));
+    ctx.save(); ctx.shadowColor=win; ctx.shadowBlur=(4+Math.abs(v)/12)*beat;
+    ctx.strokeStyle=txt; ctx.lineWidth=2.2; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(nx,ny); ctx.stroke(); ctx.restore();
+    // cubo
+    ctx.fillStyle='#0d121b'; ctx.strokeStyle=txt; ctx.lineWidth=1.6;
+    ctx.beginPath(); ctx.arc(cx,cy,4.2,0,7); ctx.fill(); ctx.stroke();
+    // leitura numérica + estado, logo abaixo do cubo
+    ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+    ctx.font="700 11px 'IBM Plex Mono', ui-monospace, monospace"; ctx.fillStyle=win;
+    ctx.fillText((v>=0?'+':'')+Math.round(v), cx, cy+13);
+    ctx.font="8px 'IBM Plex Mono', ui-monospace, monospace"; ctx.fillStyle='rgba(200,209,225,.75)';
+    ctx.fillText(this.stateTxt(v), cx, cy+21);
+    // emojis dos lados nas pontas do arco
+    ctx.font="10px system-ui"; ctx.textBaseline='middle';
+    ctx.textAlign='center'; ctx.fillText('🐂', cx-R, cy+8); ctx.fillText('🐻', cx+R, cy+8);
+    ctx.restore();
+  }
+};
+
+/* =========================================================================
    BTC TIME CYCLE — reconstrução (fonte fechada) pela descrição do autor:
    divide o tempo de fundo-a-fundo (~4 anos) em segmentos de Fibonacci; bull
    (verde) 0→0.75, bear (vermelho) 0.75→1.0. Âncora e comprimento configuráveis.
@@ -2620,6 +2738,7 @@ function redraw(){
   LIQ.draw();
   CYCLE.draw();
   OB.draw();
+  BATTLE.draw();
   PATTERNS.draw();
   TRUMP.draw();
   EXPLOSION.draw();
@@ -2873,6 +2992,9 @@ $('#obArrows').addEventListener('change', syncOB);
 // ---- Padrões Gráficos (detecção de figuras clássicas) ----
 function syncPatterns(){ PATTERNS.cfg.on=$('#patOn').checked; PATTERNS.detect(); store.save(); }
 $('#patOn').addEventListener('change', syncPatterns);
+
+function syncBattle(){ BATTLE.cfg.on=$('#battleOn').checked; if(BATTLE.cfg.on) BATTLE.compute(); store.save(); }
+$('#battleOn').addEventListener('change', syncBattle);
 
 // ---- Mapa de Liquidez (heatmap de liquidação, estimativa) ----
 function syncLiq(){
@@ -3245,6 +3367,7 @@ $('#cycleDays').addEventListener('change', syncCycle);
   $('#proxyInput').value = GATE_PROXY;
   MTFOB.set(OB.cfg.on);   // painel de confluência Multi-TF acompanha o toggle dos Order Blocks
   if(saved.pat){ Object.assign(PATTERNS.cfg, saved.pat); $('#patOn').checked=PATTERNS.cfg.on; }
+  if(saved.battle){ BATTLE.cfg.on=!!saved.battle.on; const bb=$('#battleOn'); if(bb) bb.checked=BATTLE.cfg.on; }
   PATTERNS.detect();
   if(saved.liq){ Object.assign(LIQ.cfg, saved.liq);
     $('#liqOn').checked=LIQ.cfg.on; if($('#liqLook'))$('#liqLook').value=LIQ.cfg.look; if($('#liqGamma'))$('#liqGamma').value=Math.round(LIQ.cfg.gamma*100); }
