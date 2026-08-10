@@ -874,7 +874,7 @@ const chart = LightweightCharts.createChart(stage,{
     horzLine:{color:'#41b3ff66', width:1, style:2, labelBackgroundColor:'#1d2534'} },
   rightPriceScale:{ borderColor:'#1d2534', scaleMargins:{top:.08, bottom:.22},
     mode:LightweightCharts.PriceScaleMode.Logarithmic, autoScale:false },  /* log + escala manual */
-  timeScale:{ borderColor:'#1d2534', timeVisible:true, secondsVisible:false },
+  timeScale:{ borderColor:'#1d2534', timeVisible:true, secondsVisible:false, rightOffset:12 },  /* abertura à direita p/ o preço continuar + espaço das etiquetas das médias */
   handleScale:true, handleScroll:true,
   autoSize:true,   /* o gráfico se ajusta sozinho ao container em qualquer tela */
 });
@@ -1044,23 +1044,30 @@ const MALABELS = {
     const rightEdge=cv.clientWidth-rsw-2;
     let paneBot=cv.clientHeight-4; try{ if(RSI.cfg.on) paneBot=RSI.band().v0-4; }catch(_){}
     const tf=tfShort(S.tf);
-    const arr=[];
+    ctx.save(); ctx.font="9px 'IBM Plex Mono', ui-monospace, monospace"; ctx.textBaseline='middle';
+    // âncora: ~2 velas À FRENTE da última vela (na abertura à direita), como no TradingView
+    const c=S.candles, xLast=c.length?xOf(c[c.length-1].time):null;
+    let bs=6; try{ bs=chart.timeScale().options().barSpacing||6; }catch(_){}
+    const aheadX=(xLast!=null?xLast:rightEdge) + bs*2;
+    const arr=[]; let maxBw=0;
     for(const it of this.items){ let y=yOf(it.v); if(y==null) continue;
-      y=Math.max(9, Math.min(paneBot-9, y)); arr.push({color:it.color, txt:it.txt, y}); }
-    if(!arr.length) return;
+      y=Math.max(9, Math.min(paneBot-9, y));
+      const label=it.txt+' '+tf, bw=ctx.measureText(label).width+12;
+      if(bw>maxBw) maxBw=bw; arr.push({color:it.color, label, bw, y}); }
+    if(!arr.length){ ctx.restore(); return; }
     arr.sort((a,b)=>a.y-b.y);
     const bh=14, gap=1;
     for(let i=1;i<arr.length;i++){ if(arr[i].y < arr[i-1].y+bh+gap) arr[i].y = arr[i-1].y+bh+gap; }
-    ctx.save(); ctx.font="9px 'IBM Plex Mono', ui-monospace, monospace"; ctx.textBaseline='middle';
+    // coluna alinhada pela esquerda; não deixa passar por baixo da escala de preços
+    const x0=Math.max(2, Math.min(aheadX, rightEdge-maxBw));
     const bg = THEME.name==='light' ? 'rgba(255,255,255,.92)' : 'rgba(10,13,19,.82)';
     for(const it of arr){
-      const label=it.txt+' '+tf, tw=ctx.measureText(label).width, padX=6, bw=tw+padX*2, r=4;
-      const x=rightEdge-bw, y=it.y, top=y-bh/2;
+      const label=it.label, bw=it.bw, r=4, x=x0, y=it.y, top=y-bh/2;
       ctx.beginPath(); ctx.moveTo(x+r,top);
       ctx.arcTo(x+bw,top,x+bw,top+bh,r); ctx.arcTo(x+bw,top+bh,x,top+bh,r);
       ctx.arcTo(x,top+bh,x,top,r); ctx.arcTo(x,top,x+bw,top,r); ctx.closePath();
       ctx.fillStyle=bg; ctx.fill(); ctx.strokeStyle=it.color; ctx.lineWidth=1; ctx.stroke();
-      ctx.fillStyle=it.color; ctx.textAlign='left'; ctx.fillText(label, x+padX, y+.5);
+      ctx.fillStyle=it.color; ctx.textAlign='left'; ctx.fillText(label, x+6, y+.5);
     }
     ctx.restore();
   }
