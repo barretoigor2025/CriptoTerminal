@@ -326,6 +326,26 @@
     transform:translateX(-50%);box-shadow:0 0 0 2px var(--card-bg2)}
   .fg-f-lab{font-family:"IBM Plex Mono",monospace;font-size:9.5px;font-weight:600}
 
+  /* card Fluxo de Posições — Open Interest + funding reais (long × short × saída) */
+  .flowbox{width:100%;background:var(--card-bg2);border:1px solid var(--hair);border-radius:9px;
+    padding:7px 9px;backdrop-filter:blur(4px);box-shadow:var(--card-shadow)}
+  .flowbox[hidden]{display:none}
+  .fl-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .fl-tag{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted-2)}
+  .fl-state{font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:700;letter-spacing:.02em}
+  .fl-bar{position:relative;height:8px;border-radius:5px;margin:2px 0 3px;
+    background:linear-gradient(90deg,#ea3943 0%,#f4685f 34%,#586074 50%,#2ec4b6 66%,#16c784 100%)}
+  .fl-ptr{position:absolute;top:-3px;width:3px;height:14px;background:var(--txt);border-radius:2px;
+    transform:translateX(-50%);box-shadow:0 0 0 2px var(--card-bg2)}
+  .fl-ends{display:flex;justify-content:space-between;font-family:"IBM Plex Mono",monospace;font-size:8px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.03em}
+  .fl-ends .s{color:var(--bear)} .fl-ends .l{color:var(--bull)}
+  .fl-metrics{display:flex;gap:6px;margin-top:7px}
+  .fl-m{flex:1;background:var(--panel-2);border:1px solid var(--hair);border-radius:7px;padding:4px 6px;text-align:center}
+  .fl-m .k{font-family:"IBM Plex Mono",monospace;font-size:7.5px;letter-spacing:.3px;text-transform:uppercase;color:var(--muted-2)}
+  .fl-m .v{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;font-variant-numeric:tabular-nums}
+  .fl-note{margin-top:6px;font-family:"IBM Plex Mono",monospace;font-size:8.5px;line-height:1.4;color:var(--muted-2)}
+  .fl-note b{color:var(--muted)}
+
   /* card Resumo Multi-TF (1h/4h/D/Semanal + síntese) — um pouco mais largo */
   .sumbox{width:100%;background:var(--card-bg2);border:1px solid var(--hair);border-radius:9px;
     padding:7px 9px;backdrop-filter:blur(4px);box-shadow:var(--card-shadow)}
@@ -573,6 +593,12 @@
         </div>
 
         <div class="ind-row">
+          <label class="sw"><input type="checkbox" id="flowOn"><span></span></label>
+          <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,var(--bear),var(--bull))"></span>Fluxo de Posições</span>
+          <span class="ind-params">card: Open Interest + funding reais (long × short × saída)</span>
+        </div>
+
+        <div class="ind-row">
           <label class="sw"><input type="checkbox" id="patOn"><span></span></label>
           <span class="ind-name"><span class="dotc" style="background:#8b9dff"></span>Padrões Gráficos</span>
           <span class="ind-params">triângulos · cunhas · canais · topo/fundo duplo · Elliott</span>
@@ -671,6 +697,7 @@
       <div class="cyclebox" id="cyclebox" hidden></div>
       <div class="mtfob" id="mtfob" hidden></div>
       <div class="fgbox" id="fgbox" hidden></div>
+      <div class="flowbox" id="flowbox" hidden></div>
       <div class="sumbox" id="sumbox" hidden></div>
       <div class="patternbox" id="patternbox" hidden></div>
       <div class="side-empty" id="sideEmpty">Ligue os indicadores em <b>Indicadores</b> para preencher os painéis de leitura do mercado (Resumo Multi-TF, Padrões Gráficos…).</div>
@@ -731,7 +758,7 @@ const S = {
 
 /* ---------- persistência (localStorage com proteção) ---------- */
 const store = {
-  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, symbol:S.symbol, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined), pat:(typeof PATTERNS!=='undefined'?PATTERNS.cfg:undefined), battle:(typeof BATTLE!=='undefined'?{on:BATTLE.cfg.on}:undefined), liq:(typeof LIQ!=='undefined'?LIQ.cfg:undefined), trump:(typeof TRUMP!=='undefined'?{on:TRUMP.cfg.on}:undefined), rsi:(typeof RSI!=='undefined'?RSI.cfg:undefined), sum:(typeof SUMMARY!=='undefined'?{on:SUMMARY.cfg.on}:undefined)})); }catch(e){} },
+  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, symbol:S.symbol, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined), pat:(typeof PATTERNS!=='undefined'?PATTERNS.cfg:undefined), battle:(typeof BATTLE!=='undefined'?{on:BATTLE.cfg.on}:undefined), flow:(typeof FLOW!=='undefined'?{on:FLOW.cfg.on}:undefined), liq:(typeof LIQ!=='undefined'?LIQ.cfg:undefined), trump:(typeof TRUMP!=='undefined'?{on:TRUMP.cfg.on}:undefined), rsi:(typeof RSI!=='undefined'?RSI.cfg:undefined), sum:(typeof SUMMARY!=='undefined'?{on:SUMMARY.cfg.on}:undefined)})); }catch(e){} },
   load(){ try{ return JSON.parse(localStorage.getItem('ib_term')||'{}'); }catch(e){ return {}; } }
 };
 
@@ -1662,6 +1689,77 @@ const FG = {
           '<div class="fg-f-lab" style="color:'+fCol+'">'+fLab+'</div>'+
         '</div>'+
       '</div>';
+  }
+};
+
+/* =========================================================================
+   FLUXO DE POSIÇÕES — leitura REAL de derivativos (Hyperliquid), pra entender se
+   é gente ENTRANDO em long, entrando em short, ou SAINDO (desalavancando). Puxa
+   Open Interest, funding e prêmio ao vivo; cruza a variação do OI com a direção
+   do preço:  OI↑ & preço↑ = novos longs · OI↑ & preço↓ = novos shorts ·
+   OI↓ & preço↑ = shorts saindo (squeeze) · OI↓ & preço↓ = longs saindo. O funding
+   diz qual lado está lotado/pagando. Ponteiro = viés (short ↔ long) pelo funding+prêmio.
+   ========================================================================= */
+const FLOW = {
+  cfg:{ on:false }, el:$('#flowbox'), timer:null, on:false,
+  cur:null, samples:[],          // samples: {t, oi}
+  coin(){ return (S.symbol||'BTCUSDT').replace(/USDT$/,'').replace(/USD$/,''); },
+  async fetch(){
+    const r=await fetch('https://api.hyperliquid.xyz/info',{method:'POST',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify({type:'metaAndAssetCtxs'}), cache:'no-store'});
+    if(!r.ok) throw 0; const d=await r.json(); const meta=d[0], ctxs=d[1];
+    const coin=this.coin(); const i=meta.universe.findIndex(u=>u.name===coin);
+    if(i<0) return null; const c=ctxs[i];
+    return { oi:+c.openInterest, funding:+c.funding, premium:+c.premium, mark:+c.markPx, oracle:+c.oraclePx };
+  },
+  priceDir(){ const c=S.candles, n=c.length; if(n<8) return 0;
+    const back=Math.min(12,n-1); return (c[n-1].close/c[n-1-back].close-1); },
+  async load(){
+    try{ const d=await this.fetch(); if(d){ this.cur=d; const now=Date.now();
+      this.samples.push({t:now, oi:d.oi});
+      const cut=now-20*60*1000; while(this.samples.length>2 && this.samples[0].t<cut) this.samples.shift(); } }
+    catch(e){ /* rede — mantém o que já tem */ }
+    this.render();
+  },
+  oiDelta(){ if(this.samples.length<2) return null; const last=this.samples[this.samples.length-1];
+    const cut=last.t-5*60*1000; let base=this.samples[0];
+    for(const s of this.samples){ if(s.t<=cut) base=s; else break; }
+    if(base.oi<=0) return null; return (last.oi/base.oi-1); },
+  set(on){ this.on=this.cfg.on=on;
+    if(this.timer){ clearInterval(this.timer); this.timer=null; }
+    if(on){ this.render(); this.load(); this.timer=setInterval(()=>this.load(), 40000); }
+    else if(this.el) this.el.hidden=true; },
+  render(){
+    if(!this.el) return; if(!this.on){ this.el.hidden=true; return; }
+    this.el.hidden=false;
+    const d=this.cur;
+    if(!d){ this.el.innerHTML='<div class="fl-top"><span class="fl-tag">Fluxo de Posições</span><span class="fl-state" style="color:var(--muted-2)">buscando…</span></div><div class="fl-note">Lendo Open Interest e funding da Hyperliquid…</div>'; return; }
+    const fN=Math.max(-1,Math.min(1, d.funding/0.0001));
+    const pN=Math.max(-1,Math.min(1, d.premium/0.0005));
+    const bias=Math.max(-100,Math.min(100,(fN*0.65+pN*0.35)*100)); const ptr=50+bias/2;
+    const dOI=this.oiDelta(), dir=this.priceDir();
+    let state='medindo fluxo…', scol='var(--muted-2)', note='';
+    if(dOI!=null){
+      const oiUp=dOI>0.0015, oiDn=dOI<-0.0015;
+      if(oiUp && dir>=0){ state='🟢 Longs entrando'; scol='#16c784'; note='OI subindo com preço firme — <b>dinheiro novo comprado</b> (alavancagem long crescendo).'; }
+      else if(oiUp && dir<0){ state='🔴 Shorts entrando'; scol='#ea3943'; note='OI subindo com preço caindo — <b>dinheiro novo vendido</b> (novos shorts).'; }
+      else if(oiDn && dir>=0){ state='🟠 Shorts saindo'; scol='#f7931a'; note='OI caindo com preço subindo — <b>shorts fechando/espremidos</b> (short squeeze).'; }
+      else if(oiDn && dir<0){ state='🟠 Longs saindo'; scol='#f7931a'; note='OI caindo com preço caindo — <b>longs desalavancando</b> (fechando ou liquidados).'; }
+      else { state='⚪ Ordens estáveis'; scol='var(--muted)'; note='OI praticamente parado — <b>sem entrada/saída forte</b> de posições agora.'; }
+    } else { note='Coletando amostras de OI (precisa de ~1–2 min pra ler entrada/saída).'; }
+    const fmtOI=v=> v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0);
+    const dOItxt = dOI==null?'…':(dOI>=0?'+':'')+(dOI*100).toFixed(2)+'%';
+    const fundTxt=(d.funding>=0?'+':'')+(d.funding*100).toFixed(4)+'%';
+    const fundLab = d.funding>0.00003?'longs pagam':d.funding<-0.00003?'shorts pagam':'neutro';
+    this.el.innerHTML=
+      '<div class="fl-top"><span class="fl-tag">Fluxo de Posições · '+this.coin()+'</span><span class="fl-state" style="color:'+scol+'">'+state+'</span></div>'+
+      '<div class="fl-bar"><i class="fl-ptr" style="left:'+Math.max(2,Math.min(98,ptr))+'%"></i></div>'+
+      '<div class="fl-ends"><span class="s">■ shorts lotados</span><span class="l">longs lotados ■</span></div>'+
+      '<div class="fl-metrics">'+
+        '<div class="fl-m"><div class="k">Open Interest</div><div class="v">'+fmtOI(d.oi)+' <span style="color:'+(dOI>=0?'#16c784':'#ea3943')+'">'+dOItxt+'</span></div></div>'+
+        '<div class="fl-m"><div class="k">Funding/h</div><div class="v" style="color:'+(d.funding>=0?'#16c784':'#ea3943')+'">'+fundTxt+'</div></div>'+
+      '</div>'+
+      '<div class="fl-note"><b>'+fundLab+'</b> · '+note+'</div>';
   }
 };
 
@@ -2989,7 +3087,7 @@ document.addEventListener('click', e=>{
 $('#tfSel').addEventListener('change', e=>{ S.tf=e.target.value; store.save(); loadData(); });
 
 // ---- ativo da tela principal (BTC / ETH / SOL) ----
-$('#mainAsset').addEventListener('change', e=>{ S.symbol=e.target.value; store.save(); loadData(); MTFOB.refresh().catch(()=>{}); SUMMARY.refresh().catch(()=>{}); PATTERNS.detect(); });
+$('#mainAsset').addEventListener('change', e=>{ S.symbol=e.target.value; store.save(); loadData(); MTFOB.refresh().catch(()=>{}); SUMMARY.refresh().catch(()=>{}); PATTERNS.detect(); if(FLOW.on){ FLOW.samples=[]; FLOW.cur=null; FLOW.load(); } });
 
 // ---- tela cheia (entra/sai; o botão vira "voltar" quando em tela cheia) ----
 const fsBtn=$('#fsBtn');
@@ -3057,6 +3155,9 @@ $('#patOn').addEventListener('change', syncPatterns);
 
 function syncBattle(){ BATTLE.cfg.on=$('#battleOn').checked; if(BATTLE.cfg.on) BATTLE.compute(); store.save(); }
 $('#battleOn').addEventListener('change', syncBattle);
+
+function syncFlow(){ FLOW.set($('#flowOn').checked); store.save(); }
+$('#flowOn').addEventListener('change', syncFlow);
 
 // ---- Mapa de Liquidez (heatmap de liquidação, estimativa) ----
 function syncLiq(){
@@ -3430,6 +3531,7 @@ $('#cycleDays').addEventListener('change', syncCycle);
   MTFOB.set(OB.cfg.on);   // painel de confluência Multi-TF acompanha o toggle dos Order Blocks
   if(saved.pat){ Object.assign(PATTERNS.cfg, saved.pat); $('#patOn').checked=PATTERNS.cfg.on; }
   if(saved.battle){ BATTLE.cfg.on=!!saved.battle.on; const bb=$('#battleOn'); if(bb) bb.checked=BATTLE.cfg.on; }
+  if(saved.flow){ const fb=$('#flowOn'); if(fb) fb.checked=!!saved.flow.on; if(saved.flow.on) FLOW.set(true); }
   PATTERNS.detect();
   if(saved.liq){ Object.assign(LIQ.cfg, saved.liq);
     $('#liqOn').checked=LIQ.cfg.on; if($('#liqLook'))$('#liqLook').value=LIQ.cfg.look; if($('#liqGamma'))$('#liqGamma').value=Math.round(LIQ.cfg.gamma*100); }
