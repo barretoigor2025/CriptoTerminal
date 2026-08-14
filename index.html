@@ -343,8 +343,19 @@
   .fl-m{flex:1;background:var(--panel-2);border:1px solid var(--hair);border-radius:7px;padding:4px 6px;text-align:center}
   .fl-m .k{font-family:"IBM Plex Mono",monospace;font-size:7.5px;letter-spacing:.3px;text-transform:uppercase;color:var(--muted-2)}
   .fl-m .v{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;font-variant-numeric:tabular-nums}
-  .fl-note{margin-top:6px;font-family:"IBM Plex Mono",monospace;font-size:8.5px;line-height:1.4;color:var(--muted-2)}
-  .fl-note b{color:var(--muted)}
+  /* Long/Short ratio (estilo Coinglass): número + barra dividida long × short */
+  .fl-ls{margin-top:7px;background:var(--panel-2);border:1px solid var(--hair);border-radius:7px;padding:5px 7px}
+  .fl-ls-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+  .fl-ls-k{font-family:"IBM Plex Mono",monospace;font-size:8px;letter-spacing:.3px;text-transform:uppercase;color:var(--muted-2)}
+  .fl-ls-r{font-family:"Space Grotesk",sans-serif;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+  .fl-ls-bar{display:flex;height:9px;border-radius:5px;overflow:hidden;background:var(--hair)}
+  .fl-ls-bar .lo{background:linear-gradient(180deg,#2ec4b6,#16a394);height:100%}
+  .fl-ls-bar .sh{background:linear-gradient(180deg,#f4685f,#d13b34);height:100%}
+  .fl-ls-pct{display:flex;justify-content:space-between;margin-top:3px;font-family:"IBM Plex Mono",monospace;font-size:8.5px;font-variant-numeric:tabular-nums}
+  .fl-ls-pct .l{color:var(--bull)} .fl-ls-pct .s{color:var(--bear)}
+  /* texto informativo em DESTAQUE (branco no escuro / escuro no claro — via --txt) */
+  .fl-note{margin-top:7px;font-family:"IBM Plex Mono",monospace;font-size:9.5px;line-height:1.45;color:var(--txt)}
+  .fl-note b{color:var(--txt);font-weight:700}
 
   /* card Resumo Multi-TF (1h/4h/D/Semanal + síntese) — um pouco mais largo */
   .sumbox{width:100%;background:var(--card-bg2);border:1px solid var(--hair);border-radius:9px;
@@ -1702,7 +1713,7 @@ const FG = {
    ========================================================================= */
 const FLOW = {
   cfg:{ on:false }, el:$('#flowbox'), timer:null, on:false,
-  cur:null, samples:[],          // samples: {t, oi}
+  cur:null, ls:null, samples:[],          // samples: {t, oi}
   coin(){ return (S.symbol||'BTCUSDT').replace(/USDT$/,'').replace(/USD$/,''); },
   async fetch(){
     const r=await fetch('https://api.hyperliquid.xyz/info',{method:'POST',
@@ -1712,6 +1723,15 @@ const FLOW = {
     if(i<0) return null; const c=ctxs[i];
     return { oi:+c.openInterest, funding:+c.funding, premium:+c.premium, mark:+c.markPx, oracle:+c.oraclePx };
   },
+  // Long/Short account ratio (OKX, estilo Coinglass) — direto e, se CORS barrar, via proxy
+  async fetchLS(){
+    const url='https://www.okx.com/api/v5/rubik/stat/contracts/long-short-account-ratio?ccy='+this.coin()+'&period=5m';
+    const parse=j=>{ if(j&&j.data&&j.data.length){ const v=+j.data[0][1]; return isFinite(v)&&v>0?v:null; } return null; };
+    try{ const r=await fetch(url,{cache:'no-store'}); if(r.ok){ const v=parse(await r.json()); if(v!=null) return v; } }catch(e){}
+    try{ const r=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url),{cache:'no-store'});
+      if(r.ok){ const v=parse(await r.json()); if(v!=null) return v; } }catch(e){}
+    return null;
+  },
   priceDir(){ const c=S.candles, n=c.length; if(n<8) return 0;
     const back=Math.min(12,n-1); return (c[n-1].close/c[n-1-back].close-1); },
   async load(){
@@ -1719,6 +1739,7 @@ const FLOW = {
       this.samples.push({t:now, oi:d.oi});
       const cut=now-20*60*1000; while(this.samples.length>2 && this.samples[0].t<cut) this.samples.shift(); } }
     catch(e){ /* rede — mantém o que já tem */ }
+    try{ const ls=await this.fetchLS(); if(ls!=null) this.ls=ls; }catch(e){}
     this.render();
   },
   oiDelta(){ if(this.samples.length<2) return null; const last=this.samples[this.samples.length-1];
@@ -1751,6 +1772,15 @@ const FLOW = {
     const dOItxt = dOI==null?'…':(dOI>=0?'+':'')+(dOI*100).toFixed(2)+'%';
     const fundTxt=(d.funding>=0?'+':'')+(d.funding*100).toFixed(4)+'%';
     const fundLab = d.funding>0.00003?'longs pagam':d.funding<-0.00003?'shorts pagam':'neutro';
+    // bloco Long/Short ratio (contas), estilo Coinglass
+    let lsBlock='';
+    if(this.ls!=null){
+      const r=this.ls, longPct=r/(1+r)*100, rcol=r>=1?'#16c784':'#ea3943';
+      lsBlock='<div class="fl-ls"><div class="fl-ls-top"><span class="fl-ls-k">Long/Short · contas</span>'+
+        '<span class="fl-ls-r" style="color:'+rcol+'">'+r.toFixed(2)+'</span></div>'+
+        '<div class="fl-ls-bar"><i class="lo" style="width:'+longPct.toFixed(1)+'%"></i><i class="sh" style="width:'+(100-longPct).toFixed(1)+'%"></i></div>'+
+        '<div class="fl-ls-pct"><span class="l">long '+longPct.toFixed(1)+'%</span><span class="s">'+(100-longPct).toFixed(1)+'% short</span></div></div>';
+    }
     this.el.innerHTML=
       '<div class="fl-top"><span class="fl-tag">Fluxo de Posições · '+this.coin()+'</span><span class="fl-state" style="color:'+scol+'">'+state+'</span></div>'+
       '<div class="fl-bar"><i class="fl-ptr" style="left:'+Math.max(2,Math.min(98,ptr))+'%"></i></div>'+
@@ -1759,6 +1789,7 @@ const FLOW = {
         '<div class="fl-m"><div class="k">Open Interest</div><div class="v">'+fmtOI(d.oi)+' <span style="color:'+(dOI>=0?'#16c784':'#ea3943')+'">'+dOItxt+'</span></div></div>'+
         '<div class="fl-m"><div class="k">Funding/h</div><div class="v" style="color:'+(d.funding>=0?'#16c784':'#ea3943')+'">'+fundTxt+'</div></div>'+
       '</div>'+
+      lsBlock+
       '<div class="fl-note"><b>'+fundLab+'</b> · '+note+'</div>';
   }
 };
@@ -3087,7 +3118,7 @@ document.addEventListener('click', e=>{
 $('#tfSel').addEventListener('change', e=>{ S.tf=e.target.value; store.save(); loadData(); });
 
 // ---- ativo da tela principal (BTC / ETH / SOL) ----
-$('#mainAsset').addEventListener('change', e=>{ S.symbol=e.target.value; store.save(); loadData(); MTFOB.refresh().catch(()=>{}); SUMMARY.refresh().catch(()=>{}); PATTERNS.detect(); if(FLOW.on){ FLOW.samples=[]; FLOW.cur=null; FLOW.load(); } });
+$('#mainAsset').addEventListener('change', e=>{ S.symbol=e.target.value; store.save(); loadData(); MTFOB.refresh().catch(()=>{}); SUMMARY.refresh().catch(()=>{}); PATTERNS.detect(); if(FLOW.on){ FLOW.samples=[]; FLOW.cur=null; FLOW.ls=null; FLOW.load(); } });
 
 // ---- tela cheia (entra/sai; o botão vira "voltar" quando em tela cheia) ----
 const fsBtn=$('#fsBtn');
