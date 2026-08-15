@@ -147,12 +147,25 @@
     position:absolute;top:calc(100% + 8px);left:0;z-index:20;min-width:300px;
     background:var(--panel);border:1px solid var(--hair-2);border-radius:11px;
     box-shadow:0 12px 34px rgba(0,0,0,.55);padding:7px;
+    max-height:calc(100vh - 70px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
   }
+  .ind-menu::-webkit-scrollbar{width:8px}
+  .ind-menu::-webkit-scrollbar-thumb{background:var(--hair-2);border-radius:5px}
+  .ind-menu::-webkit-scrollbar-track{background:transparent}
   .ind-menu[hidden]{display:none}
   .ind-menu-title{
     font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.6px;
-    text-transform:uppercase;color:var(--muted-2);padding:4px 8px 8px;
+    text-transform:uppercase;color:var(--muted-2);padding:5px 4px 8px 8px;
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    position:sticky;top:-7px;background:var(--panel);z-index:3;margin:-7px -7px 0;padding-top:12px;padding-right:8px;
   }
+  .ind-close{
+    display:flex;align-items:center;justify-content:center;width:26px;height:24px;flex:0 0 auto;
+    background:var(--panel-2);color:var(--muted);border:1px solid var(--hair);border-radius:7px;
+    cursor:pointer;font-size:14px;line-height:1;transition:.12s;
+  }
+  .ind-close:hover{color:var(--txt);border-color:var(--bear)}
+  .ind-close:focus-visible{outline:2px solid var(--btc);outline-offset:1px}
   .ind-row{
     display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:8px;
     transition:.12s;
@@ -548,7 +561,7 @@
         <span class="lbl">Indicadores</span>
       </button>
       <div class="ind-menu" id="indMenu" hidden>
-        <div class="ind-menu-title">Indicadores</div>
+        <div class="ind-menu-title"><span>Indicadores</span><button class="ind-close" id="indClose" title="Fechar" aria-label="Fechar indicadores">✕</button></div>
 
         <div class="ind-row">
           <label class="sw"><input type="checkbox" id="emaOn" checked><span></span></label>
@@ -3111,9 +3124,11 @@ function toggleIndMenu(open){
   indBtn.classList.toggle('active', show);
 }
 indBtn.addEventListener('click', e=>{ e.stopPropagation(); toggleIndMenu(); });
+$('#indClose').addEventListener('click', e=>{ e.stopPropagation(); toggleIndMenu(false); });
 document.addEventListener('click', e=>{
   if(!indMenu.hidden && !indMenu.contains(e.target) && !indBtn.contains(e.target)) toggleIndMenu(false);
 });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !indMenu.hidden) toggleIndMenu(false); });
 
 $('#tfSel').addEventListener('change', e=>{ S.tf=e.target.value; store.save(); loadData(); });
 
