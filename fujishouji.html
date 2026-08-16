@@ -96,10 +96,9 @@
   /* ---------- Grade de CARDS (um por Bin) ---------- */
   /* grade: pelo menos 3 cards lado a lado no desktop; 1 por linha no celular */
   .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:16px;align-items:start}
-  @media(max-width:820px){ .board{grid-template-columns:1fr} }
   .bincard{
     background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px 30px;
-    border-left:6px solid var(--cinza);position:relative
+    border-left:6px solid var(--cinza);position:relative;min-width:0
   }
   .bincard.verde{border-left-color:var(--verde)} .bincard.amarelo{border-left-color:var(--amarelo)}
   .bincard.vermelho{border-left-color:var(--vermelho)} .bincard.cinza{border-left-color:var(--cinza)}
@@ -107,6 +106,7 @@
   .bc-titles{flex:1;min-width:0}
   .bc-linha{font-size:19px;font-weight:800;line-height:1.2}
   .bc-linha .mot{font-weight:600;color:var(--muted)}
+  .bc-linha .mot::before{content:"· "}
   .bc-bin{
     font-size:19px;font-weight:800;letter-spacing:.3px;white-space:nowrap;
     background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.45);color:#93c5fd;
@@ -135,6 +135,29 @@
   .pill.cinza{background:rgba(100,116,139,.18);color:#94a3b8}
   .pill.azul{background:rgba(56,189,248,.15);color:#7dd3fc}
   .conf-time{font-size:11px;color:#4ade80;font-weight:700;font-variant-numeric:tabular-nums}
+
+  /* ===== celular: 2 cards por linha, compactos, horários empilhados =====
+     (fica DEPOIS das regras base para poder sobrescrevê-las) */
+  @media(max-width:820px){
+    .board{grid-template-columns:1fr 1fr;gap:10px}
+    .bincard{padding:11px 11px 22px;border-left-width:5px}
+    .bc-top{gap:6px;align-items:flex-start}
+    .bc-linha{font-size:14px;line-height:1.2}
+    .bc-linha .mot{display:block;font-weight:600}
+    .bc-linha .mot::before{content:""}
+    .bc-bin{font-size:12px;padding:2px 7px;border-radius:7px}
+    .luz{width:15px;height:15px;box-shadow:0 0 0 2px var(--halo)}
+    .horarios{flex-direction:column;align-items:stretch;gap:2px;margin:10px 0 8px}
+    .harrow{display:none}
+    .hbox{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+    .hbox .lbl{font-size:9px}
+    .hbox .hh{font-size:19px}
+    .estado{font-size:12px;gap:5px;line-height:1.2}
+    .estado .ic{font-size:11px}
+    .estado-sub{font-size:10px}
+    .bc-actions{bottom:5px;right:6px}
+    .minibtn{width:22px;height:22px}
+  }
 
   /* ---------- Modal ---------- */
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
@@ -505,7 +528,7 @@ function renderCoord(){
       return `<div class="bincard ${st.cat}">
         <div class="bc-top">
           <div class="bc-titles">
-            <div class="bc-linha">${esc(v.linha)} <span class="mot">· ${esc(v.motorista)}</span></div>
+            <div class="bc-linha">${esc(v.linha)}<span class="mot">${esc(v.motorista)}</span></div>
           </div>
           <span class="bc-bin">BIN ${esc(v.viagem)}</span>
           <span class="luz ${st.on?'on':''}" style="background:${st.luz};--halo:${st.luz}55"></span>
