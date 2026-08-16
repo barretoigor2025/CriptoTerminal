@@ -289,7 +289,7 @@
 /* ================= Estado ================= */
 const LS_KEY='painelEntregas.v4', LS_TOL='painelEntregas.tol';
 let viagens=[], mode='coord', motoristaAtual=null;
-let selectedDate=ymdHoje();          // dia visível no painel do coordenador
+let selectedDate;                    // dia visível no painel do coordenador (definido abaixo)
 let filtroStatus='';                 // filtro por status (via tiles)
 
 const $=id=>document.getElementById(id);
@@ -305,6 +305,7 @@ const store={
 
 function ymd(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
 function ymdHoje(){ return ymd(new Date()); }
+selectedDate = ymdHoje();            // agora pad/ymdHoje já existem
 /* Date a partir de (dia YYYY-MM-DD + hora HH:MM) */
 function quando(dataStr, hhmm){
   const [Y,Mo,D]=dataStr.split('-').map(Number);
