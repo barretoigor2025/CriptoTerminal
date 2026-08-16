@@ -29,9 +29,7 @@
     display:grid;place-items:center;font-size:18px
   }
   .brand small{display:block;font-size:11px;color:var(--muted);font-weight:500}
-  .clock{
-    margin-left:auto;text-align:right;font-variant-numeric:tabular-nums
-  }
+  .clock{margin-left:auto;text-align:right;font-variant-numeric:tabular-nums}
   .clock .time{font-size:26px;font-weight:700;letter-spacing:1px}
   .clock .date{font-size:12px;color:var(--muted);text-transform:capitalize}
   .modeswitch{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px}
@@ -41,14 +39,36 @@
   }
   .modeswitch button.active{background:var(--accent);color:#fff}
 
-  main{padding:16px;max-width:1400px;margin:0 auto}
+  main{padding:16px;max-width:1500px;margin:0 auto}
+
+  /* ---------- Barra do dia ---------- */
+  .daybar{
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 16px
+  }
+  .daynav{display:flex;align-items:center;gap:8px}
+  .daynav button{
+    width:36px;height:36px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);
+    color:var(--txt);font-size:16px;cursor:pointer
+  }
+  .daynav button:hover{background:var(--line)}
+  .dayinfo{min-width:210px}
+  .dayinfo .big{font-size:18px;font-weight:800;text-transform:capitalize}
+  .dayinfo .small{font-size:12px;color:var(--muted)}
+  .daybar input[type=date]{
+    background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+    padding:8px 10px;border-radius:9px;font-size:13px
+  }
+  .btnhoje{background:var(--accent);border:0;color:#fff;font-weight:600;padding:9px 14px;border-radius:9px;cursor:pointer;font-size:13px}
 
   /* ---------- Summary tiles ---------- */
   .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
   .tile{
     background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;
-    display:flex;align-items:center;gap:12px;position:relative;overflow:hidden
+    display:flex;align-items:center;gap:12px;position:relative;overflow:hidden;cursor:pointer;transition:.15s
   }
+  .tile:hover{border-color:var(--accent)}
+  .tile.sel{outline:2px solid var(--accent)}
   .tile .dot{width:14px;height:14px;border-radius:4px;flex:0 0 auto}
   .tile .n{font-size:28px;font-weight:800;line-height:1}
   .tile .lbl{font-size:12px;color:var(--muted);margin-top:2px}
@@ -56,8 +76,8 @@
   .tile.r{border-color:rgba(239,68,68,.35)} .tile.g{border-color:rgba(100,116,139,.35)}
 
   /* ---------- Controls ---------- */
-  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
-  .controls input[type=search], .controls select, input.f, select.f{
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+  .controls input[type=search], .f{
     background:var(--panel2);border:1px solid var(--line);color:var(--txt);
     padding:9px 12px;border-radius:9px;font-size:13px;outline:none
   }
@@ -73,37 +93,52 @@
   .tol{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
   .tol input{width:60px}
 
-  /* ---------- Table ---------- */
-  .tablewrap{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:auto}
-  table{width:100%;border-collapse:collapse;min-width:900px}
-  thead th{
-    text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);
-    padding:12px 14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);white-space:nowrap
+  /* ---------- Grade de cards por LINHA ---------- */
+  .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;align-items:start}
+  .linecard{
+    background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;
+    border-top:5px solid var(--cinza)
   }
-  tbody td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:middle}
-  tbody tr:hover{background:rgba(255,255,255,.02)}
-  tbody tr:last-child td{border-bottom:0}
-  .sq{width:26px;height:26px;border-radius:7px;display:inline-block;box-shadow:0 0 0 1px rgba(0,0,0,.3) inset}
-  .sq.pulse{animation:pulse 1.1s infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-  .linha-name{font-weight:700}
-  .sub{font-size:12px;color:var(--muted)}
-  .time-badge{font-variant-numeric:tabular-nums;font-weight:600}
-  .pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+  .linecard.verde{border-top-color:var(--verde)} .linecard.amarelo{border-top-color:var(--amarelo)}
+  .linecard.vermelho{border-top-color:var(--vermelho)} .linecard.azul{border-top-color:var(--azul)}
+  .lc-head{
+    display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(255,255,255,.03),transparent)
+  }
+  .lc-head .sq{width:16px;height:16px;border-radius:5px;flex:0 0 auto}
+  .lc-head .sq.pulse{animation:pulse 1.1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .lc-title{font-weight:800;font-size:16px;flex:1}
+  .lc-count{font-size:11px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);padding:3px 9px;border-radius:20px}
+  .lc-body{padding:6px 0}
+  /* uma entrega dentro do card */
+  .delivery{display:flex;gap:12px;padding:11px 16px;align-items:center;border-bottom:1px solid var(--line)}
+  .delivery:last-child{border-bottom:0}
+  .del-time{
+    text-align:center;min-width:58px
+  }
+  .del-time .h{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+  .del-time .arrow{font-size:10px;color:var(--muted)}
+  .del-time .s{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .del-main{flex:1;min-width:0}
+  .del-main .who{font-weight:700;font-size:14px}
+  .del-main .meta{font-size:12px;color:var(--muted);margin-top:2px}
+  .del-status{text-align:right;display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+  .pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
   .pill.verde{background:rgba(34,197,94,.15);color:#4ade80}
   .pill.amarelo{background:rgba(234,179,8,.15);color:#facc15}
   .pill.vermelho{background:rgba(239,68,68,.15);color:#f87171}
   .pill.cinza{background:rgba(100,116,139,.18);color:#94a3b8}
   .pill.azul{background:rgba(56,189,248,.15);color:#7dd3fc}
-  .rowdel{color:var(--muted);cursor:pointer;font-size:16px;background:none;border:0}
-  .rowdel:hover{color:var(--vermelho)}
-  .atraso{color:#f87171;font-weight:700;font-size:12px}
-  .adiant{color:#4ade80;font-size:12px}
+  .del-actions{display:flex;gap:6px;margin-top:2px}
+  .minibtn{border:0;background:var(--panel2);color:var(--muted);border:1px solid var(--line);width:26px;height:26px;border-radius:7px;cursor:pointer;font-size:12px}
+  .minibtn:hover{color:var(--txt)}
+  .conf-time{font-size:11px;color:#4ade80;font-weight:700;font-variant-numeric:tabular-nums}
 
   /* ---------- Modal ---------- */
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
   .overlay.open{display:flex}
-  .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;width:100%;max-width:520px}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;width:100%;max-width:540px}
   .modal h3{margin-bottom:14px;font-size:18px}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
@@ -131,13 +166,10 @@
   .trip-actions .btn{flex:1;justify-content:center;padding:12px}
   .done-stamp{font-size:12px;color:#4ade80;font-weight:700}
 
-  .empty{text-align:center;color:var(--muted);padding:50px 16px}
+  .empty{text-align:center;color:var(--muted);padding:50px 16px;grid-column:1/-1}
   .hidden{display:none!important}
-  .footnote{color:var(--muted);font-size:12px;margin-top:16px;line-height:1.5}
-  @media(max-width:640px){
-    .clock .time{font-size:20px}
-    main{padding:12px}
-  }
+  .footnote{color:var(--muted);font-size:12px;margin-top:18px;line-height:1.6}
+  @media(max-width:640px){ .clock .time{font-size:20px} main{padding:12px} }
 </style>
 </head>
 <body>
@@ -146,7 +178,7 @@
   <div class="brand">
     <div class="logo">🚚</div>
     <div>Painel de Entregas
-      <small id="empresaLbl">Monitoramento de linhas em tempo real</small>
+      <small>Monitoramento de linhas em tempo real</small>
     </div>
   </div>
 
@@ -164,48 +196,43 @@
 <main>
   <!-- ============ MODO COORDENADOR ============ -->
   <section id="viewCoord">
+
+    <!-- Barra do dia -->
+    <div class="daybar">
+      <div class="daynav">
+        <button onclick="mudarDia(-1)" title="Dia anterior">‹</button>
+        <button onclick="mudarDia(1)"  title="Próximo dia">›</button>
+      </div>
+      <div class="dayinfo">
+        <div class="big" id="dayBig">—</div>
+        <div class="small" id="daySmall">—</div>
+      </div>
+      <input type="date" id="datePick" onchange="setDia(this.value)">
+      <button class="btnhoje" onclick="irHoje()">Hoje</button>
+      <div class="spacer"></div>
+      <button class="btn ghost small" onclick="carregarExemplo()">↻ Dados de exemplo</button>
+      <button class="btn" onclick="abrirModal()">＋ Nova entrega</button>
+    </div>
+
+    <!-- Contadores (clicáveis para filtrar) -->
     <div class="tiles">
-      <div class="tile v"><span class="dot" style="background:var(--verde)"></span><div><div class="n" id="cVerde">0</div><div class="lbl">No horário / confirmado</div></div></div>
-      <div class="tile a"><span class="dot" style="background:var(--amarelo)"></span><div><div class="n" id="cAmarelo">0</div><div class="lbl">Aguardando confirmação</div></div></div>
-      <div class="tile r"><span class="dot" style="background:var(--vermelho)"></span><div><div class="n" id="cVermelho">0</div><div class="lbl">Atrasado</div></div></div>
-      <div class="tile g"><span class="dot" style="background:var(--cinza)"></span><div><div class="n" id="cAgendado">0</div><div class="lbl">Agendado (a seguir)</div></div></div>
+      <div class="tile v" data-f="verde"    onclick="filtrarTile('verde')"><span class="dot" style="background:var(--verde)"></span><div><div class="n" id="cVerde">0</div><div class="lbl">No horário / confirmado</div></div></div>
+      <div class="tile a" data-f="amarelo"  onclick="filtrarTile('amarelo')"><span class="dot" style="background:var(--amarelo)"></span><div><div class="n" id="cAmarelo">0</div><div class="lbl">Aguardando confirmação</div></div></div>
+      <div class="tile r" data-f="vermelho" onclick="filtrarTile('vermelho')"><span class="dot" style="background:var(--vermelho)"></span><div><div class="n" id="cVermelho">0</div><div class="lbl">Atrasado</div></div></div>
+      <div class="tile g" data-f="cinza"    onclick="filtrarTile('cinza')"><span class="dot" style="background:var(--cinza)"></span><div><div class="n" id="cAgendado">0</div><div class="lbl">Agendado (a seguir)</div></div></div>
     </div>
 
     <div class="controls">
       <input type="search" id="busca" placeholder="🔍 Buscar linha, motorista, caminhão…" oninput="render()">
-      <select class="f" id="filtroStatus" onchange="render()">
-        <option value="">Todos os status</option>
-        <option value="verde">🟢 No horário</option>
-        <option value="amarelo">🟡 Aguardando</option>
-        <option value="vermelho">🔴 Atrasado</option>
-        <option value="cinza">⚪ Agendado</option>
-      </select>
       <div class="tol">Tolerância (amarelo):
         <input type="number" class="f" id="tol" min="0" max="30" value="1" onchange="salvarTol()"> min
       </div>
       <div class="spacer"></div>
-      <button class="btn ghost small" onclick="carregarExemplo()">↻ Dados de exemplo</button>
-      <button class="btn" onclick="abrirModal()">＋ Nova linha</button>
+      <span id="filtroAtivo" class="hidden"></span>
     </div>
 
-    <div class="tablewrap">
-      <table>
-        <thead>
-          <tr>
-            <th style="width:40px">St.</th>
-            <th>Linha / Viagem</th>
-            <th>Motorista</th>
-            <th>Caminhão</th>
-            <th>Entrada prev.</th>
-            <th>Confirmou entrada</th>
-            <th>Saída prev.</th>
-            <th>Descarga</th>
-            <th style="width:40px"></th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
-    </div>
+    <!-- Grade de cards por LINHA -->
+    <div class="board" id="board"></div>
     <p class="footnote" id="foot"></p>
   </section>
 
@@ -213,7 +240,7 @@
   <section id="viewDriver" class="hidden">
     <div id="driverLogin" class="driver-login">
       <h2>App do Motorista</h2>
-      <p>Selecione seu nome para ver suas viagens de hoje.</p>
+      <p>Selecione seu nome para ver suas entregas de hoje.</p>
       <div class="field">
         <select id="driverSelect" class="f" style="width:100%;padding:12px"></select>
       </div>
@@ -225,7 +252,7 @@
         <div class="avatar" id="dAvatar">M</div>
         <div style="flex:1">
           <div style="font-weight:800;font-size:16px" id="dNome">—</div>
-          <div class="sub" id="dResumo">—</div>
+          <div class="sub small" id="dResumo" style="color:var(--muted);font-size:12px">—</div>
         </div>
         <button class="btn ghost small" onclick="sairMotorista()">Trocar</button>
       </div>
@@ -234,16 +261,18 @@
   </section>
 </main>
 
-<!-- Modal nova/editar linha -->
+<!-- Modal nova/editar entrega -->
 <div class="overlay" id="overlay">
   <div class="modal">
-    <h3 id="modalTitle">Nova linha</h3>
+    <h3 id="modalTitle">Nova entrega</h3>
     <input type="hidden" id="editId">
     <div class="grid2">
       <div class="field"><label>Linha</label><input id="fLinha" placeholder="Ex: Yoshiwara"></div>
       <div class="field"><label>Nº da viagem</label><input id="fViagem" type="number" placeholder="2"></div>
       <div class="field"><label>Motorista</label><input id="fMotorista" placeholder="Ex: Vini"></div>
       <div class="field"><label>Caminhão / placa</label><input id="fCaminhao" placeholder="Ex: ABC-1D23"></div>
+      <div class="field"><label>Dia</label><input id="fData" type="date"></div>
+      <div class="field"></div>
       <div class="field"><label>Entrada prevista</label><input id="fEntrada" type="time" value="07:40"></div>
       <div class="field"><label>Saída prevista</label><input id="fSaida" type="time" value="08:00"></div>
     </div>
@@ -256,232 +285,257 @@
 
 <script>
 /* ================= Estado ================= */
-const LS_KEY = 'painelEntregas.v1';
-const LS_TOL = 'painelEntregas.tol';
-let viagens = [];
-let mode = 'coord';
-let motoristaAtual = null;
+const LS_KEY='painelEntregas.v2', LS_TOL='painelEntregas.tol';
+let viagens=[], mode='coord', motoristaAtual=null;
+let selectedDate=ymdHoje();          // dia visível no painel do coordenador
+let filtroStatus='';                 // filtro por status (via tiles)
 
-const $ = id => document.getElementById(id);
-const pad = n => String(n).padStart(2,'0');
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,'0');
 
-/* Converte "HH:MM" em um Date de HOJE */
-function horaHoje(hhmm){
-  const [h,m] = hhmm.split(':').map(Number);
-  const d = new Date();
-  d.setHours(h,m,0,0);
-  return d;
+function ymd(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function ymdHoje(){ return ymd(new Date()); }
+/* Date a partir de (dia YYYY-MM-DD + hora HH:MM) */
+function quando(dataStr, hhmm){
+  const [Y,Mo,D]=dataStr.split('-').map(Number);
+  const [h,m]=hhmm.split(':').map(Number);
+  return new Date(Y,Mo-1,D,h,m,0,0);
 }
-function fmtHora(d){ return d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : '—'; }
+function fmtHora(d){ return d?`${pad(d.getHours())}:${pad(d.getMinutes())}`:'—'; }
 function fmtHoraSeg(d){ return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }
-function tolMin(){ return Math.max(0, parseInt($('tol').value) || 0); }
+function tolMin(){ return Math.max(0, parseInt($('tol').value)||0); }
 
-/* ================= Lógica do semáforo ================= */
-/*
-  ENTRADA:
-   - confirmou entrada  -> VERDE  (marca se foi no horário ou com atraso)
-   - não confirmou:
-        agora < entrada                       -> CINZA  (agendado)
-        entrada <= agora <= entrada+tol        -> AMARELO (aguardando confirmação)
-        agora > entrada+tol                    -> VERMELHO (atrasado)
-*/
+/* ================= Semáforo ================= */
 function statusEntrada(v){
-  const agora = new Date();
-  const entrada = horaHoje(v.entrada);
+  const agora=new Date(), entrada=quando(v.data,v.entrada);
   if(v.confEntrada){
-    const atrasoMin = Math.round((v.confEntrada - entrada)/60000);
-    if(atrasoMin > 0) return {cor:'verde', label:'Entrou', nota:`+${atrasoMin} min`, tipo:'atraso'};
-    return {cor:'verde', label:'Entrou', nota:'no horário', tipo:'ok'};
+    const atr=Math.round((v.confEntrada-entrada)/60000);
+    if(atr>0) return {cor:'verde',label:'Entrou',nota:`+${atr} min`,tipo:'atraso'};
+    return {cor:'verde',label:'Entrou',nota:'no horário',tipo:'ok'};
   }
-  const tolMs = tolMin()*60000;
-  if(agora < entrada) return {cor:'cinza', label:'Agendado', nota:''};
-  if(agora <= entrada.getTime()+tolMs) return {cor:'amarelo', label:'Aguardando', nota:'confirmar entrada'};
-  const atraso = Math.floor((agora - entrada)/60000);
-  return {cor:'vermelho', label:'Atrasado', nota:`${atraso} min`, tipo:'atraso'};
+  const tolMs=tolMin()*60000;
+  if(agora<entrada) return {cor:'cinza',label:'Agendado',nota:''};
+  if(agora<=entrada.getTime()+tolMs) return {cor:'amarelo',label:'Aguardando',nota:'confirmar entrada'};
+  return {cor:'vermelho',label:'Atrasado',nota:`${Math.floor((agora-entrada)/60000)} min`,tipo:'atraso'};
 }
-
-/* DESCARGA (após entrar): compara com saída prevista */
 function statusDescarga(v){
-  const agora = new Date();
-  const saida = horaHoje(v.saida);
+  const agora=new Date(), saida=quando(v.data,v.saida);
   if(v.confDescarga){
-    const dif = Math.round((v.confDescarga - saida)/60000);
-    return {cor:'verde', label:'Descarregado', nota: dif>0?`+${dif} min`:'no prazo'};
+    const dif=Math.round((v.confDescarga-saida)/60000);
+    return {cor:'verde',label:'Descarregado',nota:dif>0?`+${dif} min`:'no prazo'};
   }
-  if(!v.confEntrada) return {cor:'cinza', label:'—', nota:''};
-  const tolMs = tolMin()*60000;
-  if(agora < saida) return {cor:'azul', label:'Em descarga', nota:''};
-  if(agora <= saida.getTime()+tolMs) return {cor:'amarelo', label:'Finalizar', nota:'confirmar descarga'};
-  const atraso = Math.floor((agora - saida)/60000);
-  return {cor:'vermelho', label:'Descarga atrasada', nota:`${atraso} min`, tipo:'atraso'};
+  if(!v.confEntrada) return {cor:'cinza',label:'—',nota:''};
+  const tolMs=tolMin()*60000;
+  if(agora<saida) return {cor:'azul',label:'Em descarga',nota:''};
+  if(agora<=saida.getTime()+tolMs) return {cor:'amarelo',label:'Finalizar',nota:'confirmar descarga'};
+  return {cor:'vermelho',label:'Descarga atrasada',nota:`${Math.floor((agora-saida)/60000)} min`,tipo:'atraso'};
 }
-
-/* “status geral” da linha p/ contadores e ordenação */
 function statusGeral(v){
-  const e = statusEntrada(v);
-  if(e.cor === 'vermelho') return 'vermelho';
-  if(e.cor === 'amarelo')  return 'amarelo';
-  if(e.cor === 'cinza')    return 'cinza';
-  // entrou: olha a descarga
-  const d = statusDescarga(v);
-  if(d.cor === 'vermelho') return 'vermelho';
-  if(d.cor === 'amarelo')  return 'amarelo';
-  return 'verde';
+  const e=statusEntrada(v);
+  if(e.cor==='vermelho')return'vermelho'; if(e.cor==='amarelo')return'amarelo'; if(e.cor==='cinza')return'cinza';
+  const d=statusDescarga(v);
+  if(d.cor==='vermelho')return'vermelho'; if(d.cor==='amarelo')return'amarelo'; return'verde';
 }
-const CORVAR = {verde:'var(--verde)',amarelo:'var(--amarelo)',vermelho:'var(--vermelho)',cinza:'var(--cinza)',azul:'var(--azul)'};
+const CORVAR={verde:'var(--verde)',amarelo:'var(--amarelo)',vermelho:'var(--vermelho)',cinza:'var(--cinza)',azul:'var(--azul)'};
 
 /* ================= Persistência ================= */
 function salvar(){ localStorage.setItem(LS_KEY, JSON.stringify(viagens.map(v=>({
-  ...v,
-  confEntrada: v.confEntrada ? v.confEntrada.getTime() : null,
-  confDescarga: v.confDescarga ? v.confDescarga.getTime() : null
+  ...v, confEntrada:v.confEntrada?v.confEntrada.getTime():null, confDescarga:v.confDescarga?v.confDescarga.getTime():null
 })))); }
 function carregar(){
-  const raw = localStorage.getItem(LS_KEY);
+  const raw=localStorage.getItem(LS_KEY);
   if(!raw){ carregarExemplo(true); return; }
-  try{
-    viagens = JSON.parse(raw).map(v=>({
-      ...v,
-      confEntrada: v.confEntrada ? new Date(v.confEntrada) : null,
-      confDescarga: v.confDescarga ? new Date(v.confDescarga) : null
-    }));
-  }catch(e){ carregarExemplo(true); }
+  try{ viagens=JSON.parse(raw).map(v=>({...v,
+    data:v.data||ymdHoje(),
+    confEntrada:v.confEntrada?new Date(v.confEntrada):null,
+    confDescarga:v.confDescarga?new Date(v.confDescarga):null })); }
+  catch(e){ carregarExemplo(true); }
 }
-function salvarTol(){ localStorage.setItem(LS_TOL, $('tol').value); render(); }
+function salvarTol(){ localStorage.setItem(LS_TOL,$('tol').value); render(); }
 
-/* ================= Dados de exemplo ================= */
+/* ================= Exemplo ================= */
 function carregarExemplo(silent){
   if(!silent && !confirm('Recarregar os dados de exemplo? Isso substitui a lista atual.')) return;
-  const agora = new Date();
-  const hm = (offMin)=>{ const d=new Date(agora.getTime()+offMin*60000); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
-  viagens = [
-    {id:id(), linha:'Yoshiwara', viagem:2, motorista:'Vini', caminhao:'ABC-1D23', entrada:'07:40', saida:'08:00', confEntrada:null, confDescarga:null},
-    {id:id(), linha:'Serra Azul', viagem:1, motorista:'Marcos',caminhao:'DEF-2G45', entrada:hm(-8), saida:hm(12), confEntrada:new Date(agora.getTime()-7*60000), confDescarga:null},
-    {id:id(), linha:'Centro',    viagem:5, motorista:'Cláudia',caminhao:'GHI-3J67', entrada:hm(-3), saida:hm(20), confEntrada:null, confDescarga:null},
-    {id:id(), linha:'Litoral',   viagem:3, motorista:'Rafael', caminhao:'JKL-4M89', entrada:hm(0),  saida:hm(25), confEntrada:null, confDescarga:null},
-    {id:id(), linha:'Norte',     viagem:7, motorista:'Vini',   caminhao:'MNO-5P01', entrada:hm(15), saida:hm(45), confEntrada:null, confDescarga:null},
-    {id:id(), linha:'Yoshiwara', viagem:8, motorista:'Marcos', caminhao:'PQR-6S23', entrada:hm(-15),saida:hm(-2), confEntrada:new Date(agora.getTime()-16*60000), confDescarga:new Date(agora.getTime()-1*60000)},
+  const hoje=ymdHoje(), agora=new Date();
+  const hm=off=>{ const d=new Date(agora.getTime()+off*60000); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  viagens=[
+    {id:id(),data:hoje,linha:'Yoshiwara',viagem:2,motorista:'Vini',   caminhao:'ABC-1D23',entrada:'07:40',saida:'08:00',confEntrada:null,confDescarga:null},
+    {id:id(),data:hoje,linha:'Yoshiwara',viagem:8,motorista:'Marcos', caminhao:'PQR-6S23',entrada:hm(-15),saida:hm(-2),confEntrada:new Date(agora.getTime()-16*60000),confDescarga:new Date(agora.getTime()-1*60000)},
+    {id:id(),data:hoje,linha:'Yoshiwara',viagem:11,motorista:'Vini',  caminhao:'ABC-1D23',entrada:hm(90),saida:hm(120),confEntrada:null,confDescarga:null},
+    {id:id(),data:hoje,linha:'Serra Azul',viagem:1,motorista:'Marcos',caminhao:'DEF-2G45',entrada:hm(-8), saida:hm(12), confEntrada:new Date(agora.getTime()-7*60000),confDescarga:null},
+    {id:id(),data:hoje,linha:'Centro',   viagem:5,motorista:'Cláudia',caminhao:'GHI-3J67',entrada:hm(-3), saida:hm(20), confEntrada:null,confDescarga:null},
+    {id:id(),data:hoje,linha:'Litoral',  viagem:3,motorista:'Rafael', caminhao:'JKL-4M89',entrada:hm(0),  saida:hm(25), confEntrada:null,confDescarga:null},
+    {id:id(),data:hoje,linha:'Norte',    viagem:7,motorista:'Vini',   caminhao:'MNO-5P01',entrada:hm(15), saida:hm(45), confEntrada:null,confDescarga:null},
   ];
   salvar(); render(); popularMotoristas();
 }
 function id(){ return Math.random().toString(36).slice(2,9); }
 
-/* ================= Render coordenador ================= */
-function render(){
-  if(mode==='coord') renderCoord();
-  else renderDriver();
+/* ================= Navegação por dia ================= */
+function atualizaBarraDia(){
+  const [Y,Mo,D]=selectedDate.split('-').map(Number);
+  const d=new Date(Y,Mo-1,D);
+  $('dayBig').textContent=d.toLocaleDateString('pt-BR',{weekday:'long'});
+  $('daySmall').textContent=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})
+     + (selectedDate===ymdHoje()?' · hoje':'');
+  $('datePick').value=selectedDate;
 }
+function mudarDia(n){
+  const [Y,Mo,D]=selectedDate.split('-').map(Number);
+  const d=new Date(Y,Mo-1,D); d.setDate(d.getDate()+n);
+  selectedDate=ymd(d); render();
+}
+function setDia(v){ if(v){ selectedDate=v; render(); } }
+function irHoje(){ selectedDate=ymdHoje(); render(); }
+
+/* ================= Filtro via tiles ================= */
+function filtrarTile(cor){
+  filtroStatus = (filtroStatus===cor)?'':cor;
+  document.querySelectorAll('.tile').forEach(t=>t.classList.toggle('sel', t.dataset.f===filtroStatus));
+  const fa=$('filtroAtivo');
+  if(filtroStatus){ fa.className=''; fa.innerHTML=`Filtrando: <b>${filtroStatus}</b> <a href="#" onclick="filtrarTile('${filtroStatus}');return false" style="color:var(--accent)">limpar ✕</a>`; }
+  else fa.className='hidden';
+  render();
+}
+
+/* ================= Render coordenador ================= */
+function render(){ mode==='coord'?renderCoord():renderDriver(); }
+
 function renderCoord(){
-  const q = ($('busca').value||'').toLowerCase();
-  const fs = $('filtroStatus').value;
+  atualizaBarraDia();
+  const q=($('busca').value||'').toLowerCase();
+  const doDia=viagens.filter(v=>v.data===selectedDate);
+
+  // contadores do dia
   let c={verde:0,amarelo:0,vermelho:0,cinza:0};
-  viagens.forEach(v=>{ c[statusGeral(v)]++; });
+  doDia.forEach(v=>c[statusGeral(v)]++);
   $('cVerde').textContent=c.verde; $('cAmarelo').textContent=c.amarelo;
   $('cVermelho').textContent=c.vermelho; $('cAgendado').textContent=c.cinza;
 
-  const ordem={vermelho:0,amarelo:1,verde:2,cinza:3};
-  const lista = viagens
-    .filter(v=>{
-      const txt=`${v.linha} ${v.motorista} ${v.caminhao} ${v.viagem}`.toLowerCase();
-      if(q && !txt.includes(q)) return false;
-      if(fs && statusGeral(v)!==fs) return false;
-      return true;
-    })
-    .sort((a,b)=> ordem[statusGeral(a)]-ordem[statusGeral(b)] || a.entrada.localeCompare(b.entrada));
+  // aplica busca + filtro
+  let lista=doDia.filter(v=>{
+    const txt=`${v.linha} ${v.motorista} ${v.caminhao} ${v.viagem}`.toLowerCase();
+    if(q && !txt.includes(q)) return false;
+    if(filtroStatus && statusGeral(v)!==filtroStatus) return false;
+    return true;
+  });
 
-  const tb=$('tbody');
-  if(!lista.length){ tb.innerHTML=`<tr><td colspan="9" class="empty">Nenhuma linha encontrada.</td></tr>`; return; }
-  tb.innerHTML = lista.map(v=>{
-    const e=statusEntrada(v), d=statusDescarga(v), g=statusGeral(v);
-    const pulse = (g==='amarelo'||g==='vermelho')?'pulse':'';
-    const confCell = v.confEntrada
-      ? `<span class="time-badge">${fmtHora(v.confEntrada)}</span> ${e.nota?`<span class="${e.tipo==='atraso'?'atraso':'adiant'}">${e.tipo==='atraso'?'▲':'●'} ${e.nota}</span>`:''}`
-      : `<span class="pill ${e.cor}">${e.label}${e.nota?` · ${e.nota}`:''}</span>`;
-    const descCell = `<span class="pill ${d.cor}">${d.label}${d.nota?` · ${d.nota}`:''}</span>`;
-    return `<tr>
-      <td><span class="sq ${pulse}" style="background:${CORVAR[g]}" title="${g}"></span></td>
-      <td><div class="linha-name">${esc(v.linha)}</div><div class="sub">Viagem #${esc(v.viagem)}</div></td>
-      <td>${esc(v.motorista)}</td>
-      <td class="sub">${esc(v.caminhao)}</td>
-      <td class="time-badge">${esc(v.entrada)}</td>
-      <td>${confCell}</td>
-      <td class="time-badge">${esc(v.saida)}</td>
-      <td>${descCell}</td>
-      <td><button class="rowdel" title="Remover" onclick="remover('${v.id}')">✕</button>
-          <button class="rowdel" title="Editar" onclick="editar('${v.id}')">✎</button></td>
-    </tr>`;
-  }).join('');
+  // agrupa por LINHA
+  const grupos={};
+  lista.forEach(v=>{ (grupos[v.linha]=grupos[v.linha]||[]).push(v); });
 
-  $('foot').innerHTML = `🟢 confirmado no app · 🟡 aguardando (janela de ${tolMin()} min) · 🔴 passou da tolerância · ⚪ ainda vai começar.
-    &nbsp;|&nbsp; ${viagens.length} linha(s) cadastrada(s). Os dados ficam salvos neste navegador.`;
+  const ordemStatus={vermelho:0,amarelo:1,verde:2,cinza:3};
+  const piorDaLinha=arr=>arr.map(statusGeral).sort((a,b)=>ordemStatus[a]-ordemStatus[b])[0];
+
+  const nomesLinhas=Object.keys(grupos).sort((a,b)=>{
+    const pa=ordemStatus[piorDaLinha(grupos[a])], pb=ordemStatus[piorDaLinha(grupos[b])];
+    return pa-pb || a.localeCompare(b);
+  });
+
+  const board=$('board');
+  if(!nomesLinhas.length){
+    board.innerHTML=`<div class="empty">Nenhuma entrega para este dia.<br><br><button class="btn" onclick="abrirModal()">＋ Cadastrar entrega</button></div>`;
+  }else{
+    board.innerHTML=nomesLinhas.map(nome=>{
+      const arr=grupos[nome].sort((a,b)=>a.entrada.localeCompare(b.entrada));
+      const gLinha=piorDaLinha(arr);
+      const pulse=(gLinha==='amarelo'||gLinha==='vermelho')?'pulse':'';
+      const items=arr.map(v=>{
+        const e=statusEntrada(v), d=statusDescarga(v), g=statusGeral(v);
+        const statusPill = !v.confEntrada
+          ? `<span class="pill ${e.cor}">${e.label}${e.nota?` · ${e.nota}`:''}</span>`
+          : `<span class="pill ${d.cor}">${d.label}${d.nota?` · ${d.nota}`:''}</span>`;
+        const confInfo = v.confEntrada?`<span class="conf-time">✓ entrou ${fmtHora(v.confEntrada)}</span>`:'';
+        return `<div class="delivery">
+          <div class="del-time">
+            <div class="h" style="color:${CORVAR[g]}">${esc(v.entrada)}</div>
+            <div class="arrow">▾</div>
+            <div class="s">${esc(v.saida)}</div>
+          </div>
+          <div class="del-main">
+            <div class="who">${esc(v.motorista)} <span style="color:var(--muted);font-weight:500">· viagem #${esc(v.viagem)}</span></div>
+            <div class="meta">🚛 ${esc(v.caminhao)}</div>
+            <div class="del-actions">
+              <button class="minibtn" title="Editar" onclick="editar('${v.id}')">✎</button>
+              <button class="minibtn" title="Remover" onclick="remover('${v.id}')">✕</button>
+            </div>
+          </div>
+          <div class="del-status">${statusPill}${confInfo}</div>
+        </div>`;
+      }).join('');
+      return `<div class="linecard ${gLinha}">
+        <div class="lc-head">
+          <span class="sq ${pulse}" style="background:${CORVAR[gLinha]}"></span>
+          <span class="lc-title">${esc(nome)}</span>
+          <span class="lc-count">${arr.length} entrega${arr.length>1?'s':''}</span>
+        </div>
+        <div class="lc-body">${items}</div>
+      </div>`;
+    }).join('');
+  }
+
+  $('foot').innerHTML=`🟢 confirmado no app · 🟡 aguardando (janela de ${tolMin()} min) · 🔴 passou da tolerância · ⚪ ainda vai começar.
+    &nbsp;|&nbsp; ${doDia.length} entrega(s) neste dia, em ${nomesLinhas.length} linha(s). Dados salvos neste navegador.`;
 }
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 /* ================= Modal ================= */
-function abrirModal(){ $('editId').value=''; $('modalTitle').textContent='Nova linha';
+function abrirModal(){ $('editId').value=''; $('modalTitle').textContent='Nova entrega';
   ['fLinha','fMotorista','fCaminhao'].forEach(i=>$(i).value=''); $('fViagem').value='';
-  $('fEntrada').value='07:40'; $('fSaida').value='08:00'; $('overlay').classList.add('open'); }
+  $('fData').value=selectedDate; $('fEntrada').value='07:40'; $('fSaida').value='08:00';
+  $('overlay').classList.add('open'); }
 function fecharModal(){ $('overlay').classList.remove('open'); }
 function editar(idv){ const v=viagens.find(x=>x.id===idv); if(!v)return;
-  $('editId').value=v.id; $('modalTitle').textContent='Editar linha';
+  $('editId').value=v.id; $('modalTitle').textContent='Editar entrega';
   $('fLinha').value=v.linha; $('fViagem').value=v.viagem; $('fMotorista').value=v.motorista;
-  $('fCaminhao').value=v.caminhao; $('fEntrada').value=v.entrada; $('fSaida').value=v.saida;
+  $('fCaminhao').value=v.caminhao; $('fData').value=v.data; $('fEntrada').value=v.entrada; $('fSaida').value=v.saida;
   $('overlay').classList.add('open'); }
 function salvarLinha(){
   const linha=$('fLinha').value.trim(), mot=$('fMotorista').value.trim();
   if(!linha||!mot){ alert('Preencha ao menos a Linha e o Motorista.'); return; }
   const dados={ linha, viagem:$('fViagem').value||'-', motorista:mot,
-    caminhao:$('fCaminhao').value.trim()||'—', entrada:$('fEntrada').value, saida:$('fSaida').value };
+    caminhao:$('fCaminhao').value.trim()||'—', data:$('fData').value||ymdHoje(),
+    entrada:$('fEntrada').value, saida:$('fSaida').value };
   const eid=$('editId').value;
-  if(eid){ Object.assign(viagens.find(x=>x.id===eid), dados); }
-  else{ viagens.push({id:id(), ...dados, confEntrada:null, confDescarga:null}); }
+  if(eid){ Object.assign(viagens.find(x=>x.id===eid),dados); }
+  else{ viagens.push({id:id(),...dados,confEntrada:null,confDescarga:null}); selectedDate=dados.data; }
   salvar(); fecharModal(); render(); popularMotoristas();
 }
-function remover(idv){ if(!confirm('Remover esta linha?'))return;
+function remover(idv){ if(!confirm('Remover esta entrega?'))return;
   viagens=viagens.filter(x=>x.id!==idv); salvar(); render(); popularMotoristas(); }
 
 /* ================= App do motorista ================= */
 function popularMotoristas(){
   const nomes=[...new Set(viagens.map(v=>v.motorista))].sort();
   const sel=$('driverSelect');
-  sel.innerHTML = nomes.length ? nomes.map(n=>`<option>${esc(n)}</option>`).join('')
-                               : `<option value="">— nenhum motorista —</option>`;
+  sel.innerHTML=nomes.length?nomes.map(n=>`<option>${esc(n)}</option>`).join(''):`<option value="">— nenhum motorista —</option>`;
 }
 function entrarMotorista(){
   const n=$('driverSelect').value; if(!n)return;
   motoristaAtual=n; $('driverLogin').classList.add('hidden'); $('driverPanel').classList.remove('hidden');
-  $('dNome').textContent=n; $('dAvatar').textContent=n[0].toUpperCase();
-  renderDriver();
+  $('dNome').textContent=n; $('dAvatar').textContent=n[0].toUpperCase(); renderDriver();
 }
 function sairMotorista(){ motoristaAtual=null; $('driverPanel').classList.add('hidden'); $('driverLogin').classList.remove('hidden'); }
-
 function renderDriver(){
-  if(!motoristaAtual) return;
-  const minhas=viagens.filter(v=>v.motorista===motoristaAtual)
-    .sort((a,b)=>a.entrada.localeCompare(b.entrada));
+  if(!motoristaAtual)return;
+  const hoje=ymdHoje();
+  const minhas=viagens.filter(v=>v.motorista===motoristaAtual && v.data===hoje).sort((a,b)=>a.entrada.localeCompare(b.entrada));
   const pend=minhas.filter(v=>!v.confDescarga).length;
-  $('dResumo').textContent=`${minhas.length} viagem(ns) hoje · ${pend} pendente(s)`;
+  $('dResumo').textContent=`${minhas.length} entrega(s) hoje · ${pend} pendente(s)`;
   const wrap=$('driverTrips');
-  if(!minhas.length){ wrap.innerHTML=`<div class="empty">Nenhuma viagem atribuída a você hoje.</div>`; return; }
+  if(!minhas.length){ wrap.innerHTML=`<div class="empty">Nenhuma entrega atribuída a você hoje.</div>`; return; }
   wrap.innerHTML=minhas.map(v=>{
     const e=statusEntrada(v), d=statusDescarga(v), g=statusGeral(v);
-    let acoes='';
-    if(!v.confEntrada){
-      acoes=`<button class="btn verde" onclick="confirmarEntrada('${v.id}')">✅ Confirmar entrada</button>`;
-    }else if(!v.confDescarga){
-      acoes=`<div class="done-stamp">Entrou às ${fmtHora(v.confEntrada)}</div>
-             <button class="btn azul" onclick="confirmarDescarga('${v.id}')">📦 Confirmar descarga</button>`;
-    }else{
-      acoes=`<div class="done-stamp">✔ Entrada ${fmtHora(v.confEntrada)} · Descarga ${fmtHora(v.confDescarga)} — viagem concluída</div>`;
-    }
-    const statusPill = !v.confEntrada
+    let acoes;
+    if(!v.confEntrada) acoes=`<button class="btn verde" onclick="confirmarEntrada('${v.id}')">✅ Confirmar entrada</button>`;
+    else if(!v.confDescarga) acoes=`<div class="done-stamp">Entrou às ${fmtHora(v.confEntrada)}</div><button class="btn azul" onclick="confirmarDescarga('${v.id}')">📦 Confirmar descarga</button>`;
+    else acoes=`<div class="done-stamp">✔ Entrada ${fmtHora(v.confEntrada)} · Descarga ${fmtHora(v.confDescarga)} — concluída</div>`;
+    const pill = !v.confEntrada
       ? `<span class="pill ${e.cor}">${e.label}${e.nota?` · ${e.nota}`:''}</span>`
       : `<span class="pill ${d.cor}">${d.label}${d.nota?` · ${d.nota}`:''}</span>`;
     return `<div class="trip-card ${g}">
       <div class="trip-top">
-        <div><div class="trip-title">${esc(v.linha)} · Viagem #${esc(v.viagem)}</div>
-             <div class="sub">Caminhão ${esc(v.caminhao)}</div></div>
-        ${statusPill}
+        <div><div class="trip-title">${esc(v.linha)} · Viagem #${esc(v.viagem)}</div><div class="sub" style="color:var(--muted);font-size:12px">Caminhão ${esc(v.caminhao)}</div></div>${pill}
       </div>
       <div class="trip-meta">
         <div><div class="k">Entrada prevista</div><div class="val">${esc(v.entrada)}</div></div>
@@ -491,20 +545,15 @@ function renderDriver(){
     </div>`;
   }).join('');
 }
-function confirmarEntrada(idv){ const v=viagens.find(x=>x.id===idv); if(!v)return;
-  v.confEntrada=new Date(); salvar(); renderDriver(); }
-function confirmarDescarga(idv){ const v=viagens.find(x=>x.id===idv); if(!v)return;
-  if(!v.confEntrada) v.confEntrada=new Date(); v.confDescarga=new Date(); salvar(); renderDriver(); }
+function confirmarEntrada(idv){ const v=viagens.find(x=>x.id===idv); if(!v)return; v.confEntrada=new Date(); salvar(); renderDriver(); }
+function confirmarDescarga(idv){ const v=viagens.find(x=>x.id===idv); if(!v)return; if(!v.confEntrada)v.confEntrada=new Date(); v.confDescarga=new Date(); salvar(); renderDriver(); }
 
 /* ================= Modo / relógio ================= */
 function setMode(m){
   mode=m;
-  $('btnCoord').classList.toggle('active', m==='coord');
-  $('btnDriver').classList.toggle('active', m==='driver');
-  $('viewCoord').classList.toggle('hidden', m!=='coord');
-  $('viewDriver').classList.toggle('hidden', m!=='driver');
-  if(m==='driver') popularMotoristas();
-  render();
+  $('btnCoord').classList.toggle('active',m==='coord'); $('btnDriver').classList.toggle('active',m==='driver');
+  $('viewCoord').classList.toggle('hidden',m!=='coord'); $('viewDriver').classList.toggle('hidden',m!=='driver');
+  if(m==='driver')popularMotoristas(); render();
 }
 function tick(){
   const d=new Date();
@@ -512,13 +561,11 @@ function tick(){
   $('today').textContent=d.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
   render();
 }
-
 /* ================= Boot ================= */
 (function init(){
-  const savedTol=localStorage.getItem(LS_TOL); if(savedTol!==null) $('tol').value=savedTol;
-  carregar(); popularMotoristas(); tick();
-  setInterval(tick, 1000);
-  $('overlay').addEventListener('click', e=>{ if(e.target===$('overlay')) fecharModal(); });
+  const t=localStorage.getItem(LS_TOL); if(t!==null)$('tol').value=t;
+  carregar(); popularMotoristas(); tick(); setInterval(tick,1000);
+  $('overlay').addEventListener('click',e=>{ if(e.target===$('overlay'))fecharModal(); });
 })();
 </script>
 </body>
