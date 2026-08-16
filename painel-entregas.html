@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Entregas — Monitoramento de Linhas</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --line:#2a3340;
+    --txt:#e6edf3; --muted:#8b98a5; --accent:#3b82f6;
+    --verde:#22c55e; --amarelo:#eab308; --vermelho:#ef4444; --cinza:#64748b; --azul:#38bdf8;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;
+    background:var(--bg); color:var(--txt); min-height:100vh; -webkit-font-smoothing:antialiased;
+  }
+  /* ---------- Topbar ---------- */
+  header{
+    position:sticky; top:0; z-index:50;
+    background:linear-gradient(180deg,#161b22,#12161c);
+    border-bottom:1px solid var(--line); padding:10px 16px;
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px}
+  .brand .logo{
+    width:34px;height:34px;border-radius:9px;
+    background:linear-gradient(135deg,#3b82f6,#22c55e);
+    display:grid;place-items:center;font-size:18px
+  }
+  .brand small{display:block;font-size:11px;color:var(--muted);font-weight:500}
+  .clock{
+    margin-left:auto;text-align:right;font-variant-numeric:tabular-nums
+  }
+  .clock .time{font-size:26px;font-weight:700;letter-spacing:1px}
+  .clock .date{font-size:12px;color:var(--muted);text-transform:capitalize}
+  .modeswitch{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px}
+  .modeswitch button{
+    border:0;background:transparent;color:var(--muted);font-weight:600;
+    padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;display:flex;gap:6px;align-items:center
+  }
+  .modeswitch button.active{background:var(--accent);color:#fff}
+
+  main{padding:16px;max-width:1400px;margin:0 auto}
+
+  /* ---------- Summary tiles ---------- */
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+  .tile{
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;
+    display:flex;align-items:center;gap:12px;position:relative;overflow:hidden
+  }
+  .tile .dot{width:14px;height:14px;border-radius:4px;flex:0 0 auto}
+  .tile .n{font-size:28px;font-weight:800;line-height:1}
+  .tile .lbl{font-size:12px;color:var(--muted);margin-top:2px}
+  .tile.v{border-color:rgba(34,197,94,.35)} .tile.a{border-color:rgba(234,179,8,.35)}
+  .tile.r{border-color:rgba(239,68,68,.35)} .tile.g{border-color:rgba(100,116,139,.35)}
+
+  /* ---------- Controls ---------- */
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  .controls input[type=search], .controls select, input.f, select.f{
+    background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+    padding:9px 12px;border-radius:9px;font-size:13px;outline:none
+  }
+  .controls input[type=search]{min-width:220px}
+  .btn{
+    background:var(--accent);border:0;color:#fff;font-weight:600;padding:9px 14px;
+    border-radius:9px;cursor:pointer;font-size:13px;display:inline-flex;gap:6px;align-items:center
+  }
+  .btn.ghost{background:var(--panel2);border:1px solid var(--line);color:var(--txt)}
+  .btn.small{padding:6px 10px;font-size:12px}
+  .btn.verde{background:var(--verde)} .btn.azul{background:var(--azul);color:#04222e}
+  .spacer{margin-left:auto}
+  .tol{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+  .tol input{width:60px}
+
+  /* ---------- Table ---------- */
+  .tablewrap{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:auto}
+  table{width:100%;border-collapse:collapse;min-width:900px}
+  thead th{
+    text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);
+    padding:12px 14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);white-space:nowrap
+  }
+  tbody td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:middle}
+  tbody tr:hover{background:rgba(255,255,255,.02)}
+  tbody tr:last-child td{border-bottom:0}
+  .sq{width:26px;height:26px;border-radius:7px;display:inline-block;box-shadow:0 0 0 1px rgba(0,0,0,.3) inset}
+  .sq.pulse{animation:pulse 1.1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .linha-name{font-weight:700}
+  .sub{font-size:12px;color:var(--muted)}
+  .time-badge{font-variant-numeric:tabular-nums;font-weight:600}
+  .pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+  .pill.verde{background:rgba(34,197,94,.15);color:#4ade80}
+  .pill.amarelo{background:rgba(234,179,8,.15);color:#facc15}
+  .pill.vermelho{background:rgba(239,68,68,.15);color:#f87171}
+  .pill.cinza{background:rgba(100,116,139,.18);color:#94a3b8}
+  .pill.azul{background:rgba(56,189,248,.15);color:#7dd3fc}
+  .rowdel{color:var(--muted);cursor:pointer;font-size:16px;background:none;border:0}
+  .rowdel:hover{color:var(--vermelho)}
+  .atraso{color:#f87171;font-weight:700;font-size:12px}
+  .adiant{color:#4ade80;font-size:12px}
+
+  /* ---------- Modal ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
+  .overlay.open{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;width:100%;max-width:520px}
+  .modal h3{margin-bottom:14px;font-size:18px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+  .field label{font-size:12px;color:var(--muted);font-weight:600}
+  .field input, .field select{
+    background:var(--panel2);border:1px solid var(--line);color:var(--txt);padding:10px;border-radius:9px;font-size:14px
+  }
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
+
+  /* ---------- Driver app ---------- */
+  .driver-login{max-width:420px;margin:40px auto;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px;text-align:center}
+  .driver-login h2{margin-bottom:6px}
+  .driver-login p{color:var(--muted);font-size:13px;margin-bottom:18px}
+  .driver-header{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:16px}
+  .avatar{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#22c55e);display:grid;place-items:center;font-weight:800;font-size:18px}
+  .trip-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;border-left:6px solid var(--cinza)}
+  .trip-card.verde{border-left-color:var(--verde)} .trip-card.amarelo{border-left-color:var(--amarelo)}
+  .trip-card.vermelho{border-left-color:var(--vermelho)} .trip-card.azul{border-left-color:var(--azul)}
+  .trip-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
+  .trip-title{font-weight:800;font-size:16px}
+  .trip-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;font-size:13px;margin-bottom:14px}
+  .trip-meta .k{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+  .trip-meta .val{font-weight:700;font-variant-numeric:tabular-nums}
+  .trip-actions{display:flex;gap:10px;flex-wrap:wrap}
+  .trip-actions .btn{flex:1;justify-content:center;padding:12px}
+  .done-stamp{font-size:12px;color:#4ade80;font-weight:700}
+
+  .empty{text-align:center;color:var(--muted);padding:50px 16px}
+  .hidden{display:none!important}
+  .footnote{color:var(--muted);font-size:12px;margin-top:16px;line-height:1.5}
+  @media(max-width:640px){
+    .clock .time{font-size:20px}
+    main{padding:12px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">🚚</div>
+    <div>Painel de Entregas
+      <small id="empresaLbl">Monitoramento de linhas em tempo real</small>
+    </div>
+  </div>
+
+  <div class="modeswitch" role="tablist">
+    <button id="btnCoord" class="active" onclick="setMode('coord')">🖥️ Coordenador</button>
+    <button id="btnDriver" onclick="setMode('driver')">📱 Motorista</button>
+  </div>
+
+  <div class="clock">
+    <div class="time" id="clock">--:--:--</div>
+    <div class="date" id="today">—</div>
+  </div>
+</header>
+
+<main>
+  <!-- ============ MODO COORDENADOR ============ -->
+  <section id="viewCoord">
+    <div class="tiles">
+      <div class="tile v"><span class="dot" style="background:var(--verde)"></span><div><div class="n" id="cVerde">0</div><div class="lbl">No horário / confirmado</div></div></div>
+      <div class="tile a"><span class="dot" style="background:var(--amarelo)"></span><div><div class="n" id="cAmarelo">0</div><div class="lbl">Aguardando confirmação</div></div></div>
+      <div class="tile r"><span class="dot" style="background:var(--vermelho)"></span><div><div class="n" id="cVermelho">0</div><div class="lbl">Atrasado</div></div></div>
+      <div class="tile g"><span class="dot" style="background:var(--cinza)"></span><div><div class="n" id="cAgendado">0</div><div class="lbl">Agendado (a seguir)</div></div></div>
+    </div>
+
+    <div class="controls">
+      <input type="search" id="busca" placeholder="🔍 Buscar linha, motorista, caminhão…" oninput="render()">
+      <select class="f" id="filtroStatus" onchange="render()">
+        <option value="">Todos os status</option>
+        <option value="verde">🟢 No horário</option>
+        <option value="amarelo">🟡 Aguardando</option>
+        <option value="vermelho">🔴 Atrasado</option>
+        <option value="cinza">⚪ Agendado</option>
+      </select>
+      <div class="tol">Tolerância (amarelo):
+        <input type="number" class="f" id="tol" min="0" max="30" value="1" onchange="salvarTol()"> min
+      </div>
+      <div class="spacer"></div>
+      <button class="btn ghost small" onclick="carregarExemplo()">↻ Dados de exemplo</button>
+      <button class="btn" onclick="abrirModal()">＋ Nova linha</button>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:40px">St.</th>
+            <th>Linha / Viagem</th>
+            <th>Motorista</th>
+            <th>Caminhão</th>
+            <th>Entrada prev.</th>
+            <th>Confirmou entrada</th>
+            <th>Saída prev.</th>
+            <th>Descarga</th>
+            <th style="width:40px"></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <p class="footnote" id="foot"></p>
+  </section>
+
+  <!-- ============ MODO MOTORISTA ============ -->
+  <section id="viewDriver" class="hidden">
+    <div id="driverLogin" class="driver-login">
+      <h2>App do Motorista</h2>
+      <p>Selecione seu nome para ver suas viagens de hoje.</p>
+      <div class="field">
+        <select id="driverSelect" class="f" style="width:100%;padding:12px"></select>
+      </div>
+      <button class="btn" style="width:100%;justify-content:center;padding:12px" onclick="entrarMotorista()">Entrar</button>
+    </div>
+
+    <div id="driverPanel" class="hidden">
+      <div class="driver-header">
+        <div class="avatar" id="dAvatar">M</div>
+        <div style="flex:1">
+          <div style="font-weight:800;font-size:16px" id="dNome">—</div>
+          <div class="sub" id="dResumo">—</div>
+        </div>
+        <button class="btn ghost small" onclick="sairMotorista()">Trocar</button>
+      </div>
+      <div id="driverTrips"></div>
+    </div>
+  </section>
+</main>
+
+<!-- Modal nova/editar linha -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3 id="modalTitle">Nova linha</h3>
+    <input type="hidden" id="editId">
+    <div class="grid2">
+      <div class="field"><label>Linha</label><input id="fLinha" placeholder="Ex: Yoshiwara"></div>
+      <div class="field"><label>Nº da viagem</label><input id="fViagem" type="number" placeholder="2"></div>
+      <div class="field"><label>Motorista</label><input id="fMotorista" placeholder="Ex: Vini"></div>
+      <div class="field"><label>Caminhão / placa</label><input id="fCaminhao" placeholder="Ex: ABC-1D23"></div>
+      <div class="field"><label>Entrada prevista</label><input id="fEntrada" type="time" value="07:40"></div>
+      <div class="field"><label>Saída prevista</label><input id="fSaida" type="time" value="08:00"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="fecharModal()">Cancelar</button>
+      <button class="btn" onclick="salvarLinha()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= Estado ================= */
+const LS_KEY = 'painelEntregas.v1';
+const LS_TOL = 'painelEntregas.tol';
+let viagens = [];
+let mode = 'coord';
+let motoristaAtual = null;
+
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2,'0');
+
+/* Converte "HH:MM" em um Date de HOJE */
+function horaHoje(hhmm){
+  const [h,m] = hhmm.split(':').map(Number);
+  const d = new Date();
+  d.setHours(h,m,0,0);
+  return d;
+}
+function fmtHora(d){ return d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : '—'; }
+function fmtHoraSeg(d){ return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }
+function tolMin(){ return Math.max(0, parseInt($('tol').value) || 0); }
+
+/* ================= Lógica do semáforo ================= */
+/*
+  ENTRADA:
+   - confirmou entrada  -> VERDE  (marca se foi no horário ou com atraso)
+   - não confirmou:
+        agora < entrada                       -> CINZA  (agendado)
+        entrada <= agora <= entrada+tol        -> AMARELO (aguardando confirmação)
+        agora > entrada+tol                    -> VERMELHO (atrasado)
+*/
+function statusEntrada(v){
+  const agora = new Date();
+  const entrada = horaHoje(v.entrada);
+  if(v.confEntrada){
+    const atrasoMin = Math.round((v.confEntrada - entrada)/60000);
+    if(atrasoMin > 0) return {cor:'verde', label:'Entrou', nota:`+${atrasoMin} min`, tipo:'atraso'};
+    return {cor:'verde', label:'Entrou', nota:'no horário', tipo:'ok'};
+  }
+  const tolMs = tolMin()*60000;
+  if(agora < entrada) return {cor:'cinza', label:'Agendado', nota:''};
+  if(agora <= entrada.getTime()+tolMs) return {cor:'amarelo', label:'Aguardando', nota:'confirmar entrada'};
+  const atraso = Math.floor((agora - entrada)/60000);
+  return {cor:'vermelho', label:'Atrasado', nota:`${atraso} min`, tipo:'atraso'};
+}
+
+/* DESCARGA (após entrar): compara com saída prevista */
+function statusDescarga(v){
+  const agora = new Date();
+  const saida = horaHoje(v.saida);
+  if(v.confDescarga){
+    const dif = Math.round((v.confDescarga - saida)/60000);
+    return {cor:'verde', label:'Descarregado', nota: dif>0?`+${dif} min`:'no prazo'};
+  }
+  if(!v.confEntrada) return {cor:'cinza', label:'—', nota:''};
+  const tolMs = tolMin()*60000;
+  if(agora < saida) return {cor:'azul', label:'Em descarga', nota:''};
+  if(agora <= saida.getTime()+tolMs) return {cor:'amarelo', label:'Finalizar', nota:'confirmar descarga'};
+  const atraso = Math.floor((agora - saida)/60000);
+  return {cor:'vermelho', label:'Descarga atrasada', nota:`${atraso} min`, tipo:'atraso'};
+}
+
+/* “status geral” da linha p/ contadores e ordenação */
+function statusGeral(v){
+  const e = statusEntrada(v);
+  if(e.cor === 'vermelho') return 'vermelho';
+  if(e.cor === 'amarelo')  return 'amarelo';
+  if(e.cor === 'cinza')    return 'cinza';
+  // entrou: olha a descarga
+  const d = statusDescarga(v);
+  if(d.cor === 'vermelho') return 'vermelho';
+  if(d.cor === 'amarelo')  return 'amarelo';
+  return 'verde';
+}
+const CORVAR = {verde:'var(--verde)',amarelo:'var(--amarelo)',vermelho:'var(--vermelho)',cinza:'var(--cinza)',azul:'var(--azul)'};
+
+/* ================= Persistência ================= */
+function salvar(){ localStorage.setItem(LS_KEY, JSON.stringify(viagens.map(v=>({
+  ...v,
+  confEntrada: v.confEntrada ? v.confEntrada.getTime() : null,
+  confDescarga: v.confDescarga ? v.confDescarga.getTime() : null
+})))); }
+function carregar(){
+  const raw = localStorage.getItem(LS_KEY);
+  if(!raw){ carregarExemplo(true); return; }
+  try{
+    viagens = JSON.parse(raw).map(v=>({
+      ...v,
+      confEntrada: v.confEntrada ? new Date(v.confEntrada) : null,
+      confDescarga: v.confDescarga ? new Date(v.confDescarga) : null
+    }));
+  }catch(e){ carregarExemplo(true); }
+}
+function salvarTol(){ localStorage.setItem(LS_TOL, $('tol').value); render(); }
+
+/* ================= Dados de exemplo ================= */
+function carregarExemplo(silent){
+  if(!silent && !confirm('Recarregar os dados de exemplo? Isso substitui a lista atual.')) return;
+  const agora = new Date();
+  const hm = (offMin)=>{ const d=new Date(agora.getTime()+offMin*60000); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  viagens = [
+    {id:id(), linha:'Yoshiwara', viagem:2, motorista:'Vini', caminhao:'ABC-1D23', entrada:'07:40', saida:'08:00', confEntrada:null, confDescarga:null},
+    {id:id(), linha:'Serra Azul', viagem:1, motorista:'Marcos',caminhao:'DEF-2G45', entrada:hm(-8), saida:hm(12), confEntrada:new Date(agora.getTime()-7*60000), confDescarga:null},
+    {id:id(), linha:'Centro',    viagem:5, motorista:'Cláudia',caminhao:'GHI-3J67', entrada:hm(-3), saida:hm(20), confEntrada:null, confDescarga:null},
+    {id:id(), linha:'Litoral',   viagem:3, motorista:'Rafael', caminhao:'JKL-4M89', entrada:hm(0),  saida:hm(25), confEntrada:null, confDescarga:null},
+    {id:id(), linha:'Norte',     viagem:7, motorista:'Vini',   caminhao:'MNO-5P01', entrada:hm(15), saida:hm(45), confEntrada:null, confDescarga:null},
+    {id:id(), linha:'Yoshiwara', viagem:8, motorista:'Marcos', caminhao:'PQR-6S23', entrada:hm(-15),saida:hm(-2), confEntrada:new Date(agora.getTime()-16*60000), confDescarga:new Date(agora.getTime()-1*60000)},
+  ];
+  salvar(); render(); popularMotoristas();
+}
+function id(){ return Math.random().toString(36).slice(2,9); }
+
+/* ================= Render coordenador ================= */
+function render(){
+  if(mode==='coord') renderCoord();
+  else renderDriver();
+}
+function renderCoord(){
+  const q = ($('busca').value||'').toLowerCase();
+  const fs = $('filtroStatus').value;
+  let c={verde:0,amarelo:0,vermelho:0,cinza:0};
+  viagens.forEach(v=>{ c[statusGeral(v)]++; });
+  $('cVerde').textContent=c.verde; $('cAmarelo').textContent=c.amarelo;
+  $('cVermelho').textContent=c.vermelho; $('cAgendado').textContent=c.cinza;
+
+  const ordem={vermelho:0,amarelo:1,verde:2,cinza:3};
+  const lista = viagens
+    .filter(v=>{
+      const txt=`${v.linha} ${v.motorista} ${v.caminhao} ${v.viagem}`.toLowerCase();
+      if(q && !txt.includes(q)) return false;
+      if(fs && statusGeral(v)!==fs) return false;
+      return true;
+    })
+    .sort((a,b)=> ordem[statusGeral(a)]-ordem[statusGeral(b)] || a.entrada.localeCompare(b.entrada));
+
+  const tb=$('tbody');
+  if(!lista.length){ tb.innerHTML=`<tr><td colspan="9" class="empty">Nenhuma linha encontrada.</td></tr>`; return; }
+  tb.innerHTML = lista.map(v=>{
+    const e=statusEntrada(v), d=statusDescarga(v), g=statusGeral(v);
+    const pulse = (g==='amarelo'||g==='vermelho')?'pulse':'';
+    const confCell = v.confEntrada
+      ? `<span class="time-badge">${fmtHora(v.confEntrada)}</span> ${e.nota?`<span class="${e.tipo==='atraso'?'atraso':'adiant'}">${e.tipo==='atraso'?'▲':'●'} ${e.nota}</span>`:''}`
+      : `<span class="pill ${e.cor}">${e.label}${e.nota?` · ${e.nota}`:''}</span>`;
+    const descCell = `<span class="pill ${d.cor}">${d.label}${d.nota?` · ${d.nota}`:''}</span>`;
+    return `<tr>
+      <td><span class="sq ${pulse}" style="background:${CORVAR[g]}" title="${g}"></span></td>
+      <td><div class="linha-name">${esc(v.linha)}</div><div class="sub">Viagem #${esc(v.viagem)}</div></td>
+      <td>${esc(v.motorista)}</td>
+      <td class="sub">${esc(v.caminhao)}</td>
+      <td class="time-badge">${esc(v.entrada)}</td>
+      <td>${confCell}</td>
+      <td class="time-badge">${esc(v.saida)}</td>
+      <td>${descCell}</td>
+      <td><button class="rowdel" title="Remover" onclick="remover('${v.id}')">✕</button>
+          <button class="rowdel" title="Editar" onclick="editar('${v.id}')">✎</button></td>
+    </tr>`;
+  }).join('');
+
+  $('foot').innerHTML = `🟢 confirmado no app · 🟡 aguardando (janela de ${tolMin()} min) · 🔴 passou da tolerância · ⚪ ainda vai começar.
+    &nbsp;|&nbsp; ${viagens.length} linha(s) cadastrada(s). Os dados ficam salvos neste navegador.`;
+}
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ================= Modal ================= */
+function abrirModal(){ $('editId').value=''; $('modalTitle').textContent='Nova linha';
+  ['fLinha','fMotorista','fCaminhao'].forEach(i=>$(i).value=''); $('fViagem').value='';
+  $('fEntrada').value='07:40'; $('fSaida').value='08:00'; $('overlay').classList.add('open'); }
+function fecharModal(){ $('overlay').classList.remove('open'); }
+function editar(idv){ const v=viagens.find(x=>x.id===idv); if(!v)return;
+  $('editId').value=v.id; $('modalTitle').textContent='Editar linha';
+  $('fLinha').value=v.linha; $('fViagem').value=v.viagem; $('fMotorista').value=v.motorista;
+  $('fCaminhao').value=v.caminhao; $('fEntrada').value=v.entrada; $('fSaida').value=v.saida;
+  $('overlay').classList.add('open'); }
+function salvarLinha(){
+  const linha=$('fLinha').value.trim(), mot=$('fMotorista').value.trim();
+  if(!linha||!mot){ alert('Preencha ao menos a Linha e o Motorista.'); return; }
+  const dados={ linha, viagem:$('fViagem').value||'-', motorista:mot,
+    caminhao:$('fCaminhao').value.trim()||'—', entrada:$('fEntrada').value, saida:$('fSaida').value };
+  const eid=$('editId').value;
+  if(eid){ Object.assign(viagens.find(x=>x.id===eid), dados); }
+  else{ viagens.push({id:id(), ...dados, confEntrada:null, confDescarga:null}); }
+  salvar(); fecharModal(); render(); popularMotoristas();
+}
+function remover(idv){ if(!confirm('Remover esta linha?'))return;
+  viagens=viagens.filter(x=>x.id!==idv); salvar(); render(); popularMotoristas(); }
+
+/* ================= App do motorista ================= */
+function popularMotoristas(){
+  const nomes=[...new Set(viagens.map(v=>v.motorista))].sort();
+  const sel=$('driverSelect');
+  sel.innerHTML = nomes.length ? nomes.map(n=>`<option>${esc(n)}</option>`).join('')
+                               : `<option value="">— nenhum motorista —</option>`;
+}
+function entrarMotorista(){
+  const n=$('driverSelect').value; if(!n)return;
+  motoristaAtual=n; $('driverLogin').classList.add('hidden'); $('driverPanel').classList.remove('hidden');
+  $('dNome').textContent=n; $('dAvatar').textContent=n[0].toUpperCase();
+  renderDriver();
+}
+function sairMotorista(){ motoristaAtual=null; $('driverPanel').classList.add('hidden'); $('driverLogin').classList.remove('hidden'); }
+
+function renderDriver(){
+  if(!motoristaAtual) return;
+  const minhas=viagens.filter(v=>v.motorista===motoristaAtual)
+    .sort((a,b)=>a.entrada.localeCompare(b.entrada));
+  const pend=minhas.filter(v=>!v.confDescarga).length;
+  $('dResumo').textContent=`${minhas.length} viagem(ns) hoje · ${pend} pendente(s)`;
+  const wrap=$('driverTrips');
+  if(!minhas.length){ wrap.innerHTML=`<div class="empty">Nenhuma viagem atribuída a você hoje.</div>`; return; }
+  wrap.innerHTML=minhas.map(v=>{
+    const e=statusEntrada(v), d=statusDescarga(v), g=statusGeral(v);
+    let acoes='';
+    if(!v.confEntrada){
+      acoes=`<button class="btn verde" onclick="confirmarEntrada('${v.id}')">✅ Confirmar entrada</button>`;
+    }else if(!v.confDescarga){
+      acoes=`<div class="done-stamp">Entrou às ${fmtHora(v.confEntrada)}</div>
+             <button class="btn azul" onclick="confirmarDescarga('${v.id}')">📦 Confirmar descarga</button>`;
+    }else{
+      acoes=`<div class="done-stamp">✔ Entrada ${fmtHora(v.confEntrada)} · Descarga ${fmtHora(v.confDescarga)} — viagem concluída</div>`;
+    }
+    const statusPill = !v.confEntrada
+      ? `<span class="pill ${e.cor}">${e.label}${e.nota?` · ${e.nota}`:''}</span>`
+      : `<span class="pill ${d.cor}">${d.label}${d.nota?` · ${d.nota}`:''}</span>`;
+    return `<div class="trip-card ${g}">
+      <div class="trip-top">
+        <div><div class="trip-title">${esc(v.linha)} · Viagem #${esc(v.viagem)}</div>
+             <div class="sub">Caminhão ${esc(v.caminhao)}</div></div>
+        ${statusPill}
+      </div>
+      <div class="trip-meta">
+        <div><div class="k">Entrada prevista</div><div class="val">${esc(v.entrada)}</div></div>
+        <div><div class="k">Saída prevista</div><div class="val">${esc(v.saida)}</div></div>
+      </div>
+      <div class="trip-actions">${acoes}</div>
+    </div>`;
+  }).join('');
+}
+function confirmarEntrada(idv){ const v=viagens.find(x=>x.id===idv); if(!v)return;
+  v.confEntrada=new Date(); salvar(); renderDriver(); }
+function confirmarDescarga(idv){ const v=viagens.find(x=>x.id===idv); if(!v)return;
+  if(!v.confEntrada) v.confEntrada=new Date(); v.confDescarga=new Date(); salvar(); renderDriver(); }
+
+/* ================= Modo / relógio ================= */
+function setMode(m){
+  mode=m;
+  $('btnCoord').classList.toggle('active', m==='coord');
+  $('btnDriver').classList.toggle('active', m==='driver');
+  $('viewCoord').classList.toggle('hidden', m!=='coord');
+  $('viewDriver').classList.toggle('hidden', m!=='driver');
+  if(m==='driver') popularMotoristas();
+  render();
+}
+function tick(){
+  const d=new Date();
+  $('clock').textContent=fmtHoraSeg(d);
+  $('today').textContent=d.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  render();
+}
+
+/* ================= Boot ================= */
+(function init(){
+  const savedTol=localStorage.getItem(LS_TOL); if(savedTol!==null) $('tol').value=savedTol;
+  carregar(); popularMotoristas(); tick();
+  setInterval(tick, 1000);
+  $('overlay').addEventListener('click', e=>{ if(e.target===$('overlay')) fecharModal(); });
+})();
+</script>
+</body>
+</html>
