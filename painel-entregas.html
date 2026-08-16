@@ -93,46 +93,40 @@
   .tol{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
   .tol input{width:60px}
 
-  /* ---------- Grade de cards por LINHA ---------- */
-  .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;align-items:start}
-  .linecard{
-    background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;
-    border-top:5px solid var(--cinza)
+  /* ---------- Grade de CARDS (um por Bin) ---------- */
+  .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:14px;align-items:start}
+  .bincard{
+    background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:15px 16px 30px;
+    border-left:6px solid var(--cinza);position:relative
   }
-  .linecard.verde{border-top-color:var(--verde)} .linecard.amarelo{border-top-color:var(--amarelo)}
-  .linecard.vermelho{border-top-color:var(--vermelho)} .linecard.azul{border-top-color:var(--azul)}
-  .lc-head{
-    display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line);
-    background:linear-gradient(180deg,rgba(255,255,255,.03),transparent)
-  }
-  .lc-head .sq{width:16px;height:16px;border-radius:5px;flex:0 0 auto}
-  .lc-head .sq.pulse{animation:pulse 1.1s infinite}
+  .bincard.verde{border-left-color:var(--verde)} .bincard.amarelo{border-left-color:var(--amarelo)}
+  .bincard.vermelho{border-left-color:var(--vermelho)} .bincard.cinza{border-left-color:var(--cinza)}
+  .bc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .bc-linha{font-size:18px;font-weight:800;line-height:1.15}
+  .bc-sub{font-size:13px;color:var(--muted);margin-top:3px}
+  .bc-sub b{color:var(--txt)}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-  .lc-title{font-weight:800;font-size:16px;flex:1}
-  .lc-count{font-size:11px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);padding:3px 9px;border-radius:20px}
-  .lc-body{padding:6px 0}
-  /* uma entrega dentro do card */
-  .delivery{display:flex;gap:12px;padding:11px 16px;align-items:center;border-bottom:1px solid var(--line)}
-  .delivery:last-child{border-bottom:0}
-  .del-time{
-    text-align:center;min-width:58px
-  }
-  .del-time .h{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
-  .del-time .arrow{font-size:10px;color:var(--muted)}
-  .del-time .s{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
-  .del-main{flex:1;min-width:0}
-  .del-main .who{font-weight:700;font-size:14px}
-  .del-main .meta{font-size:12px;color:var(--muted);margin-top:2px}
-  .del-status{text-align:right;display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+  @keyframes glow{0%,100%{box-shadow:0 0 0 3px var(--halo),0 0 12px 3px var(--halo)}50%{box-shadow:0 0 0 3px transparent,0 0 3px 0 var(--halo)}}
+  .luz{width:24px;height:24px;border-radius:50%;flex:0 0 auto;background:var(--cinza);box-shadow:0 0 0 3px var(--halo)}
+  .luz.on{animation:glow 1.4s infinite}
+  .horarios{display:flex;align-items:flex-end;gap:14px;margin:16px 0 12px}
+  .hbox .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  .hbox .hh{font-size:25px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.15}
+  .harrow{color:var(--muted);font-size:18px;padding-bottom:3px}
+  .estado{display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px}
+  .estado .ic{font-size:14px}
+  .estado-sub{font-size:12px;color:var(--muted);margin-top:4px}
+  .bc-actions{position:absolute;bottom:10px;right:12px;display:flex;gap:6px;opacity:.4}
+  .bincard:hover .bc-actions{opacity:1}
+  .minibtn{border:0;background:var(--panel2);color:var(--muted);border:1px solid var(--line);width:26px;height:26px;border-radius:7px;cursor:pointer;font-size:12px}
+  .minibtn:hover{color:var(--txt)}
+  /* pills (usadas no app do motorista) */
   .pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
   .pill.verde{background:rgba(34,197,94,.15);color:#4ade80}
   .pill.amarelo{background:rgba(234,179,8,.15);color:#facc15}
   .pill.vermelho{background:rgba(239,68,68,.15);color:#f87171}
   .pill.cinza{background:rgba(100,116,139,.18);color:#94a3b8}
   .pill.azul{background:rgba(56,189,248,.15);color:#7dd3fc}
-  .del-actions{display:flex;gap:6px;margin-top:2px}
-  .minibtn{border:0;background:var(--panel2);color:var(--muted);border:1px solid var(--line);width:26px;height:26px;border-radius:7px;cursor:pointer;font-size:12px}
-  .minibtn:hover{color:var(--txt)}
   .conf-time{font-size:11px;color:#4ade80;font-weight:700;font-variant-numeric:tabular-nums}
 
   /* ---------- Modal ---------- */
@@ -268,7 +262,7 @@
     <input type="hidden" id="editId">
     <div class="grid2">
       <div class="field"><label>Linha</label><input id="fLinha" placeholder="Ex: Yoshiwara"></div>
-      <div class="field"><label>Nº da viagem</label><input id="fViagem" type="number" placeholder="2"></div>
+      <div class="field"><label>Bin (nº)</label><input id="fViagem" type="number" placeholder="2"></div>
       <div class="field"><label>Motorista</label><input id="fMotorista" placeholder="Ex: Vini"></div>
       <div class="field"><label>Caminhão / placa</label><input id="fCaminhao" placeholder="Ex: ABC-1D23"></div>
       <div class="field"><label>Dia</label><input id="fData" type="date"></div>
@@ -285,7 +279,7 @@
 
 <script>
 /* ================= Estado ================= */
-const LS_KEY='painelEntregas.v2', LS_TOL='painelEntregas.tol';
+const LS_KEY='painelEntregas.v3', LS_TOL='painelEntregas.tol';
 let viagens=[], mode='coord', motoristaAtual=null;
 let selectedDate=ymdHoje();          // dia visível no painel do coordenador
 let filtroStatus='';                 // filtro por status (via tiles)
@@ -330,12 +324,37 @@ function statusDescarga(v){
   if(agora<=saida.getTime()+tolMs) return {cor:'amarelo',label:'Finalizar',nota:'confirmar descarga'};
   return {cor:'vermelho',label:'Descarga atrasada',nota:`${Math.floor((agora-saida)/60000)} min`,tipo:'atraso'};
 }
-function statusGeral(v){
-  const e=statusEntrada(v);
-  if(e.cor==='vermelho')return'vermelho'; if(e.cor==='amarelo')return'amarelo'; if(e.cor==='cinza')return'cinza';
-  const d=statusDescarga(v);
-  if(d.cor==='vermelho')return'vermelho'; if(d.cor==='amarelo')return'amarelo'; return'verde';
+/* Estado consolidado do Bin: a "luz" do card + rótulo */
+function estado(v){
+  const agora=new Date(), entrada=quando(v.data,v.entrada), saida=quando(v.data,v.saida);
+  const tolMs=tolMin()*60000;
+  const C={verde:'#22c55e',amarelo:'#eab308',vermelho:'#ef4444',cinza:'#64748b'};
+
+  // FINALIZADO (descarga confirmada)
+  if(v.confDescarga){
+    if(v.confDescarga.getTime()<=saida.getTime()+tolMs)
+      return {cat:'verde',luz:C.verde,ic:'✅',titulo:'Finalizado no prazo',sub:`descarga confirmada às ${fmtHora(v.confDescarga)}`,on:false};
+    const min=Math.round((v.confDescarga-saida)/60000);
+    return {cat:'vermelho',luz:C.vermelho,ic:'⛔',titulo:'Finalizado com atraso',sub:`descarga ${fmtHora(v.confDescarga)} · +${min} min`,on:false};
+  }
+  // ENTROU (em descarga)
+  if(v.confEntrada){
+    if(agora.getTime()>saida.getTime()+tolMs)
+      return {cat:'vermelho',luz:C.vermelho,ic:'🔴',titulo:'Descarga atrasada',sub:`entrou ${fmtHora(v.confEntrada)} · passou da saída`,on:true};
+    if(v.confEntrada.getTime()<=entrada.getTime()+tolMs)
+      return {cat:'verde',luz:C.verde,ic:'🟢',titulo:'Entrou no horário',sub:`em descarga desde ${fmtHora(v.confEntrada)}`,on:false};
+    const min=Math.round((v.confEntrada-entrada)/60000);
+    return {cat:'amarelo',luz:C.amarelo,ic:'🟡',titulo:'Entrou atrasado',sub:`entrou ${fmtHora(v.confEntrada)} · +${min} min`,on:false};
+  }
+  // NÃO ENTROU
+  if(agora<entrada)
+    return {cat:'cinza',luz:C.cinza,ic:'⚪',titulo:'Agendado',sub:`entrada prevista às ${v.entrada}`,on:false};
+  if(agora.getTime()<=entrada.getTime()+tolMs)
+    return {cat:'amarelo',luz:C.amarelo,ic:'🟡',titulo:'Aguardando entrada',sub:'confirmar no app',on:true};
+  const min=Math.floor((agora-entrada)/60000);
+  return {cat:'vermelho',luz:C.vermelho,ic:'🔴',titulo:'Atrasado',sub:`${min} min sem confirmar entrada`,on:true};
 }
+function statusGeral(v){ return estado(v).cat; }
 const CORVAR={verde:'var(--verde)',amarelo:'var(--amarelo)',vermelho:'var(--vermelho)',cinza:'var(--cinza)',azul:'var(--azul)'};
 
 /* ================= Persistência ================= */
@@ -358,14 +377,22 @@ function carregarExemplo(silent){
   if(!silent && !confirm('Recarregar os dados de exemplo? Isso substitui a lista atual.')) return;
   const hoje=ymdHoje(), agora=new Date();
   const hm=off=>{ const d=new Date(agora.getTime()+off*60000); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  const at=off=> new Date(agora.getTime()+off*60000);
   viagens=[
-    {id:id(),data:hoje,linha:'Yoshiwara',viagem:2,motorista:'Vini',   caminhao:'ABC-1D23',entrada:'07:40',saida:'08:00',confEntrada:null,confDescarga:null},
-    {id:id(),data:hoje,linha:'Yoshiwara',viagem:8,motorista:'Marcos', caminhao:'PQR-6S23',entrada:hm(-15),saida:hm(-2),confEntrada:new Date(agora.getTime()-16*60000),confDescarga:new Date(agora.getTime()-1*60000)},
-    {id:id(),data:hoje,linha:'Yoshiwara',viagem:11,motorista:'Vini',  caminhao:'ABC-1D23',entrada:hm(90),saida:hm(120),confEntrada:null,confDescarga:null},
-    {id:id(),data:hoje,linha:'Serra Azul',viagem:1,motorista:'Marcos',caminhao:'DEF-2G45',entrada:hm(-8), saida:hm(12), confEntrada:new Date(agora.getTime()-7*60000),confDescarga:null},
-    {id:id(),data:hoje,linha:'Centro',   viagem:5,motorista:'Cláudia',caminhao:'GHI-3J67',entrada:hm(-3), saida:hm(20), confEntrada:null,confDescarga:null},
-    {id:id(),data:hoje,linha:'Litoral',  viagem:3,motorista:'Rafael', caminhao:'JKL-4M89',entrada:hm(0),  saida:hm(25), confEntrada:null,confDescarga:null},
-    {id:id(),data:hoje,linha:'Norte',    viagem:7,motorista:'Vini',   caminhao:'MNO-5P01',entrada:hm(15), saida:hm(45), confEntrada:null,confDescarga:null},
+    // Exemplo literal pedido — Yoshiwara, Bin 2, descarga 07:40 → 08:00
+    {id:id(),data:hoje,linha:'Yoshiwara',viagem:2,motorista:'Vini',    caminhao:'ABC-1D23',entrada:'07:40',saida:'08:00',confEntrada:null,confDescarga:null},
+    // 🟢 entrou no horário (em descarga)
+    {id:id(),data:hoje,linha:'Serra Azul',viagem:4,motorista:'Marcos', caminhao:'DEF-2G45',entrada:hm(-10),saida:hm(15),confEntrada:at(-9),confDescarga:null},
+    // 🔴 atrasado (não confirmou entrada)
+    {id:id(),data:hoje,linha:'Centro',   viagem:1,motorista:'Rafael',  caminhao:'GHI-3J67',entrada:hm(-8), saida:hm(12),confEntrada:null,confDescarga:null},
+    // 🟡 entrou atrasado
+    {id:id(),data:hoje,linha:'Litoral',  viagem:9,motorista:'Cláudia', caminhao:'JKL-4M89',entrada:hm(-20),saida:hm(10),confEntrada:at(-14),confDescarga:null},
+    // ✅ finalizado no prazo
+    {id:id(),data:hoje,linha:'Norte',    viagem:3,motorista:'João',    caminhao:'MNO-5P01',entrada:hm(-45),saida:hm(-20),confEntrada:at(-44),confDescarga:at(-22)},
+    // ⛔ finalizado com atraso
+    {id:id(),data:hoje,linha:'Vale',     viagem:6,motorista:'Pedro',   caminhao:'PQR-6S23',entrada:hm(-50),saida:hm(-15),confEntrada:at(-49),confDescarga:at(-7)},
+    // ⚪ agendado (ainda vai começar)
+    {id:id(),data:hoje,linha:'Yoshiwara',viagem:11,motorista:'Vini',   caminhao:'ABC-1D23',entrada:hm(35), saida:hm(60),confEntrada:null,confDescarga:null},
   ];
   salvar(); render(); popularMotoristas();
 }
@@ -420,62 +447,41 @@ function renderCoord(){
     return true;
   });
 
-  // agrupa por LINHA
-  const grupos={};
-  lista.forEach(v=>{ (grupos[v.linha]=grupos[v.linha]||[]).push(v); });
-
+  // ordena: pior status primeiro, depois por horário de entrada
   const ordemStatus={vermelho:0,amarelo:1,verde:2,cinza:3};
-  const piorDaLinha=arr=>arr.map(statusGeral).sort((a,b)=>ordemStatus[a]-ordemStatus[b])[0];
-
-  const nomesLinhas=Object.keys(grupos).sort((a,b)=>{
-    const pa=ordemStatus[piorDaLinha(grupos[a])], pb=ordemStatus[piorDaLinha(grupos[b])];
-    return pa-pb || a.localeCompare(b);
-  });
+  lista.sort((a,b)=> ordemStatus[estado(a).cat]-ordemStatus[estado(b).cat] || a.entrada.localeCompare(b.entrada));
 
   const board=$('board');
-  if(!nomesLinhas.length){
-    board.innerHTML=`<div class="empty">Nenhuma entrega para este dia.<br><br><button class="btn" onclick="abrirModal()">＋ Cadastrar entrega</button></div>`;
+  if(!lista.length){
+    board.innerHTML=`<div class="empty">Nenhum Bin para este dia.<br><br><button class="btn" onclick="abrirModal()">＋ Cadastrar Bin</button></div>`;
   }else{
-    board.innerHTML=nomesLinhas.map(nome=>{
-      const arr=grupos[nome].sort((a,b)=>a.entrada.localeCompare(b.entrada));
-      const gLinha=piorDaLinha(arr);
-      const pulse=(gLinha==='amarelo'||gLinha==='vermelho')?'pulse':'';
-      const items=arr.map(v=>{
-        const e=statusEntrada(v), d=statusDescarga(v), g=statusGeral(v);
-        const statusPill = !v.confEntrada
-          ? `<span class="pill ${e.cor}">${e.label}${e.nota?` · ${e.nota}`:''}</span>`
-          : `<span class="pill ${d.cor}">${d.label}${d.nota?` · ${d.nota}`:''}</span>`;
-        const confInfo = v.confEntrada?`<span class="conf-time">✓ entrou ${fmtHora(v.confEntrada)}</span>`:'';
-        return `<div class="delivery">
-          <div class="del-time">
-            <div class="h" style="color:${CORVAR[g]}">${esc(v.entrada)}</div>
-            <div class="arrow">▾</div>
-            <div class="s">${esc(v.saida)}</div>
+    board.innerHTML=lista.map(v=>{
+      const st=estado(v);
+      return `<div class="bincard ${st.cat}">
+        <div class="bc-top">
+          <div>
+            <div class="bc-linha">${esc(v.linha)}</div>
+            <div class="bc-sub">Bin <b>${esc(v.viagem)}</b> · ${esc(v.motorista)}</div>
           </div>
-          <div class="del-main">
-            <div class="who">${esc(v.motorista)} <span style="color:var(--muted);font-weight:500">· viagem #${esc(v.viagem)}</span></div>
-            <div class="meta">🚛 ${esc(v.caminhao)}</div>
-            <div class="del-actions">
-              <button class="minibtn" title="Editar" onclick="editar('${v.id}')">✎</button>
-              <button class="minibtn" title="Remover" onclick="remover('${v.id}')">✕</button>
-            </div>
-          </div>
-          <div class="del-status">${statusPill}${confInfo}</div>
-        </div>`;
-      }).join('');
-      return `<div class="linecard ${gLinha}">
-        <div class="lc-head">
-          <span class="sq ${pulse}" style="background:${CORVAR[gLinha]}"></span>
-          <span class="lc-title">${esc(nome)}</span>
-          <span class="lc-count">${arr.length} entrega${arr.length>1?'s':''}</span>
+          <span class="luz ${st.on?'on':''}" style="background:${st.luz};--halo:${st.luz}55"></span>
         </div>
-        <div class="lc-body">${items}</div>
+        <div class="horarios">
+          <div class="hbox"><div class="lbl">Entrada</div><div class="hh">${esc(v.entrada)}</div></div>
+          <span class="harrow">→</span>
+          <div class="hbox"><div class="lbl">Saída</div><div class="hh">${esc(v.saida)}</div></div>
+        </div>
+        <div class="estado" style="color:${st.luz}"><span class="ic">${st.ic}</span>${st.titulo}</div>
+        <div class="estado-sub">${st.sub}</div>
+        <div class="bc-actions">
+          <button class="minibtn" title="Editar" onclick="editar('${v.id}')">✎</button>
+          <button class="minibtn" title="Remover" onclick="remover('${v.id}')">✕</button>
+        </div>
       </div>`;
     }).join('');
   }
 
-  $('foot').innerHTML=`🟢 confirmado no app · 🟡 aguardando (janela de ${tolMin()} min) · 🔴 passou da tolerância · ⚪ ainda vai começar.
-    &nbsp;|&nbsp; ${doDia.length} entrega(s) neste dia, em ${nomesLinhas.length} linha(s). Dados salvos neste navegador.`;
+  $('foot').innerHTML=`✅ finalizado no prazo · 🟢 entrou no horário · 🟡 entrou/aguardando com atraso · 🔴 atrasado · ⛔ finalizado com atraso · ⚪ agendado.
+    &nbsp;|&nbsp; Tolerância de ${tolMin()} min · ${doDia.length} Bin(s) neste dia. Dados salvos neste navegador.`;
 }
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
