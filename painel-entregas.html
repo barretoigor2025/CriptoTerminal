@@ -94,17 +94,24 @@
   .tol input{width:60px}
 
   /* ---------- Grade de CARDS (um por Bin) ---------- */
-  .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:14px;align-items:start}
+  /* grade: pelo menos 3 cards lado a lado no desktop; 1 por linha no celular */
+  .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:16px;align-items:start}
+  @media(max-width:820px){ .board{grid-template-columns:1fr} }
   .bincard{
-    background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:15px 16px 30px;
+    background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px 30px;
     border-left:6px solid var(--cinza);position:relative
   }
   .bincard.verde{border-left-color:var(--verde)} .bincard.amarelo{border-left-color:var(--amarelo)}
   .bincard.vermelho{border-left-color:var(--vermelho)} .bincard.cinza{border-left-color:var(--cinza)}
-  .bc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-  .bc-linha{font-size:18px;font-weight:800;line-height:1.15}
-  .bc-sub{font-size:13px;color:var(--muted);margin-top:3px}
-  .bc-sub b{color:var(--txt)}
+  .bc-top{display:flex;align-items:center;gap:12px}
+  .bc-titles{flex:1;min-width:0}
+  .bc-linha{font-size:19px;font-weight:800;line-height:1.2}
+  .bc-linha .mot{font-weight:600;color:var(--muted)}
+  .bc-bin{
+    font-size:19px;font-weight:800;letter-spacing:.3px;white-space:nowrap;
+    background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.45);color:#93c5fd;
+    padding:4px 12px;border-radius:10px
+  }
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
   @keyframes glow{0%,100%{box-shadow:0 0 0 3px var(--halo),0 0 12px 3px var(--halo)}50%{box-shadow:0 0 0 3px transparent,0 0 3px 0 var(--halo)}}
   .luz{width:24px;height:24px;border-radius:50%;flex:0 0 auto;background:var(--cinza);box-shadow:0 0 0 3px var(--halo)}
@@ -497,10 +504,10 @@ function renderCoord(){
       const st=estado(v);
       return `<div class="bincard ${st.cat}">
         <div class="bc-top">
-          <div>
-            <div class="bc-linha">${esc(v.linha)}</div>
-            <div class="bc-sub">Bin <b>${esc(v.viagem)}</b> · ${esc(v.motorista)}</div>
+          <div class="bc-titles">
+            <div class="bc-linha">${esc(v.linha)} <span class="mot">· ${esc(v.motorista)}</span></div>
           </div>
+          <span class="bc-bin">BIN ${esc(v.viagem)}</span>
           <span class="luz ${st.on?'on':''}" style="background:${st.luz};--halo:${st.luz}55"></span>
         </div>
         <div class="horarios">
