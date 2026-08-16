@@ -11,108 +11,61 @@
     --verde:#22c55e; --amarelo:#eab308; --vermelho:#ef4444; --cinza:#64748b; --azul:#38bdf8;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{
-    font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;
-    background:var(--bg); color:var(--txt); min-height:100vh; -webkit-font-smoothing:antialiased;
-  }
-  /* ---------- Topbar ---------- */
-  header{
-    position:sticky; top:0; z-index:50;
-    background:linear-gradient(180deg,#161b22,#12161c);
-    border-bottom:1px solid var(--line); padding:10px 16px;
-    display:flex; align-items:center; gap:16px; flex-wrap:wrap;
-  }
-  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px}
-  .brand .logo{
-    width:34px;height:34px;border-radius:9px;
-    background:linear-gradient(135deg,#3b82f6,#22c55e);
-    display:grid;place-items:center;font-size:18px
-  }
+  body{font-family:'Segoe UI',system-ui,-apple-system,Roboto,'Noto Sans JP',Arial,sans-serif;
+    background:var(--bg);color:var(--txt);min-height:100vh;-webkit-font-smoothing:antialiased}
+  header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#161b22,#12161c);
+    border-bottom:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
+  .brand .logo{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#3b82f6,#22c55e);display:grid;place-items:center;font-size:17px}
   .brand small{display:block;font-size:11px;color:var(--muted);font-weight:500}
+  .tabs{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px}
+  .tabs button{border:0;background:transparent;color:var(--muted);font-weight:600;padding:8px 13px;border-radius:8px;cursor:pointer;font-size:13px;display:flex;gap:6px;align-items:center}
+  .tabs button.active{background:var(--accent);color:#fff}
+  .langbtn{border:1px solid var(--line);background:var(--panel2);color:var(--txt);font-weight:700;padding:8px 12px;border-radius:9px;cursor:pointer;font-size:13px}
   .clock{margin-left:auto;text-align:right;font-variant-numeric:tabular-nums}
-  .clock .time{font-size:26px;font-weight:700;letter-spacing:1px}
-  .clock .date{font-size:12px;color:var(--muted);text-transform:capitalize}
-  .modeswitch{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px}
-  .modeswitch button{
-    border:0;background:transparent;color:var(--muted);font-weight:600;
-    padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;display:flex;gap:6px;align-items:center
-  }
-  .modeswitch button.active{background:var(--accent);color:#fff}
+  .clock .time{font-size:23px;font-weight:700;letter-spacing:1px}
+  .clock .date{font-size:11px;color:var(--muted);text-transform:capitalize}
+  main{padding:14px;max-width:1500px;margin:0 auto}
 
-  main{padding:16px;max-width:1500px;margin:0 auto}
-
-  /* ---------- Barra do dia ---------- */
-  .daybar{
-    display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;
-    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 16px
-  }
-  .daynav{display:flex;align-items:center;gap:8px}
-  .daynav button{
-    width:36px;height:36px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);
-    color:var(--txt);font-size:16px;cursor:pointer
-  }
-  .daynav button:hover{background:var(--line)}
-  .dayinfo{min-width:210px}
-  .dayinfo .big{font-size:18px;font-weight:800;text-transform:capitalize}
+  /* barra do dia */
+  .daybar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:11px 14px}
+  .daynav{display:flex;gap:8px}
+  .daynav button{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);font-size:16px;cursor:pointer}
+  .dayinfo{min-width:180px}
+  .dayinfo .big{font-size:17px;font-weight:800;text-transform:capitalize}
   .dayinfo .small{font-size:12px;color:var(--muted)}
-  .daybar input[type=date]{
-    background:var(--panel2);border:1px solid var(--line);color:var(--txt);
-    padding:8px 10px;border-radius:9px;font-size:13px
-  }
-  .btnhoje{background:var(--accent);border:0;color:#fff;font-weight:600;padding:9px 14px;border-radius:9px;cursor:pointer;font-size:13px}
-
-  /* ---------- Summary tiles ---------- */
-  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
-  .tile{
-    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;
-    display:flex;align-items:center;gap:12px;position:relative;overflow:hidden;cursor:pointer;transition:.15s
-  }
-  .tile:hover{border-color:var(--accent)}
-  .tile.sel{outline:2px solid var(--accent)}
-  .tile .dot{width:14px;height:14px;border-radius:4px;flex:0 0 auto}
-  .tile .n{font-size:28px;font-weight:800;line-height:1}
-  .tile .lbl{font-size:12px;color:var(--muted);margin-top:2px}
-  .tile.v{border-color:rgba(34,197,94,.35)} .tile.a{border-color:rgba(234,179,8,.35)}
-  .tile.r{border-color:rgba(239,68,68,.35)} .tile.g{border-color:rgba(100,116,139,.35)}
-
-  /* ---------- Controls ---------- */
-  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
-  .controls input[type=search], .f{
-    background:var(--panel2);border:1px solid var(--line);color:var(--txt);
-    padding:9px 12px;border-radius:9px;font-size:13px;outline:none
-  }
-  .controls input[type=search]{min-width:220px}
-  .btn{
-    background:var(--accent);border:0;color:#fff;font-weight:600;padding:9px 14px;
-    border-radius:9px;cursor:pointer;font-size:13px;display:inline-flex;gap:6px;align-items:center
-  }
+  input[type=date],input[type=time],input[type=number],input[type=text],select,input[type=search]{
+    background:var(--panel2);border:1px solid var(--line);color:var(--txt);padding:8px 10px;border-radius:9px;font-size:13px;outline:none;font-family:inherit}
+  .btn{background:var(--accent);border:0;color:#fff;font-weight:600;padding:9px 13px;border-radius:9px;cursor:pointer;font-size:13px;display:inline-flex;gap:6px;align-items:center}
   .btn.ghost{background:var(--panel2);border:1px solid var(--line);color:var(--txt)}
   .btn.small{padding:6px 10px;font-size:12px}
   .btn.verde{background:var(--verde)} .btn.azul{background:var(--azul);color:#04222e}
+  .btn.warn{background:#a16207}
   .spacer{margin-left:auto}
   .tol{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
-  .tol input{width:60px}
+  .tol input{width:56px}
 
-  /* ---------- Grade de CARDS (um por Bin) ---------- */
-  /* grade: pelo menos 3 cards lado a lado no desktop; 1 por linha no celular */
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:14px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 15px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:.15s}
+  .tile:hover{border-color:var(--accent)} .tile.sel{outline:2px solid var(--accent)}
+  .tile .dot{width:13px;height:13px;border-radius:4px}
+  .tile .n{font-size:26px;font-weight:800;line-height:1}
+  .tile .lbl{font-size:12px;color:var(--muted);margin-top:2px}
+
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  #busca{min-width:200px}
+
+  /* cards por Bin */
   .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:16px;align-items:start}
-  .bincard{
-    background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px 30px;
-    border-left:6px solid var(--cinza);position:relative;min-width:0
-  }
+  .bincard{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px 30px;border-left:6px solid var(--cinza);position:relative;min-width:0}
   .bincard.verde{border-left-color:var(--verde)} .bincard.amarelo{border-left-color:var(--amarelo)}
   .bincard.vermelho{border-left-color:var(--vermelho)} .bincard.cinza{border-left-color:var(--cinza)}
   .bc-top{display:flex;align-items:center;gap:12px}
   .bc-titles{flex:1;min-width:0}
   .bc-linha{font-size:19px;font-weight:800;line-height:1.2}
-  .bc-linha .mot{font-weight:600;color:var(--muted)}
-  .bc-linha .mot::before{content:"· "}
-  .bc-bin{
-    font-size:19px;font-weight:800;letter-spacing:.3px;white-space:nowrap;
-    background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.45);color:#93c5fd;
-    padding:4px 12px;border-radius:10px
-  }
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .bc-linha .mot{font-weight:600;color:var(--muted)} .bc-linha .mot::before{content:"· "}
+  .bc-turno{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-top:2px}
+  .bc-bin{font-size:19px;font-weight:800;letter-spacing:.3px;white-space:nowrap;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.45);color:#93c5fd;padding:4px 12px;border-radius:10px}
   @keyframes glow{0%,100%{box-shadow:0 0 0 3px var(--halo),0 0 12px 3px var(--halo)}50%{box-shadow:0 0 0 3px transparent,0 0 3px 0 var(--halo)}}
   .luz{width:24px;height:24px;border-radius:50%;flex:0 0 auto;background:var(--cinza);box-shadow:0 0 0 3px var(--halo)}
   .luz.on{animation:glow 1.4s infinite}
@@ -123,77 +76,95 @@
   .estado{display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px}
   .estado .ic{font-size:14px}
   .estado-sub{font-size:12px;color:var(--muted);margin-top:4px}
-  .bc-actions{position:absolute;bottom:10px;right:12px;display:flex;gap:6px;opacity:.4}
-  .bincard:hover .bc-actions{opacity:1}
-  .minibtn{border:0;background:var(--panel2);color:var(--muted);border:1px solid var(--line);width:26px;height:26px;border-radius:7px;cursor:pointer;font-size:12px}
-  .minibtn:hover{color:var(--txt)}
-  /* pills (usadas no app do motorista) */
+  .horarios .hbox .cap{font-size:8px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);opacity:.7}
+  .registro{margin-top:9px;padding-top:9px;border-top:1px dashed var(--line);display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+  .registro .rk{font-size:9px;text-transform:uppercase;letter-spacing:.4px;font-weight:700}
+  .registro .rv{font-variant-numeric:tabular-nums;font-weight:800;color:var(--muted);font-size:14px}
+  .registro .rv.ok{color:#4ade80}
+  .registro .rarrow{color:var(--muted)}
+
   .pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
-  .pill.verde{background:rgba(34,197,94,.15);color:#4ade80}
-  .pill.amarelo{background:rgba(234,179,8,.15);color:#facc15}
-  .pill.vermelho{background:rgba(239,68,68,.15);color:#f87171}
-  .pill.cinza{background:rgba(100,116,139,.18);color:#94a3b8}
+  .pill.verde{background:rgba(34,197,94,.15);color:#4ade80} .pill.amarelo{background:rgba(234,179,8,.15);color:#facc15}
+  .pill.vermelho{background:rgba(239,68,68,.15);color:#f87171} .pill.cinza{background:rgba(100,116,139,.18);color:#94a3b8}
   .pill.azul{background:rgba(56,189,248,.15);color:#7dd3fc}
-  .conf-time{font-size:11px;color:#4ade80;font-weight:700;font-variant-numeric:tabular-nums}
 
-  /* ===== celular: 2 cards por linha, compactos, horários empilhados =====
-     (fica DEPOIS das regras base para poder sobrescrevê-las) */
-  @media(max-width:820px){
-    .board{grid-template-columns:1fr 1fr;gap:10px}
-    .bincard{padding:11px 11px 22px;border-left-width:5px}
-    .bc-top{gap:6px;align-items:flex-start}
-    .bc-linha{font-size:14px;line-height:1.2}
-    .bc-linha .mot{display:block;font-weight:600}
-    .bc-linha .mot::before{content:""}
-    .bc-bin{font-size:12px;padding:2px 7px;border-radius:7px}
-    .luz{width:15px;height:15px;box-shadow:0 0 0 2px var(--halo)}
-    .horarios{flex-direction:column;align-items:stretch;gap:2px;margin:10px 0 8px}
-    .harrow{display:none}
-    .hbox{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-    .hbox .lbl{font-size:9px}
-    .hbox .hh{font-size:19px}
-    .estado{font-size:12px;gap:5px;line-height:1.2}
-    .estado .ic{font-size:11px}
-    .estado-sub{font-size:10px}
-    .bc-actions{bottom:5px;right:6px}
-    .minibtn{width:22px;height:22px}
-  }
+  .empty{text-align:center;color:var(--muted);padding:44px 16px;grid-column:1/-1}
+  .hidden{display:none!important}
+  .footnote{color:var(--muted);font-size:12px;margin-top:16px;line-height:1.6}
 
-  /* ---------- Modal ---------- */
+  /* ==== Aba Programação ==== */
+  .reg-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:16px}
+  .reg{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 15px}
+  .reg h4{font-size:13px;margin-bottom:9px;display:flex;align-items:center;gap:7px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:9px}
+  .chip{background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:4px 10px;font-size:12px;display:flex;align-items:center;gap:6px}
+  .chip b{font-weight:700}
+  .chip .x{cursor:pointer;color:var(--muted)} .chip .x:hover{color:var(--vermelho)}
+  .reg-add{display:flex;gap:7px}
+  .reg-add input{flex:1;min-width:0}
+
+  .weekbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:11px 14px;margin-bottom:16px}
+  .weekbar .wk{font-weight:800;font-size:15px;min-width:220px}
+  .weekbar .wk small{display:block;font-weight:500;color:var(--muted);font-size:12px}
+
+  .lineblock{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:14px}
+  .lineblock h3{font-size:17px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .shift{border:1px dashed var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+  .shift.dia{border-color:rgba(234,179,8,.4)} .shift.noite{border-color:rgba(56,189,248,.4)}
+  .shift-h{font-size:13px;font-weight:800;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+  .asgn{display:grid;grid-template-columns:64px 92px 92px 1fr 1fr 34px;gap:8px;align-items:center;margin-bottom:7px}
+  .asgn label{display:none}
+  .asgn .rm{background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:8px;height:34px;cursor:pointer}
+  .asgn .rm:hover{color:var(--vermelho)}
+  .asgn-head{display:grid;grid-template-columns:64px 92px 92px 1fr 1fr 34px;gap:8px;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:5px}
+
+  /* modal */
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
   .overlay.open{display:flex}
-  .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;width:100%;max-width:540px}
-  .modal h3{margin-bottom:14px;font-size:18px}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;width:100%;max-width:460px}
+  .modal h3{margin-bottom:14px;font-size:17px}
   .field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
   .field label{font-size:12px;color:var(--muted);font-weight:600}
-  .field input, .field select{
-    background:var(--panel2);border:1px solid var(--line);color:var(--txt);padding:10px;border-radius:9px;font-size:14px
-  }
-  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end}
 
-  /* ---------- Driver app ---------- */
-  .driver-login{max-width:420px;margin:40px auto;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px;text-align:center}
-  .driver-login h2{margin-bottom:6px}
-  .driver-login p{color:var(--muted);font-size:13px;margin-bottom:18px}
-  .driver-header{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:16px}
-  .avatar{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#22c55e);display:grid;place-items:center;font-weight:800;font-size:18px}
-  .trip-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;border-left:6px solid var(--cinza)}
+  /* driver */
+  .driver-login{max-width:420px;margin:36px auto;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px;text-align:center}
+  .driver-header{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+  .avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#22c55e);display:grid;place-items:center;font-weight:800;font-size:17px}
+  .trip-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:12px;border-left:6px solid var(--cinza)}
   .trip-card.verde{border-left-color:var(--verde)} .trip-card.amarelo{border-left-color:var(--amarelo)}
   .trip-card.vermelho{border-left-color:var(--vermelho)} .trip-card.azul{border-left-color:var(--azul)}
-  .trip-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
-  .trip-title{font-weight:800;font-size:16px}
-  .trip-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;font-size:13px;margin-bottom:14px}
-  .trip-meta .k{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
-  .trip-meta .val{font-weight:700;font-variant-numeric:tabular-nums}
+  .trip-top{display:flex;justify-content:space-between;gap:10px;margin-bottom:10px}
+  .trip-title{font-weight:800;font-size:15px}
+  .trip-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;margin-bottom:12px}
+  .trip-meta .k{color:var(--muted);font-size:11px;text-transform:uppercase}
+  .trip-meta .val{font-weight:700}
   .trip-actions{display:flex;gap:10px;flex-wrap:wrap}
-  .trip-actions .btn{flex:1;justify-content:center;padding:12px}
+  .trip-actions .btn{flex:1;justify-content:center;padding:11px}
   .done-stamp{font-size:12px;color:#4ade80;font-weight:700}
 
-  .empty{text-align:center;color:var(--muted);padding:50px 16px;grid-column:1/-1}
-  .hidden{display:none!important}
-  .footnote{color:var(--muted);font-size:12px;margin-top:18px;line-height:1.6}
-  @media(max-width:640px){ .clock .time{font-size:20px} main{padding:12px} }
+  /* ===== celular: 3 cards por linha, ultra compactos ===== */
+  @media(max-width:820px){
+    .clock .time{font-size:18px}
+    .board{grid-template-columns:repeat(3,1fr);gap:7px}
+    .bincard{padding:9px 8px 18px;border-left-width:4px;border-radius:12px}
+    .bc-top{display:block}
+    .bc-linha{font-size:12px;line-height:1.15;padding-right:16px}
+    .bc-linha .mot{display:block} .bc-linha .mot::before{content:""}
+    .bc-turno{font-size:8px;white-space:nowrap;margin-top:1px}
+    .bc-bin{font-size:10px;padding:1px 6px;border-radius:6px;display:inline-block;margin-top:5px}
+    .luz{position:absolute;top:8px;right:8px;width:13px;height:13px;box-shadow:0 0 0 2px var(--halo)}
+    .horarios{flex-direction:column;align-items:stretch;gap:1px;margin:8px 0 6px}
+    .harrow{display:none}
+    .hbox{display:flex;justify-content:space-between;align-items:baseline;gap:4px}
+    .hbox .lbl{font-size:7px}
+    .hbox .hh{font-size:15px}
+    .estado{font-size:10px;gap:3px;line-height:1.15}
+    .estado .ic{font-size:9px}
+    .estado-sub{font-size:8px;margin-top:2px}
+    .asgn,.asgn-head{grid-template-columns:44px 74px 74px 1fr 1fr 30px;gap:5px}
+    .tiles{grid-template-columns:1fr 1fr}
+  }
 </style>
 </head>
 <body>
@@ -201,16 +172,15 @@
 <header>
   <div class="brand">
     <div class="logo">🚚</div>
-    <div>Painel de Entregas
-      <small>Monitoramento de linhas em tempo real</small>
+    <div data-i18n="app_title">Painel de Entregas
+      <small data-i18n="app_sub">Monitoramento de linhas em tempo real</small>
     </div>
   </div>
-
-  <div class="modeswitch" role="tablist">
-    <button id="btnCoord" class="active" onclick="setMode('coord')">🖥️ Coordenador</button>
-    <button id="btnDriver" onclick="setMode('driver')">📱 Motorista</button>
+  <div class="tabs">
+    <button id="tabPainel" class="active" onclick="setTab('painel')">🖥️ <span data-i18n="tab_painel">Painel</span></button>
+    <button id="tabProg" onclick="setTab('prog')">🗓️ <span data-i18n="tab_prog">Programação</span></button>
   </div>
-
+  <button class="langbtn" id="langBtn" onclick="toggleLang()">日本語</button>
   <div class="clock">
     <div class="time" id="clock">--:--:--</div>
     <div class="date" id="today">—</div>
@@ -218,427 +188,488 @@
 </header>
 
 <main>
-  <!-- ============ MODO COORDENADOR ============ -->
-  <section id="viewCoord">
+  <!-- ============ ABA PAINEL ============ -->
+  <section id="viewPainel">
+    <div class="tabs" style="margin-bottom:14px;width:max-content">
+      <button id="btnCoord" class="active" onclick="setMode('coord')">🖥️ <span data-i18n="mode_coord">Coordenador</span></button>
+      <button id="btnDriver" onclick="setMode('driver')">📱 <span data-i18n="mode_driver">Motorista</span></button>
+    </div>
 
-    <!-- Barra do dia -->
-    <div class="daybar">
-      <div class="daynav">
-        <button onclick="mudarDia(-1)" title="Dia anterior">‹</button>
-        <button onclick="mudarDia(1)"  title="Próximo dia">›</button>
+    <!-- Coordenador -->
+    <div id="modeCoord">
+      <div class="daybar">
+        <div class="daynav">
+          <button onclick="mudarDia(-1)">‹</button><button onclick="mudarDia(1)">›</button>
+        </div>
+        <div class="dayinfo"><div class="big" id="dayBig">—</div><div class="small" id="daySmall">—</div></div>
+        <input type="date" id="datePick" onchange="setDia(this.value)">
+        <button class="btn" onclick="irHoje()" data-i18n="hoje">Hoje</button>
+        <div class="spacer"></div>
+        <button class="btn ghost small" onclick="carregarExemplo()" data-i18n="exemplo">Dados de exemplo</button>
+        <button class="btn ghost small" onclick="simularAoVivo()" data-i18n="simular">Simular ao vivo</button>
       </div>
-      <div class="dayinfo">
-        <div class="big" id="dayBig">—</div>
-        <div class="small" id="daySmall">—</div>
+
+      <div class="tiles">
+        <div class="tile" data-f="verde" onclick="filtrarTile('verde')"><span class="dot" style="background:var(--verde)"></span><div><div class="n" id="cVerde">0</div><div class="lbl" data-i18n="t_verde">No horário / confirmado</div></div></div>
+        <div class="tile" data-f="amarelo" onclick="filtrarTile('amarelo')"><span class="dot" style="background:var(--amarelo)"></span><div><div class="n" id="cAmarelo">0</div><div class="lbl" data-i18n="t_amarelo">Aguardando confirmação</div></div></div>
+        <div class="tile" data-f="vermelho" onclick="filtrarTile('vermelho')"><span class="dot" style="background:var(--vermelho)"></span><div><div class="n" id="cVermelho">0</div><div class="lbl" data-i18n="t_vermelho">Atrasado</div></div></div>
+        <div class="tile" data-f="cinza" onclick="filtrarTile('cinza')"><span class="dot" style="background:var(--cinza)"></span><div><div class="n" id="cAgendado">0</div><div class="lbl" data-i18n="t_cinza">Agendado</div></div></div>
       </div>
-      <input type="date" id="datePick" onchange="setDia(this.value)">
-      <button class="btnhoje" onclick="irHoje()">Hoje</button>
-      <div class="spacer"></div>
-      <button class="btn ghost small" onclick="carregarExemplo()">↻ Dados de exemplo</button>
-      <button class="btn ghost small" onclick="simularAoVivo()" title="Cria a Yoshiwara Bin 2 começando agora para testar o ciclo">▶ Simular ao vivo</button>
-      <button class="btn" onclick="abrirModal()">＋ Nova entrega</button>
-    </div>
 
-    <!-- Guia de teste -->
-    <div id="ajuda" style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.35);border-radius:12px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--txt);line-height:1.5">
-      <b>Como testar o ciclo:</b> clique em <b>▶ Simular ao vivo</b> (cria a Yoshiwara · Bin 2 · Vini começando agora) →
-      abra <b>📱 Motorista</b> no topo → escolha <b>Vini</b> → toque em <b>Confirmar entrada</b> e depois <b>Confirmar descarga</b>.
-      Volte ao <b>🖥️ Coordenador</b> e veja a <b>luz do card mudar</b>. &nbsp;<a href="#" onclick="$('ajuda').style.display='none';return false" style="color:var(--muted)">ocultar ✕</a>
-    </div>
-
-    <!-- Contadores (clicáveis para filtrar) -->
-    <div class="tiles">
-      <div class="tile v" data-f="verde"    onclick="filtrarTile('verde')"><span class="dot" style="background:var(--verde)"></span><div><div class="n" id="cVerde">0</div><div class="lbl">No horário / confirmado</div></div></div>
-      <div class="tile a" data-f="amarelo"  onclick="filtrarTile('amarelo')"><span class="dot" style="background:var(--amarelo)"></span><div><div class="n" id="cAmarelo">0</div><div class="lbl">Aguardando confirmação</div></div></div>
-      <div class="tile r" data-f="vermelho" onclick="filtrarTile('vermelho')"><span class="dot" style="background:var(--vermelho)"></span><div><div class="n" id="cVermelho">0</div><div class="lbl">Atrasado</div></div></div>
-      <div class="tile g" data-f="cinza"    onclick="filtrarTile('cinza')"><span class="dot" style="background:var(--cinza)"></span><div><div class="n" id="cAgendado">0</div><div class="lbl">Agendado (a seguir)</div></div></div>
-    </div>
-
-    <div class="controls">
-      <input type="search" id="busca" placeholder="🔍 Buscar linha, motorista, caminhão…" oninput="render()">
-      <div class="tol">Tolerância (amarelo):
-        <input type="number" class="f" id="tol" min="0" max="30" value="1" onchange="salvarTol()"> min
+      <div class="controls">
+        <input type="search" id="busca" oninput="render()" data-i18n-ph="buscar" placeholder="Buscar linha, motorista, caminhão…">
+        <div class="tol"><span data-i18n="tolerancia">Tolerância (amarelo):</span>
+          <input type="number" id="tol" min="0" max="30" value="1" onchange="salvarTol()"> <span data-i18n="min">min</span></div>
+        <div class="spacer"></div><span id="filtroAtivo" class="hidden"></span>
       </div>
-      <div class="spacer"></div>
-      <span id="filtroAtivo" class="hidden"></span>
+
+      <div class="board" id="board"></div>
+      <p class="footnote" id="foot"></p>
     </div>
 
-    <!-- Grade de cards por LINHA -->
-    <div class="board" id="board"></div>
-    <p class="footnote" id="foot"></p>
+    <!-- Motorista -->
+    <div id="modeDriver" class="hidden">
+      <div id="driverLogin" class="driver-login">
+        <h2 data-i18n="app_motorista">App do Motorista</h2>
+        <p style="color:var(--muted);font-size:13px;margin:6px 0 16px" data-i18n="selecione_nome">Selecione seu nome para ver suas entregas de hoje.</p>
+        <div class="field"><select id="driverSelect" style="width:100%;padding:12px"></select></div>
+        <button class="btn" style="width:100%;justify-content:center;padding:12px" onclick="entrarMotorista()" data-i18n="entrar">Entrar</button>
+      </div>
+      <div id="driverPanel" class="hidden">
+        <div class="driver-header">
+          <div class="avatar" id="dAvatar">M</div>
+          <div style="flex:1"><div style="font-weight:800;font-size:16px" id="dNome">—</div><div id="dResumo" style="color:var(--muted);font-size:12px">—</div></div>
+          <button class="btn ghost small" onclick="sairMotorista()" data-i18n="trocar">Trocar</button>
+        </div>
+        <div id="driverTrips"></div>
+      </div>
+    </div>
   </section>
 
-  <!-- ============ MODO MOTORISTA ============ -->
-  <section id="viewDriver" class="hidden">
-    <div id="driverLogin" class="driver-login">
-      <h2>App do Motorista</h2>
-      <p>Selecione seu nome para ver suas entregas de hoje.</p>
-      <div class="field">
-        <select id="driverSelect" class="f" style="width:100%;padding:12px"></select>
+  <!-- ============ ABA PROGRAMAÇÃO ============ -->
+  <section id="viewProg" class="hidden">
+    <div class="reg-wrap">
+      <div class="reg">
+        <h4>📍 <span data-i18n="linhas">Linhas</span></h4>
+        <div class="chips" id="chipsLinhas"></div>
+        <div class="reg-add"><input type="text" id="addLinhaInp" data-i18n-ph="nome_linha" placeholder="Nome da linha"><button class="btn small" onclick="addLinha()" data-i18n="add">Adicionar</button></div>
       </div>
-      <button class="btn" style="width:100%;justify-content:center;padding:12px" onclick="entrarMotorista()">Entrar</button>
+      <div class="reg">
+        <h4>👷 <span data-i18n="motoristas">Motoristas</span></h4>
+        <div class="chips" id="chipsMotoristas"></div>
+        <div class="reg-add"><input type="text" id="addMotInp" data-i18n-ph="nome_motorista" placeholder="Nome do motorista"><button class="btn small" onclick="addMotorista()" data-i18n="add">Adicionar</button></div>
+      </div>
+      <div class="reg">
+        <h4>🚛 <span data-i18n="caminhoes">Caminhões</span></h4>
+        <div class="chips" id="chipsCaminhoes"></div>
+        <div class="reg-add"><input type="text" id="addCamInp" data-i18n-ph="numero_caminhao" placeholder="Número / placa"><button class="btn small" onclick="addCaminhao()" data-i18n="add">Adicionar</button></div>
+      </div>
     </div>
 
-    <div id="driverPanel" class="hidden">
-      <div class="driver-header">
-        <div class="avatar" id="dAvatar">M</div>
-        <div style="flex:1">
-          <div style="font-weight:800;font-size:16px" id="dNome">—</div>
-          <div class="sub small" id="dResumo" style="color:var(--muted);font-size:12px">—</div>
-        </div>
-        <button class="btn ghost small" onclick="sairMotorista()">Trocar</button>
-      </div>
-      <div id="driverTrips"></div>
+    <div class="weekbar">
+      <div class="daynav"><button onclick="mudarSemana(-1)">‹</button><button onclick="mudarSemana(1)">›</button></div>
+      <div class="wk" id="wkLabel">—<small id="wkSub">—</small></div>
+      <input type="date" id="weekPick" onchange="setSemana(this.value)">
+      <div class="spacer"></div>
+      <button class="btn ghost small" onclick="replicarProx()" data-i18n="replicar">Replicar próxima semana</button>
+      <button class="btn ghost small" onclick="expandirSemanas()" data-i18n="expandir">Expandir semanas</button>
+      <button class="btn warn small" onclick="trocarTurnos()" data-i18n="trocar_turnos">Trocar turnos</button>
     </div>
+
+    <div id="progEditor"></div>
   </section>
 </main>
 
-<!-- Modal nova/editar entrega -->
+<!-- modal genérico (expandir) -->
 <div class="overlay" id="overlay">
   <div class="modal">
-    <h3 id="modalTitle">Nova entrega</h3>
-    <input type="hidden" id="editId">
-    <div class="grid2">
-      <div class="field"><label>Linha</label><input id="fLinha" placeholder="Ex: Yoshiwara"></div>
-      <div class="field"><label>Bin (nº)</label><input id="fViagem" type="number" placeholder="2"></div>
-      <div class="field"><label>Motorista</label><input id="fMotorista" placeholder="Ex: Vini"></div>
-      <div class="field"><label>Caminhão / placa</label><input id="fCaminhao" placeholder="Ex: ABC-1D23"></div>
-      <div class="field"><label>Dia</label><input id="fData" type="date"></div>
-      <div class="field"></div>
-      <div class="field"><label>Entrada prevista</label><input id="fEntrada" type="time" value="07:40"></div>
-      <div class="field"><label>Saída prevista</label><input id="fSaida" type="time" value="08:00"></div>
-    </div>
+    <h3 id="modalTitle">—</h3>
+    <div class="field"><label id="modalLabel">—</label><input type="number" id="modalInput" min="1" max="52" value="4"></div>
     <div class="modal-actions">
-      <button class="btn ghost" onclick="fecharModal()">Cancelar</button>
-      <button class="btn" onclick="salvarLinha()">Salvar</button>
+      <button class="btn ghost" onclick="fecharModal()" data-i18n="cancelar">Cancelar</button>
+      <button class="btn" id="modalOk" data-i18n="confirmar">Confirmar</button>
     </div>
   </div>
 </div>
 
 <script>
-/* ================= Estado ================= */
-const LS_KEY='painelEntregas.v4', LS_TOL='painelEntregas.tol';
-let viagens=[], mode='coord', motoristaAtual=null;
-let selectedDate;                    // dia visível no painel do coordenador (definido abaixo)
-let filtroStatus='';                 // filtro por status (via tiles)
+/* ================= i18n ================= */
+const I18N={
+ pt:{
+  app_title:'Painel de Entregas',app_sub:'Monitoramento de linhas em tempo real',
+  tab_painel:'Painel',tab_prog:'Programação',mode_coord:'Coordenador',mode_driver:'Motorista',
+  hoje:'Hoje',exemplo:'Dados de exemplo',simular:'Simular ao vivo',
+  t_verde:'No horário / confirmado',t_amarelo:'Aguardando confirmação',t_vermelho:'Atrasado',t_cinza:'Agendado',
+  buscar:'Buscar linha, motorista, caminhão…',tolerancia:'Tolerância (amarelo):',min:'min',
+  entrada:'Entrada',saida:'Saída',previsto:'Previsto',real:'Real',registrado:'Registrado',
+  app_motorista:'App do Motorista',selecione_nome:'Selecione seu nome para ver suas entregas de hoje.',entrar:'Entrar',trocar:'Trocar',
+  linhas:'Linhas',motoristas:'Motoristas',caminhoes:'Caminhões',add:'Adicionar',
+  nome_linha:'Nome da linha',nome_motorista:'Nome do motorista',numero_caminhao:'Número / placa',
+  replicar:'Replicar próxima semana',expandir:'Expandir semanas',trocar_turnos:'Trocar turnos',
+  cancelar:'Cancelar',confirmar:'Confirmar',
+  turno_dia:'Turno Dia',turno_noite:'Turno Noite',semana:'Semana',
+  add_bin:'+ Bin',add_linha_sem:'+ Adicionar linha à semana',
+  bin:'Bin',mot:'Motorista',cam:'Caminhão',rem_linha:'remover linha da semana',
+  confirmar_entrada:'✅ Confirmar entrada',confirmar_descarga:'📦 Confirmar descarga',
+  st_fin_prazo:'Finalizado no prazo',st_fin_atraso:'Finalizado com atraso',st_entrou_horario:'Entrou no horário',
+  st_entrou_atraso:'Entrou atrasado',st_descarga_atraso:'Descarga atrasada',st_aguardando:'Aguardando entrada',
+  st_atrasado:'Atrasado',st_agendado:'Agendado',
+  sub_descarga_conf:'descarga confirmada às',sub_entrou:'entrou',sub_em_descarga:'em descarga desde',
+  sub_prev:'entrada prevista às',sub_confirmar_app:'confirmar no app',sub_sem_confirmar:'min sem confirmar entrada',sub_passou:'passou da saída',
+  nenhum_bin:'Nenhum Bin para este dia.',nenhuma_entrega:'Nenhuma entrega atribuída a você hoje.',
+   visao_geral:'entrou',
+  foot:'✅ no prazo · 🟢 no horário · 🟡 com atraso · 🔴 atrasado · ⛔ finalizado com atraso · ⚪ agendado.',
+  prompt_expandir:'Replicar esta semana para quantas semanas à frente?',
+  entrada_prev:'entrada prevista às',
+  nenhuma_linha_cad:'Cadastre ao menos uma Linha acima para montar a programação.',
+  hoje_label:'hoje'
+ },
+ ja:{
+  app_title:'配送パネル',app_sub:'配送ラインのリアルタイム監視',
+  tab_painel:'パネル',tab_prog:'スケジュール',mode_coord:'管理者',mode_driver:'ドライバー',
+  hoje:'今日',exemplo:'サンプルデータ',simular:'ライブ模擬',
+  t_verde:'定刻 / 確認済み',t_amarelo:'確認待ち',t_vermelho:'遅延',t_cinza:'予定',
+  buscar:'ライン・ドライバー・トラックを検索…',tolerancia:'許容（黄）:',min:'分',
+  entrada:'入場',saida:'退場',previsto:'予定',real:'実績',registrado:'実績',
+  app_motorista:'ドライバー用アプリ',selecione_nome:'名前を選択して本日の配送を表示。',entrar:'ログイン',trocar:'変更',
+  linhas:'ライン',motoristas:'ドライバー',caminhoes:'トラック',add:'追加',
+  nome_linha:'ライン名',nome_motorista:'ドライバー名',numero_caminhao:'番号 / ナンバー',
+  replicar:'翌週に複製',expandir:'複数週に展開',trocar_turnos:'シフト交代',
+  cancelar:'キャンセル',confirmar:'確定',
+  turno_dia:'日勤',turno_noite:'夜勤',semana:'週',
+  add_bin:'+ ビン',add_linha_sem:'+ 週にラインを追加',
+  bin:'ビン',mot:'ドライバー',cam:'トラック',rem_linha:'週からラインを削除',
+  confirmar_entrada:'✅ 入場を確認',confirmar_descarga:'📦 荷降ろしを確認',
+  st_fin_prazo:'定刻に完了',st_fin_atraso:'遅れて完了',st_entrou_horario:'定刻に入場',
+  st_entrou_atraso:'遅れて入場',st_descarga_atraso:'荷降ろし遅延',st_aguardando:'入場待ち',
+  st_atrasado:'遅延',st_agendado:'予定',
+  sub_descarga_conf:'荷降ろし確認',sub_entrou:'入場',sub_em_descarga:'荷降ろし中',
+  sub_prev:'入場予定',sub_confirmar_app:'アプリで確認',sub_sem_confirmar:'分 未確認',sub_passou:'退場時刻超過',
+  nenhum_bin:'この日のビンはありません。',nenhuma_entrega:'本日の担当はありません。',
+  visao_geral:'入場',
+  foot:'✅ 定刻完了 · 🟢 定刻入場 · 🟡 遅延あり · 🔴 遅延 · ⛔ 遅れて完了 · ⚪ 予定。',
+  prompt_expandir:'このスケジュールを何週先まで複製しますか？',
+  entrada_prev:'入場予定',
+  nenhuma_linha_cad:'スケジュールを作成するには、上でラインを1つ以上登録してください。',
+  hoje_label:'今日'
+ }
+};
+let lang='pt';
+function t(k){ return (I18N[lang]&&I18N[lang][k])!=null?I18N[lang][k]:(I18N.pt[k]!=null?I18N.pt[k]:k); }
+function aplicarIdioma(){
+  document.documentElement.lang = lang==='ja'?'ja':'pt-BR';
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent=t(el.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph'))); });
+  $('langBtn').textContent = lang==='pt'?'日本語':'PT';
+  render(); renderProg();
+}
+function toggleLang(){ lang = lang==='pt'?'ja':'pt'; store.set(LS_LANG,lang); aplicarIdioma(); }
+
+/* ================= Estado / storage ================= */
+const LS_KEY='painelEntregas.v6', LS_TOL='painelEntregas.tol', LS_LANG='painelEntregas.lang';
+let cfg={linhas:[],motoristas:[],caminhoes:[]};
+let escala={};          // escala[weekKey] = [assignment...]
+let confirmacoes={};    // confirmacoes[dateStr][assignId] = {confEntrada,confDescarga}
+let tab='painel', mode='coord', motoristaAtual=null;
+let selectedDate, selectedWeek, filtroStatus='';
 
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
-
-/* Storage seguro: se localStorage estiver bloqueado (preview/sandbox), usa memória.
-   Sem isso, um erro de localStorage quebraria o painel inteiro (tela em branco). */
 const _mem={};
-const store={
-  get(k){ try{ return localStorage.getItem(k); }catch(e){ return (k in _mem)?_mem[k]:null; } },
-  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){ _mem[k]=v; } }
-};
+const store={ get(k){try{return localStorage.getItem(k)}catch(e){return k in _mem?_mem[k]:null}},
+              set(k,v){try{localStorage.setItem(k,v)}catch(e){_mem[k]=v}} };
 
 function ymd(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
 function ymdHoje(){ return ymd(new Date()); }
-selectedDate = ymdHoje();            // agora pad/ymdHoje já existem
-/* Date a partir de (dia YYYY-MM-DD + hora HH:MM) */
-function quando(dataStr, hhmm){
-  const [Y,Mo,D]=dataStr.split('-').map(Number);
-  const [h,m]=hhmm.split(':').map(Number);
-  return new Date(Y,Mo-1,D,h,m,0,0);
-}
+function quando(dataStr,hhmm){ const [Y,Mo,D]=dataStr.split('-').map(Number); const [h,m]=hhmm.split(':').map(Number); return new Date(Y,Mo-1,D,h,m,0,0); }
+function saidaDate(v){ let d=quando(v.data,v.saida); if(v.saida<=v.entrada) d=new Date(d.getTime()+86400000); return d; } // vira meia-noite (turno noite)
 function fmtHora(d){ return d?`${pad(d.getHours())}:${pad(d.getMinutes())}`:'—'; }
 function fmtHoraSeg(d){ return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }
-function tolMin(){ return Math.max(0, parseInt($('tol').value)||0); }
+function tolMin(){ return Math.max(0,parseInt($('tol').value)||0); }
+function uid(){ return Math.random().toString(36).slice(2,9); }
+
+/* semanas (segunda-feira como início) */
+function weekKeyOf(dateStr){ const [Y,M,D]=dateStr.split('-').map(Number); const d=new Date(Y,M-1,D);
+  const dow=(d.getDay()+6)%7; d.setDate(d.getDate()-dow); return ymd(d); }
+function weekDates(wk){ const [Y,M,D]=wk.split('-').map(Number); const b=new Date(Y,M-1,D);
+  return [...Array(7)].map((_,i)=>{const x=new Date(b);x.setDate(b.getDate()+i);return ymd(x);}); }
+function addDaysStr(dateStr,n){ const [Y,M,D]=dateStr.split('-').map(Number); const d=new Date(Y,M-1,D); d.setDate(d.getDate()+n); return ymd(d); }
 
 /* ================= Semáforo ================= */
-function statusEntrada(v){
-  const agora=new Date(), entrada=quando(v.data,v.entrada);
-  if(v.confEntrada){
-    const atr=Math.round((v.confEntrada-entrada)/60000);
-    if(atr>0) return {cor:'verde',label:'Entrou',nota:`+${atr} min`,tipo:'atraso'};
-    return {cor:'verde',label:'Entrou',nota:'no horário',tipo:'ok'};
-  }
-  const tolMs=tolMin()*60000;
-  if(agora<entrada) return {cor:'cinza',label:'Agendado',nota:''};
-  if(agora<=entrada.getTime()+tolMs) return {cor:'amarelo',label:'Aguardando',nota:'confirmar entrada'};
-  return {cor:'vermelho',label:'Atrasado',nota:`${Math.floor((agora-entrada)/60000)} min`,tipo:'atraso'};
-}
-function statusDescarga(v){
-  const agora=new Date(), saida=quando(v.data,v.saida);
-  if(v.confDescarga){
-    const dif=Math.round((v.confDescarga-saida)/60000);
-    return {cor:'verde',label:'Descarregado',nota:dif>0?`+${dif} min`:'no prazo'};
-  }
-  if(!v.confEntrada) return {cor:'cinza',label:'—',nota:''};
-  const tolMs=tolMin()*60000;
-  if(agora<saida) return {cor:'azul',label:'Em descarga',nota:''};
-  if(agora<=saida.getTime()+tolMs) return {cor:'amarelo',label:'Finalizar',nota:'confirmar descarga'};
-  return {cor:'vermelho',label:'Descarga atrasada',nota:`${Math.floor((agora-saida)/60000)} min`,tipo:'atraso'};
-}
-/* Estado consolidado do Bin: a "luz" do card + rótulo */
 function estado(v){
-  const agora=new Date(), entrada=quando(v.data,v.entrada), saida=quando(v.data,v.saida);
-  const tolMs=tolMin()*60000;
-  const C={verde:'#22c55e',amarelo:'#eab308',vermelho:'#ef4444',cinza:'#64748b'};
-
-  // FINALIZADO (descarga confirmada)
+  const agora=new Date(), entrada=quando(v.data,v.entrada), saida=saidaDate(v);
+  const tolMs=tolMin()*60000, C={verde:'#22c55e',amarelo:'#eab308',vermelho:'#ef4444',cinza:'#64748b'};
   if(v.confDescarga){
-    if(v.confDescarga.getTime()<=saida.getTime()+tolMs)
-      return {cat:'verde',luz:C.verde,ic:'✅',titulo:'Finalizado no prazo',sub:`descarga confirmada às ${fmtHora(v.confDescarga)}`,on:false};
-    const min=Math.round((v.confDescarga-saida)/60000);
-    return {cat:'vermelho',luz:C.vermelho,ic:'⛔',titulo:'Finalizado com atraso',sub:`descarga ${fmtHora(v.confDescarga)} · +${min} min`,on:false};
+    if(v.confDescarga.getTime()<=saida.getTime()+tolMs) return {cat:'verde',luz:C.verde,ic:'✅',titulo:t('st_fin_prazo'),sub:`${t('sub_descarga_conf')} ${fmtHora(v.confDescarga)}`,on:false};
+    const min=Math.round((v.confDescarga-saida)/60000); return {cat:'vermelho',luz:C.vermelho,ic:'⛔',titulo:t('st_fin_atraso'),sub:`${fmtHora(v.confDescarga)} · +${min} min`,on:false};
   }
-  // ENTROU (em descarga)
   if(v.confEntrada){
-    if(agora.getTime()>saida.getTime()+tolMs)
-      return {cat:'vermelho',luz:C.vermelho,ic:'🔴',titulo:'Descarga atrasada',sub:`entrou ${fmtHora(v.confEntrada)} · passou da saída`,on:true};
-    if(v.confEntrada.getTime()<=entrada.getTime()+tolMs)
-      return {cat:'verde',luz:C.verde,ic:'🟢',titulo:'Entrou no horário',sub:`em descarga desde ${fmtHora(v.confEntrada)}`,on:false};
-    const min=Math.round((v.confEntrada-entrada)/60000);
-    return {cat:'amarelo',luz:C.amarelo,ic:'🟡',titulo:'Entrou atrasado',sub:`entrou ${fmtHora(v.confEntrada)} · +${min} min`,on:false};
+    if(agora.getTime()>saida.getTime()+tolMs) return {cat:'vermelho',luz:C.vermelho,ic:'🔴',titulo:t('st_descarga_atraso'),sub:`${t('sub_entrou')} ${fmtHora(v.confEntrada)} · ${t('sub_passou')}`,on:true};
+    if(v.confEntrada.getTime()<=entrada.getTime()+tolMs) return {cat:'verde',luz:C.verde,ic:'🟢',titulo:t('st_entrou_horario'),sub:`${t('sub_em_descarga')} ${fmtHora(v.confEntrada)}`,on:false};
+    const min=Math.round((v.confEntrada-entrada)/60000); return {cat:'amarelo',luz:C.amarelo,ic:'🟡',titulo:t('st_entrou_atraso'),sub:`${t('sub_entrou')} ${fmtHora(v.confEntrada)} · +${min} min`,on:false};
   }
-  // NÃO ENTROU
-  if(agora<entrada)
-    return {cat:'cinza',luz:C.cinza,ic:'⚪',titulo:'Agendado',sub:`entrada prevista às ${v.entrada}`,on:false};
-  if(agora.getTime()<=entrada.getTime()+tolMs)
-    return {cat:'amarelo',luz:C.amarelo,ic:'🟡',titulo:'Aguardando entrada',sub:'confirmar no app',on:true};
-  const min=Math.floor((agora-entrada)/60000);
-  return {cat:'vermelho',luz:C.vermelho,ic:'🔴',titulo:'Atrasado',sub:`${min} min sem confirmar entrada`,on:true};
+  if(agora<entrada) return {cat:'cinza',luz:C.cinza,ic:'⚪',titulo:t('st_agendado'),sub:`${t('sub_prev')} ${v.entrada}`,on:false};
+  if(agora.getTime()<=entrada.getTime()+tolMs) return {cat:'amarelo',luz:C.amarelo,ic:'🟡',titulo:t('st_aguardando'),sub:t('sub_confirmar_app'),on:true};
+  const min=Math.floor((agora-entrada)/60000); return {cat:'vermelho',luz:C.vermelho,ic:'🔴',titulo:t('st_atrasado'),sub:`${min} ${t('sub_sem_confirmar')}`,on:true};
 }
 function statusGeral(v){ return estado(v).cat; }
-const CORVAR={verde:'var(--verde)',amarelo:'var(--amarelo)',vermelho:'var(--vermelho)',cinza:'var(--cinza)',azul:'var(--azul)'};
+
+/* ================= Derivar bins do dia a partir da escala ================= */
+function binsDoDia(dateStr){
+  const wk=weekKeyOf(dateStr); const [Y,M,D]=dateStr.split('-').map(Number); const dow=new Date(Y,M-1,D).getDay();
+  const arr=(escala[wk]||[]).filter(a=>(a.dias||[1,2,3,4,5,6]).includes(dow));
+  return arr.map(a=>{ const conf=(confirmacoes[dateStr]||{})[a.id]||{};
+    return {...a, data:dateStr, viagem:a.bin,
+      confEntrada:conf.confEntrada?new Date(conf.confEntrada):null,
+      confDescarga:conf.confDescarga?new Date(conf.confDescarga):null }; });
+}
 
 /* ================= Persistência ================= */
-function salvar(){ store.set(LS_KEY, JSON.stringify(viagens.map(v=>({
-  ...v, confEntrada:v.confEntrada?v.confEntrada.getTime():null, confDescarga:v.confDescarga?v.confDescarga.getTime():null
-})))); }
+function salvar(){ store.set(LS_KEY, JSON.stringify({cfg,escala,confirmacoes})); }
 function carregar(){
   const raw=store.get(LS_KEY);
   if(!raw){ carregarExemplo(true); return; }
-  try{
-    const arr=JSON.parse(raw);
-    if(!Array.isArray(arr)||!arr.length){ carregarExemplo(true); return; }
-    viagens=arr.map(v=>({...v,
-      data:v.data||ymdHoje(),
-      confEntrada:v.confEntrada?new Date(v.confEntrada):null,
-      confDescarga:v.confDescarga?new Date(v.confDescarga):null }));
-  }
-  catch(e){ carregarExemplo(true); }
+  try{ const o=JSON.parse(raw);
+    if(!o||!o.cfg){ carregarExemplo(true); return; }
+    cfg=o.cfg; escala=o.escala||{}; confirmacoes=o.confirmacoes||{};
+  }catch(e){ carregarExemplo(true); }
 }
 function salvarTol(){ store.set(LS_TOL,$('tol').value); render(); }
 
 /* ================= Exemplo ================= */
 function carregarExemplo(silent){
-  if(!silent && !confirm('Recarregar os dados de exemplo? Isso substitui a lista atual.')) return;
-  const hoje=ymdHoje(), agora=new Date();
-  const hm=off=>{ const d=new Date(agora.getTime()+off*60000); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
-  const at=off=> new Date(agora.getTime()+off*60000);
-  viagens=[
-    // ===== SEU EXEMPLO — Yoshiwara, Bin 2, Vini, descarga 07:40 → 08:00 =====
-    // deixado AO VIVO (começando agora) para você ver a luz mudando na prática
-    {id:id(),data:hoje,linha:'Yoshiwara',viagem:2,motorista:'Vini',    caminhao:'ABC-1D23',entrada:hm(1), saida:hm(21), confEntrada:null,confDescarga:null},
-    // 🟢 entrou no horário (em descarga)
-    {id:id(),data:hoje,linha:'Serra Azul',viagem:4,motorista:'Marcos', caminhao:'DEF-2G45',entrada:hm(-10),saida:hm(15),confEntrada:at(-9),confDescarga:null},
-    // 🔴 atrasado (não confirmou entrada)
-    {id:id(),data:hoje,linha:'Centro',   viagem:1,motorista:'Rafael',  caminhao:'GHI-3J67',entrada:hm(-8), saida:hm(12),confEntrada:null,confDescarga:null},
-    // 🟡 entrou atrasado
-    {id:id(),data:hoje,linha:'Litoral',  viagem:9,motorista:'Cláudia', caminhao:'JKL-4M89',entrada:hm(-20),saida:hm(10),confEntrada:at(-14),confDescarga:null},
-    // ✅ finalizado no prazo — Yoshiwara Bin 2 com os horários literais 07:40 → 08:00
-    {id:id(),data:hoje,linha:'Yoshiwara',viagem:2,motorista:'Vini',    caminhao:'ABC-1D23',entrada:'07:40',saida:'08:00',confEntrada:quando(hoje,'07:41'),confDescarga:quando(hoje,'07:58')},
-    // ⛔ finalizado com atraso
-    {id:id(),data:hoje,linha:'Vale',     viagem:6,motorista:'Pedro',   caminhao:'PQR-6S23',entrada:hm(-50),saida:hm(-15),confEntrada:at(-49),confDescarga:at(-7)},
-    // ⚪ agendado (ainda vai começar)
-    {id:id(),data:hoje,linha:'Norte',    viagem:3,motorista:'João',    caminhao:'MNO-5P01',entrada:hm(35), saida:hm(60),confEntrada:null,confDescarga:null},
-  ];
-  salvar(); render(); popularMotoristas();
-}
-function id(){ return Math.random().toString(36).slice(2,9); }
-
-/* Cria a Yoshiwara Bin 2 começando AGORA, para ver o ciclo na prática */
-function simularAoVivo(){
+  if(!silent && !confirm(lang==='ja'?'サンプルを再読込しますか？現在の内容は置き換わります。':'Recarregar exemplo? Substitui o conteúdo atual.')) return;
   const agora=new Date();
-  const hhmm=d=>`${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  const entra=new Date(agora.getTime()+60000);      // entra em ~1 min
-  const sai  =new Date(agora.getTime()+4*60000);    // sai em ~4 min
-  selectedDate=ymdHoje();
-  viagens.unshift({id:id(),data:ymdHoje(),linha:'Yoshiwara',viagem:2,motorista:'Vini',
-    caminhao:'ABC-1D23',entrada:hhmm(entra),saida:hhmm(sai),confEntrada:null,confDescarga:null});
-  salvar(); render(); popularMotoristas();
-  alert('✅ Criado: Yoshiwara · Bin 2 · Vini (entra '+hhmm(entra)+' → sai '+hhmm(sai)+').\n\n'+
-        'Ele vai ficar ⚪ agendado, virar 🟡 aguardando e depois 🔴 atrasado.\n\n'+
-        'Agora abra 📱 Motorista (topo) → escolha Vini → Confirmar entrada.\n'+
-        'Volte ao 🖥️ Coordenador e veja a luz ficar 🟢 verde.');
+  const hm=off=>{ const d=new Date(agora.getTime()+off*60000); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  cfg={ linhas:['Yoshiwara','Serra Azul','Centro','Litoral'],
+        motoristas:['Vini','Marcos','Rafael','Cláudia','Pedro','João'],
+        caminhoes:['ABC-1D23','DEF-2G45','GHI-3J67','JKL-4M89','MNO-5P01'] };
+  const wk=weekKeyOf(ymdHoje()); const hoje=ymdHoje();
+  const A=(linha,bin,turno,ent,sai,mot,cam)=>({id:uid(),linha,bin,turno,entrada:ent,saida:sai,motorista:mot,caminhao:cam,dias:[0,1,2,3,4,5,6]});
+  escala={}; escala[wk]=[
+    A('Yoshiwara',2,'dia','07:40','08:00','Vini','ABC-1D23'),
+    A('Yoshiwara',11,'dia',hm(35),hm(60),'Vini','ABC-1D23'),
+    A('Serra Azul',4,'dia',hm(-10),hm(15),'Marcos','DEF-2G45'),
+    A('Centro',1,'dia',hm(-8),hm(12),'Rafael','GHI-3J67'),
+    A('Litoral',9,'dia',hm(-20),hm(10),'Cláudia','JKL-4M89'),
+    A('Yoshiwara',5,'noite','22:00','23:30','Pedro','MNO-5P01'),
+    A('Serra Azul',7,'noite','23:00','00:30','João','DEF-2G45'),
+  ];
+  // confirmações de hoje p/ mostrar variedade de luzes
+  const at=off=> agora.getTime()+off*60000;
+  const byBin={}; escala[wk].forEach(a=>byBin[a.linha+'#'+a.bin]=a);
+  confirmacoes={}; confirmacoes[hoje]={};
+  confirmacoes[hoje][byBin['Yoshiwara#2'].id]={confEntrada:quando(hoje,'07:41').getTime(),confDescarga:quando(hoje,'07:58').getTime()}; // finalizado no prazo
+  confirmacoes[hoje][byBin['Serra Azul#4'].id]={confEntrada:at(-9)};   // entrou no horário
+  confirmacoes[hoje][byBin['Litoral#9'].id]={confEntrada:at(-14)};      // entrou atrasado
+  salvar();
 }
 
-/* ================= Navegação por dia ================= */
-function atualizaBarraDia(){
-  const [Y,Mo,D]=selectedDate.split('-').map(Number);
-  const d=new Date(Y,Mo-1,D);
-  $('dayBig').textContent=d.toLocaleDateString('pt-BR',{weekday:'long'});
-  $('daySmall').textContent=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})
-     + (selectedDate===ymdHoje()?' · hoje':'');
+/* ================= Idioma-aware clock/labels ================= */
+function tick(){ const d=new Date(); $('clock').textContent=fmtHoraSeg(d);
+  $('today').textContent=d.toLocaleDateString(lang==='ja'?'ja-JP':'pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  render(); }
+
+/* ================= Navegação dia/semana ================= */
+function atualizaBarraDia(){ const [Y,Mo,D]=selectedDate.split('-').map(Number); const d=new Date(Y,Mo-1,D);
+  const loc=lang==='ja'?'ja-JP':'pt-BR';
+  $('dayBig').textContent=d.toLocaleDateString(loc,{weekday:'long'});
+  $('daySmall').textContent=d.toLocaleDateString(loc,{day:'2-digit',month:'long',year:'numeric'})+(selectedDate===ymdHoje()?' · '+t('hoje_label'):'');
   $('datePick').value=selectedDate;
 }
-function mudarDia(n){
-  const [Y,Mo,D]=selectedDate.split('-').map(Number);
-  const d=new Date(Y,Mo-1,D); d.setDate(d.getDate()+n);
-  selectedDate=ymd(d); render();
-}
-function setDia(v){ if(v){ selectedDate=v; render(); } }
+function mudarDia(n){ selectedDate=addDaysStr(selectedDate,n); render(); }
+function setDia(v){ if(v){selectedDate=v; render();} }
 function irHoje(){ selectedDate=ymdHoje(); render(); }
+function mudarSemana(n){ selectedWeek=addDaysStr(selectedWeek,7*n); renderProg(); }
+function setSemana(v){ if(v){ selectedWeek=weekKeyOf(v); renderProg(); } }
 
-/* ================= Filtro via tiles ================= */
-function filtrarTile(cor){
-  filtroStatus = (filtroStatus===cor)?'':cor;
-  document.querySelectorAll('.tile').forEach(t=>t.classList.toggle('sel', t.dataset.f===filtroStatus));
-  const fa=$('filtroAtivo');
-  if(filtroStatus){ fa.className=''; fa.innerHTML=`Filtrando: <b>${filtroStatus}</b> <a href="#" onclick="filtrarTile('${filtroStatus}');return false" style="color:var(--accent)">limpar ✕</a>`; }
-  else fa.className='hidden';
-  render();
-}
+/* ================= Filtro tiles ================= */
+function filtrarTile(cor){ filtroStatus=(filtroStatus===cor)?'':cor;
+  document.querySelectorAll('.tile').forEach(x=>x.classList.toggle('sel',x.dataset.f===filtroStatus)); render(); }
 
-/* ================= Render coordenador ================= */
-function render(){ mode==='coord'?renderCoord():renderDriver(); }
-
+/* ================= RENDER PAINEL ================= */
+function render(){ if(tab!=='painel') return; if(mode==='coord') renderCoord(); else renderDriver(); }
 function renderCoord(){
   atualizaBarraDia();
   const q=($('busca').value||'').toLowerCase();
-  const doDia=viagens.filter(v=>v.data===selectedDate);
-
-  // contadores do dia
-  let c={verde:0,amarelo:0,vermelho:0,cinza:0};
-  doDia.forEach(v=>c[statusGeral(v)]++);
-  $('cVerde').textContent=c.verde; $('cAmarelo').textContent=c.amarelo;
-  $('cVermelho').textContent=c.vermelho; $('cAgendado').textContent=c.cinza;
-
-  // aplica busca + filtro
-  let lista=doDia.filter(v=>{
-    const txt=`${v.linha} ${v.motorista} ${v.caminhao} ${v.viagem}`.toLowerCase();
-    if(q && !txt.includes(q)) return false;
-    if(filtroStatus && statusGeral(v)!==filtroStatus) return false;
-    return true;
-  });
-
-  // ordena: pior status primeiro, depois por horário de entrada
-  const ordemStatus={vermelho:0,amarelo:1,verde:2,cinza:3};
-  lista.sort((a,b)=> ordemStatus[estado(a).cat]-ordemStatus[estado(b).cat] || a.entrada.localeCompare(b.entrada));
-
+  const doDia=binsDoDia(selectedDate);
+  let c={verde:0,amarelo:0,vermelho:0,cinza:0}; doDia.forEach(v=>c[statusGeral(v)]++);
+  $('cVerde').textContent=c.verde;$('cAmarelo').textContent=c.amarelo;$('cVermelho').textContent=c.vermelho;$('cAgendado').textContent=c.cinza;
+  let lista=doDia.filter(v=>{ const txt=`${v.linha} ${v.motorista} ${v.caminhao} ${v.bin}`.toLowerCase();
+    if(q&&!txt.includes(q))return false; if(filtroStatus&&statusGeral(v)!==filtroStatus)return false; return true; });
+  const ord={vermelho:0,amarelo:1,verde:2,cinza:3};
+  lista.sort((a,b)=>ord[statusGeral(a)]-ord[statusGeral(b)]||a.entrada.localeCompare(b.entrada));
   const board=$('board');
-  if(!lista.length){
-    board.innerHTML=`<div class="empty">Nenhum Bin para este dia.<br><br><button class="btn" onclick="abrirModal()">＋ Cadastrar Bin</button></div>`;
-  }else{
-    board.innerHTML=lista.map(v=>{
-      const st=estado(v);
-      return `<div class="bincard ${st.cat}">
-        <div class="bc-top">
-          <div class="bc-titles">
-            <div class="bc-linha">${esc(v.linha)}<span class="mot">${esc(v.motorista)}</span></div>
-          </div>
-          <span class="bc-bin">BIN ${esc(v.viagem)}</span>
-          <span class="luz ${st.on?'on':''}" style="background:${st.luz};--halo:${st.luz}55"></span>
-        </div>
-        <div class="horarios">
-          <div class="hbox"><div class="lbl">Entrada</div><div class="hh">${esc(v.entrada)}</div></div>
-          <span class="harrow">→</span>
-          <div class="hbox"><div class="lbl">Saída</div><div class="hh">${esc(v.saida)}</div></div>
-        </div>
-        <div class="estado" style="color:${st.luz}"><span class="ic">${st.ic}</span>${st.titulo}</div>
-        <div class="estado-sub">${st.sub}</div>
-        <div class="bc-actions">
-          <button class="minibtn" title="Editar" onclick="editar('${v.id}')">✎</button>
-          <button class="minibtn" title="Remover" onclick="remover('${v.id}')">✕</button>
-        </div>
-      </div>`;
-    }).join('');
-  }
-
-  $('foot').innerHTML=`✅ finalizado no prazo · 🟢 entrou no horário · 🟡 entrou/aguardando com atraso · 🔴 atrasado · ⛔ finalizado com atraso · ⚪ agendado.
-    &nbsp;|&nbsp; Tolerância de ${tolMin()} min · ${doDia.length} Bin(s) neste dia. Dados salvos neste navegador.`;
+  if(!lista.length){ board.innerHTML=`<div class="empty">${t('nenhum_bin')}</div>`; }
+  else board.innerHTML=lista.map(v=>{ const st=estado(v);
+    const turnoLbl = v.turno==='noite'?('🌙 '+t('turno_noite')):('☀️ '+t('turno_dia'));
+    return `<div class="bincard ${st.cat}">
+      <div class="bc-top">
+        <div class="bc-titles"><div class="bc-linha">${esc(v.linha)}<span class="mot">${esc(v.motorista)}</span></div>
+          <div class="bc-turno">${turnoLbl}</div></div>
+        <span class="bc-bin">${t('bin').toUpperCase()} ${esc(v.bin)}</span>
+        <span class="luz ${st.on?'on':''}" style="background:${st.luz};--halo:${st.luz}55"></span>
+      </div>
+      <div class="horarios">
+        <div class="hbox"><div class="lbl">${t('entrada')} · ${t('previsto')}</div><div class="hh">${esc(v.entrada)}</div></div>
+        <span class="harrow">→</span>
+        <div class="hbox"><div class="lbl">${t('saida')} · ${t('previsto')}</div><div class="hh">${esc(v.saida)}</div></div>
+      </div>
+      <div class="estado" style="color:${st.luz}"><span class="ic">${st.ic}</span>${st.titulo}</div>
+      <div class="estado-sub">${st.sub}</div>
+      <div class="registro"><span class="rk">${t('real')}</span>
+        <span class="rv ${v.confEntrada?'ok':''}">${v.confEntrada?fmtHora(v.confEntrada):'—'}</span>
+        <span class="rarrow">→</span>
+        <span class="rv ${v.confDescarga?'ok':''}">${v.confDescarga?fmtHora(v.confDescarga):'—'}</span>
+      </div>
+    </div>`; }).join('');
+  $('foot').textContent=t('foot');
 }
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-/* ================= Modal ================= */
-function abrirModal(){ $('editId').value=''; $('modalTitle').textContent='Nova entrega';
-  ['fLinha','fMotorista','fCaminhao'].forEach(i=>$(i).value=''); $('fViagem').value='';
-  $('fData').value=selectedDate; $('fEntrada').value='07:40'; $('fSaida').value='08:00';
-  $('overlay').classList.add('open'); }
-function fecharModal(){ $('overlay').classList.remove('open'); }
-function editar(idv){ const v=viagens.find(x=>x.id===idv); if(!v)return;
-  $('editId').value=v.id; $('modalTitle').textContent='Editar entrega';
-  $('fLinha').value=v.linha; $('fViagem').value=v.viagem; $('fMotorista').value=v.motorista;
-  $('fCaminhao').value=v.caminhao; $('fData').value=v.data; $('fEntrada').value=v.entrada; $('fSaida').value=v.saida;
-  $('overlay').classList.add('open'); }
-function salvarLinha(){
-  const linha=$('fLinha').value.trim(), mot=$('fMotorista').value.trim();
-  if(!linha||!mot){ alert('Preencha ao menos a Linha e o Motorista.'); return; }
-  const dados={ linha, viagem:$('fViagem').value||'-', motorista:mot,
-    caminhao:$('fCaminhao').value.trim()||'—', data:$('fData').value||ymdHoje(),
-    entrada:$('fEntrada').value, saida:$('fSaida').value };
-  const eid=$('editId').value;
-  if(eid){ Object.assign(viagens.find(x=>x.id===eid),dados); }
-  else{ viagens.push({id:id(),...dados,confEntrada:null,confDescarga:null}); selectedDate=dados.data; }
-  salvar(); fecharModal(); render(); popularMotoristas();
-}
-function remover(idv){ if(!confirm('Remover esta entrega?'))return;
-  viagens=viagens.filter(x=>x.id!==idv); salvar(); render(); popularMotoristas(); }
-
 /* ================= App do motorista ================= */
-function popularMotoristas(){
-  const nomes=[...new Set(viagens.map(v=>v.motorista))].sort();
-  const sel=$('driverSelect');
-  sel.innerHTML=nomes.length?nomes.map(n=>`<option>${esc(n)}</option>`).join(''):`<option value="">— nenhum motorista —</option>`;
-}
-function entrarMotorista(){
-  const n=$('driverSelect').value; if(!n)return;
-  motoristaAtual=n; $('driverLogin').classList.add('hidden'); $('driverPanel').classList.remove('hidden');
-  $('dNome').textContent=n; $('dAvatar').textContent=n[0].toUpperCase(); renderDriver();
-}
-function sairMotorista(){ motoristaAtual=null; $('driverPanel').classList.add('hidden'); $('driverLogin').classList.remove('hidden'); }
-function renderDriver(){
-  if(!motoristaAtual)return;
-  const hoje=ymdHoje();
-  const minhas=viagens.filter(v=>v.motorista===motoristaAtual && v.data===hoje).sort((a,b)=>a.entrada.localeCompare(b.entrada));
+function popularMotoristas(){ const sel=$('driverSelect');
+  sel.innerHTML=cfg.motoristas.length?cfg.motoristas.map(n=>`<option>${esc(n)}</option>`).join(''):`<option value="">—</option>`; }
+function entrarMotorista(){ const n=$('driverSelect').value; if(!n)return; motoristaAtual=n;
+  $('driverLogin').classList.add('hidden');$('driverPanel').classList.remove('hidden');
+  $('dNome').textContent=n;$('dAvatar').textContent=n[0].toUpperCase(); renderDriver(); }
+function sairMotorista(){ motoristaAtual=null;$('driverPanel').classList.add('hidden');$('driverLogin').classList.remove('hidden'); }
+function renderDriver(){ if(!motoristaAtual)return; const hoje=ymdHoje();
+  const minhas=binsDoDia(hoje).filter(v=>v.motorista===motoristaAtual).sort((a,b)=>a.entrada.localeCompare(b.entrada));
   const pend=minhas.filter(v=>!v.confDescarga).length;
-  $('dResumo').textContent=`${minhas.length} entrega(s) hoje · ${pend} pendente(s)`;
+  $('dResumo').textContent=`${minhas.length} · ${pend} ${lang==='ja'?'未完了':'pendente(s)'}`;
   const wrap=$('driverTrips');
-  if(!minhas.length){ wrap.innerHTML=`<div class="empty">Nenhuma entrega atribuída a você hoje.</div>`; return; }
-  wrap.innerHTML=minhas.map(v=>{
-    const e=statusEntrada(v), d=statusDescarga(v), g=statusGeral(v);
+  if(!minhas.length){ wrap.innerHTML=`<div class="empty">${t('nenhuma_entrega')}</div>`; return; }
+  wrap.innerHTML=minhas.map(v=>{ const st=estado(v);
     let acoes;
-    if(!v.confEntrada) acoes=`<button class="btn verde" onclick="confirmarEntrada('${v.id}')">✅ Confirmar entrada</button>`;
-    else if(!v.confDescarga) acoes=`<div class="done-stamp">Entrou às ${fmtHora(v.confEntrada)}</div><button class="btn azul" onclick="confirmarDescarga('${v.id}')">📦 Confirmar descarga</button>`;
-    else acoes=`<div class="done-stamp">✔ Entrada ${fmtHora(v.confEntrada)} · Descarga ${fmtHora(v.confDescarga)} — concluída</div>`;
-    const pill = !v.confEntrada
-      ? `<span class="pill ${e.cor}">${e.label}${e.nota?` · ${e.nota}`:''}</span>`
-      : `<span class="pill ${d.cor}">${d.label}${d.nota?` · ${d.nota}`:''}</span>`;
-    return `<div class="trip-card ${g}">
-      <div class="trip-top">
-        <div><div class="trip-title">${esc(v.linha)} · Viagem #${esc(v.viagem)}</div><div class="sub" style="color:var(--muted);font-size:12px">Caminhão ${esc(v.caminhao)}</div></div>${pill}
-      </div>
-      <div class="trip-meta">
-        <div><div class="k">Entrada prevista</div><div class="val">${esc(v.entrada)}</div></div>
-        <div><div class="k">Saída prevista</div><div class="val">${esc(v.saida)}</div></div>
-      </div>
-      <div class="trip-actions">${acoes}</div>
+    if(!v.confEntrada) acoes=`<button class="btn verde" onclick="confirmarEntrada('${v.id}')">${t('confirmar_entrada')}</button>`;
+    else if(!v.confDescarga) acoes=`<div class="done-stamp">${t('sub_entrou')} ${fmtHora(v.confEntrada)}</div><button class="btn azul" onclick="confirmarDescarga('${v.id}')">${t('confirmar_descarga')}</button>`;
+    else acoes=`<div class="done-stamp">✔ ${fmtHora(v.confEntrada)} · ${fmtHora(v.confDescarga)}</div>`;
+    return `<div class="trip-card ${st.cat}">
+      <div class="trip-top"><div><div class="trip-title">${esc(v.linha)} · ${t('bin')} ${esc(v.bin)}</div>
+        <div style="color:var(--muted);font-size:12px">${v.turno==='noite'?'🌙':'☀️'} ${esc(v.caminhao)}</div></div>
+        <span class="pill ${st.cat}">${st.titulo}</span></div>
+      <div class="trip-meta"><div><div class="k">${t('entrada')}</div><div class="val">${esc(v.entrada)}</div></div>
+        <div><div class="k">${t('saida')}</div><div class="val">${esc(v.saida)}</div></div></div>
+      <div class="trip-actions">${acoes}</div></div>`; }).join('');
+}
+function marcarConf(id,campo){ const d=ymdHoje(); confirmacoes[d]=confirmacoes[d]||{}; confirmacoes[d][id]=confirmacoes[d][id]||{};
+  confirmacoes[d][id][campo]=Date.now(); salvar(); renderDriver(); }
+function confirmarEntrada(id){ marcarConf(id,'confEntrada'); }
+function confirmarDescarga(id){ const d=ymdHoje(); confirmacoes[d]=confirmacoes[d]||{}; confirmacoes[d][id]=confirmacoes[d][id]||{};
+  if(!confirmacoes[d][id].confEntrada) confirmacoes[d][id].confEntrada=Date.now();
+  confirmacoes[d][id].confDescarga=Date.now(); salvar(); renderDriver(); }
+
+/* ================= Simular ao vivo ================= */
+function simularAoVivo(){ const agora=new Date(); const hhmm=d=>`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const ent=new Date(agora.getTime()+60000), sai=new Date(agora.getTime()+4*60000);
+  const [Y,M,D]=ymdHoje().split('-').map(Number); const dow=new Date(Y,M-1,D).getDay();
+  if(!cfg.linhas.includes('Yoshiwara'))cfg.linhas.push('Yoshiwara'); if(!cfg.motoristas.includes('Vini'))cfg.motoristas.push('Vini');
+  const wk=weekKeyOf(ymdHoje()); escala[wk]=escala[wk]||[];
+  escala[wk].unshift({id:uid(),linha:'Yoshiwara',bin:2,turno:'dia',entrada:hhmm(ent),saida:hhmm(sai),motorista:'Vini',caminhao:'ABC-1D23',dias:[dow]});
+  selectedDate=ymdHoje(); salvar(); render();
+  alert((lang==='ja'?'作成: 吉祥寺 · ビン2 · Vini ('+hhmm(ent)+'→'+hhmm(sai)+')\n\nドライバー→Vini→入場を確認。':'Criado: Yoshiwara · Bin 2 · Vini ('+hhmm(ent)+'→'+hhmm(sai)+').\n\nAbra 📱 Motorista → Vini → Confirmar entrada.')); }
+
+/* ================= PROGRAMAÇÃO ================= */
+function renderChips(){
+  $('chipsLinhas').innerHTML=cfg.linhas.map((n,i)=>`<span class="chip"><b>${esc(n)}</b><span class="x" onclick="delLinha(${i})">✕</span></span>`).join('')||'<span class="lbl" style="color:var(--muted);font-size:12px">—</span>';
+  $('chipsMotoristas').innerHTML=cfg.motoristas.map((n,i)=>`<span class="chip">${esc(n)}<span class="x" onclick="delMot(${i})">✕</span></span>`).join('')||'<span style="color:var(--muted);font-size:12px">—</span>';
+  $('chipsCaminhoes').innerHTML=cfg.caminhoes.map((n,i)=>`<span class="chip">🚛 ${esc(n)}<span class="x" onclick="delCam(${i})">✕</span></span>`).join('')||'<span style="color:var(--muted);font-size:12px">—</span>';
+}
+function addLinha(){ const v=$('addLinhaInp').value.trim(); if(v&&!cfg.linhas.includes(v)){cfg.linhas.push(v);$('addLinhaInp').value='';salvar();renderProg();popularMotoristas();} }
+function addMotorista(){ const v=$('addMotInp').value.trim(); if(v&&!cfg.motoristas.includes(v)){cfg.motoristas.push(v);$('addMotInp').value='';salvar();renderProg();popularMotoristas();} }
+function addCaminhao(){ const v=$('addCamInp').value.trim(); if(v&&!cfg.caminhoes.includes(v)){cfg.caminhoes.push(v);$('addCamInp').value='';salvar();renderProg();} }
+function delLinha(i){ cfg.linhas.splice(i,1);salvar();renderProg(); }
+function delMot(i){ cfg.motoristas.splice(i,1);salvar();renderProg();popularMotoristas(); }
+function delCam(i){ cfg.caminhoes.splice(i,1);salvar();renderProg(); }
+
+function renderProg(){
+  if(tab!=='prog') return;
+  renderChips();
+  const loc=lang==='ja'?'ja-JP':'pt-BR';
+  const dates=weekDates(selectedWeek);
+  const d0=quando(dates[0],'00:00'), d6=quando(dates[6],'00:00');
+  $('wkLabel').innerHTML=`${t('semana')} ${d0.toLocaleDateString(loc,{day:'2-digit',month:'short'})} – ${d6.toLocaleDateString(loc,{day:'2-digit',month:'short'})}<small>${selectedWeek}</small>`;
+  $('weekPick').value=selectedWeek;
+  const ed=$('progEditor');
+  if(!cfg.linhas.length){ ed.innerHTML=`<div class="empty">${t('nenhuma_linha_cad')}</div>`; return; }
+  const arr=escala[selectedWeek]||[];
+  ed.innerHTML=cfg.linhas.map(linha=>{
+    const daG=arr.filter(a=>a.linha===linha&&a.turno==='dia');
+    const noG=arr.filter(a=>a.linha===linha&&a.turno==='noite');
+    return `<div class="lineblock">
+      <h3>📍 ${esc(linha)}</h3>
+      ${shiftBlock(linha,'dia',daG)}
+      ${shiftBlock(linha,'noite',noG)}
     </div>`;
   }).join('');
 }
-function confirmarEntrada(idv){ const v=viagens.find(x=>x.id===idv); if(!v)return; v.confEntrada=new Date(); salvar(); renderDriver(); }
-function confirmarDescarga(idv){ const v=viagens.find(x=>x.id===idv); if(!v)return; if(!v.confEntrada)v.confEntrada=new Date(); v.confDescarga=new Date(); salvar(); renderDriver(); }
+function shiftBlock(linha,turno,arr){
+  const icon=turno==='dia'?'☀️':'🌙'; const nome=turno==='dia'?t('turno_dia'):t('turno_noite');
+  const head=`<div class="asgn-head"><div>${t('bin')}</div><div>${t('entrada')}</div><div>${t('saida')}</div><div>${t('mot')}</div><div>${t('cam')}</div><div></div></div>`;
+  const rows=arr.map(a=>{
+    const mopts=cfg.motoristas.map(m=>`<option ${m===a.motorista?'selected':''}>${esc(m)}</option>`).join('');
+    const copts=cfg.caminhoes.map(c=>`<option ${c===a.caminhao?'selected':''}>${esc(c)}</option>`).join('');
+    return `<div class="asgn">
+      <input type="number" value="${esc(a.bin)}" onchange="updAsgn('${a.id}','bin',this.value)">
+      <input type="time" value="${esc(a.entrada)}" onchange="updAsgn('${a.id}','entrada',this.value)">
+      <input type="time" value="${esc(a.saida)}" onchange="updAsgn('${a.id}','saida',this.value)">
+      <select onchange="updAsgn('${a.id}','motorista',this.value)">${mopts}</select>
+      <select onchange="updAsgn('${a.id}','caminhao',this.value)">${copts}</select>
+      <button class="rm" onclick="delAsgn('${a.id}')">✕</button>
+    </div>`; }).join('');
+  return `<div class="shift ${turno}"><div class="shift-h">${icon} ${nome}</div>${arr.length?head:''}${rows}
+    <button class="btn ghost small" onclick="addAsgn('${esc(linha)}','${turno}')">${t('add_bin')}</button></div>`;
+}
+function addAsgn(linha,turno){ escala[selectedWeek]=escala[selectedWeek]||[];
+  const def=turno==='dia'?['07:00','07:30']:['22:00','23:00'];
+  escala[selectedWeek].push({id:uid(),linha,bin:1,turno,entrada:def[0],saida:def[1],
+    motorista:cfg.motoristas[0]||'',caminhao:cfg.caminhoes[0]||'',dias:[1,2,3,4,5,6]});
+  salvar(); renderProg(); }
+function updAsgn(id,campo,val){ const arr=escala[selectedWeek]||[]; const a=arr.find(x=>x.id===id); if(!a)return;
+  a[campo]=(campo==='bin')?val:val; salvar(); if(tab==='painel')render(); }
+function delAsgn(id){ escala[selectedWeek]=(escala[selectedWeek]||[]).filter(x=>x.id!==id); salvar(); renderProg(); }
 
-/* ================= Modo / relógio ================= */
-function setMode(m){
-  mode=m;
-  $('btnCoord').classList.toggle('active',m==='coord'); $('btnDriver').classList.toggle('active',m==='driver');
-  $('viewCoord').classList.toggle('hidden',m!=='coord'); $('viewDriver').classList.toggle('hidden',m!=='driver');
-  if(m==='driver')popularMotoristas(); render();
-}
-function tick(){
-  const d=new Date();
-  $('clock').textContent=fmtHoraSeg(d);
-  $('today').textContent=d.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
-  render();
-}
+function replicarProx(){ const src=escala[selectedWeek]||[]; if(!src.length){alert(lang==='ja'?'この週は空です。':'Esta semana está vazia.');return;}
+  const next=addDaysStr(selectedWeek,7); escala[next]=src.map(a=>({...a,id:uid()})); salvar();
+  alert(lang==='ja'?'翌週に複製しました。':'Replicado para a próxima semana.'); }
+function expandirSemanas(){ const src=escala[selectedWeek]||[]; if(!src.length){alert(lang==='ja'?'この週は空です。':'Esta semana está vazia.');return;}
+  abrirModal(t('expandir'), t('prompt_expandir'), 4, (n)=>{ n=Math.max(1,Math.min(52,parseInt(n)||1));
+    for(let i=1;i<=n;i++){ const wk=addDaysStr(selectedWeek,7*i); escala[wk]=src.map(a=>({...a,id:uid()})); }
+    salvar(); alert((lang==='ja'?'':'')+n+(lang==='ja'?'週に展開しました。':' semana(s) preenchida(s).')); }); }
+function trocarTurnos(){ const arr=escala[selectedWeek]||[]; if(!arr.length){alert(lang==='ja'?'この週は空です。':'Esta semana está vazia.');return;}
+  cfg.linhas.forEach(linha=>{
+    const dia=arr.filter(a=>a.linha===linha&&a.turno==='dia').sort((a,b)=>a.bin-b.bin);
+    const noite=arr.filter(a=>a.linha===linha&&a.turno==='noite').sort((a,b)=>a.bin-b.bin);
+    const n=Math.min(dia.length,noite.length);
+    for(let i=0;i<n;i++){ const m=dia[i].motorista; dia[i].motorista=noite[i].motorista; noite[i].motorista=m; }
+  });
+  salvar(); renderProg(); if(tab==='painel')render();
+  alert(lang==='ja'?'シフトを交代しました（日勤↔夜勤）。':'Turnos trocados (dia ↔ noite).'); }
+
+/* modal (expandir) */
+let modalCb=null;
+function abrirModal(titulo,label,val,cb){ $('modalTitle').textContent=titulo;$('modalLabel').textContent=label;$('modalInput').value=val;
+  modalCb=cb; $('overlay').classList.add('open'); }
+function fecharModal(){ $('overlay').classList.remove('open'); modalCb=null; }
+
+/* ================= Tabs / modo ================= */
+function setTab(tb){ tab=tb; $('tabPainel').classList.toggle('active',tb==='painel');$('tabProg').classList.toggle('active',tb==='prog');
+  $('viewPainel').classList.toggle('hidden',tb!=='painel');$('viewProg').classList.toggle('hidden',tb!=='prog');
+  if(tb==='painel')render(); else renderProg(); }
+function setMode(m){ mode=m; $('btnCoord').classList.toggle('active',m==='coord');$('btnDriver').classList.toggle('active',m==='driver');
+  $('modeCoord').classList.toggle('hidden',m!=='coord');$('modeDriver').classList.toggle('hidden',m!=='driver');
+  if(m==='driver')popularMotoristas(); render(); }
+
 /* ================= Boot ================= */
 (function init(){
-  const t=store.get(LS_TOL); if(t!==null)$('tol').value=t;
-  carregar(); popularMotoristas(); tick(); setInterval(tick,1000);
+  const savedLang=store.get(LS_LANG); if(savedLang==='ja'||savedLang==='pt')lang=savedLang;
+  const tv=store.get(LS_TOL); if(tv!==null)$('tol').value=tv;
+  selectedDate=ymdHoje(); selectedWeek=weekKeyOf(ymdHoje());
+  carregar(); popularMotoristas();
+  aplicarIdioma();               // aplica textos e chama render/renderProg
+  tick(); setInterval(tick,1000);
+  $('modalOk').addEventListener('click',()=>{ const v=$('modalInput').value; const cb=modalCb; fecharModal(); if(cb)cb(v); });
   $('overlay').addEventListener('click',e=>{ if(e.target===$('overlay'))fecharModal(); });
 })();
 </script>
