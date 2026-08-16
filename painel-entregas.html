@@ -205,7 +205,15 @@
       <button class="btnhoje" onclick="irHoje()">Hoje</button>
       <div class="spacer"></div>
       <button class="btn ghost small" onclick="carregarExemplo()">↻ Dados de exemplo</button>
+      <button class="btn ghost small" onclick="simularAoVivo()" title="Cria a Yoshiwara Bin 2 começando agora para testar o ciclo">▶ Simular ao vivo</button>
       <button class="btn" onclick="abrirModal()">＋ Nova entrega</button>
+    </div>
+
+    <!-- Guia de teste -->
+    <div id="ajuda" style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.35);border-radius:12px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--txt);line-height:1.5">
+      <b>Como testar o ciclo:</b> clique em <b>▶ Simular ao vivo</b> (cria a Yoshiwara · Bin 2 · Vini começando agora) →
+      abra <b>📱 Motorista</b> no topo → escolha <b>Vini</b> → toque em <b>Confirmar entrada</b> e depois <b>Confirmar descarga</b>.
+      Volte ao <b>🖥️ Coordenador</b> e veja a <b>luz do card mudar</b>. &nbsp;<a href="#" onclick="$('ajuda').style.display='none';return false" style="color:var(--muted)">ocultar ✕</a>
     </div>
 
     <!-- Contadores (clicáveis para filtrar) -->
@@ -397,6 +405,22 @@ function carregarExemplo(silent){
   salvar(); render(); popularMotoristas();
 }
 function id(){ return Math.random().toString(36).slice(2,9); }
+
+/* Cria a Yoshiwara Bin 2 começando AGORA, para ver o ciclo na prática */
+function simularAoVivo(){
+  const agora=new Date();
+  const hhmm=d=>`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const entra=new Date(agora.getTime()+60000);      // entra em ~1 min
+  const sai  =new Date(agora.getTime()+4*60000);    // sai em ~4 min
+  selectedDate=ymdHoje();
+  viagens.unshift({id:id(),data:ymdHoje(),linha:'Yoshiwara',viagem:2,motorista:'Vini',
+    caminhao:'ABC-1D23',entrada:hhmm(entra),saida:hhmm(sai),confEntrada:null,confDescarga:null});
+  salvar(); render(); popularMotoristas();
+  alert('✅ Criado: Yoshiwara · Bin 2 · Vini (entra '+hhmm(entra)+' → sai '+hhmm(sai)+').\n\n'+
+        'Ele vai ficar ⚪ agendado, virar 🟡 aguardando e depois 🔴 atrasado.\n\n'+
+        'Agora abra 📱 Motorista (topo) → escolha Vini → Confirmar entrada.\n'+
+        'Volte ao 🖥️ Coordenador e veja a luz ficar 🟢 verde.');
+}
 
 /* ================= Navegação por dia ================= */
 function atualizaBarraDia(){
