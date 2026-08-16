@@ -287,13 +287,21 @@
 
 <script>
 /* ================= Estado ================= */
-const LS_KEY='painelEntregas.v3', LS_TOL='painelEntregas.tol';
+const LS_KEY='painelEntregas.v4', LS_TOL='painelEntregas.tol';
 let viagens=[], mode='coord', motoristaAtual=null;
 let selectedDate=ymdHoje();          // dia visível no painel do coordenador
 let filtroStatus='';                 // filtro por status (via tiles)
 
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
+
+/* Storage seguro: se localStorage estiver bloqueado (preview/sandbox), usa memória.
+   Sem isso, um erro de localStorage quebraria o painel inteiro (tela em branco). */
+const _mem={};
+const store={
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return (k in _mem)?_mem[k]:null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){ _mem[k]=v; } }
+};
 
 function ymd(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
 function ymdHoje(){ return ymd(new Date()); }
@@ -366,19 +374,23 @@ function statusGeral(v){ return estado(v).cat; }
 const CORVAR={verde:'var(--verde)',amarelo:'var(--amarelo)',vermelho:'var(--vermelho)',cinza:'var(--cinza)',azul:'var(--azul)'};
 
 /* ================= Persistência ================= */
-function salvar(){ localStorage.setItem(LS_KEY, JSON.stringify(viagens.map(v=>({
+function salvar(){ store.set(LS_KEY, JSON.stringify(viagens.map(v=>({
   ...v, confEntrada:v.confEntrada?v.confEntrada.getTime():null, confDescarga:v.confDescarga?v.confDescarga.getTime():null
 })))); }
 function carregar(){
-  const raw=localStorage.getItem(LS_KEY);
+  const raw=store.get(LS_KEY);
   if(!raw){ carregarExemplo(true); return; }
-  try{ viagens=JSON.parse(raw).map(v=>({...v,
-    data:v.data||ymdHoje(),
-    confEntrada:v.confEntrada?new Date(v.confEntrada):null,
-    confDescarga:v.confDescarga?new Date(v.confDescarga):null })); }
+  try{
+    const arr=JSON.parse(raw);
+    if(!Array.isArray(arr)||!arr.length){ carregarExemplo(true); return; }
+    viagens=arr.map(v=>({...v,
+      data:v.data||ymdHoje(),
+      confEntrada:v.confEntrada?new Date(v.confEntrada):null,
+      confDescarga:v.confDescarga?new Date(v.confDescarga):null }));
+  }
   catch(e){ carregarExemplo(true); }
 }
-function salvarTol(){ localStorage.setItem(LS_TOL,$('tol').value); render(); }
+function salvarTol(){ store.set(LS_TOL,$('tol').value); render(); }
 
 /* ================= Exemplo ================= */
 function carregarExemplo(silent){
@@ -387,20 +399,21 @@ function carregarExemplo(silent){
   const hm=off=>{ const d=new Date(agora.getTime()+off*60000); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
   const at=off=> new Date(agora.getTime()+off*60000);
   viagens=[
-    // Exemplo literal pedido — Yoshiwara, Bin 2, descarga 07:40 → 08:00
-    {id:id(),data:hoje,linha:'Yoshiwara',viagem:2,motorista:'Vini',    caminhao:'ABC-1D23',entrada:'07:40',saida:'08:00',confEntrada:null,confDescarga:null},
+    // ===== SEU EXEMPLO — Yoshiwara, Bin 2, Vini, descarga 07:40 → 08:00 =====
+    // deixado AO VIVO (começando agora) para você ver a luz mudando na prática
+    {id:id(),data:hoje,linha:'Yoshiwara',viagem:2,motorista:'Vini',    caminhao:'ABC-1D23',entrada:hm(1), saida:hm(21), confEntrada:null,confDescarga:null},
     // 🟢 entrou no horário (em descarga)
     {id:id(),data:hoje,linha:'Serra Azul',viagem:4,motorista:'Marcos', caminhao:'DEF-2G45',entrada:hm(-10),saida:hm(15),confEntrada:at(-9),confDescarga:null},
     // 🔴 atrasado (não confirmou entrada)
     {id:id(),data:hoje,linha:'Centro',   viagem:1,motorista:'Rafael',  caminhao:'GHI-3J67',entrada:hm(-8), saida:hm(12),confEntrada:null,confDescarga:null},
     // 🟡 entrou atrasado
     {id:id(),data:hoje,linha:'Litoral',  viagem:9,motorista:'Cláudia', caminhao:'JKL-4M89',entrada:hm(-20),saida:hm(10),confEntrada:at(-14),confDescarga:null},
-    // ✅ finalizado no prazo
-    {id:id(),data:hoje,linha:'Norte',    viagem:3,motorista:'João',    caminhao:'MNO-5P01',entrada:hm(-45),saida:hm(-20),confEntrada:at(-44),confDescarga:at(-22)},
+    // ✅ finalizado no prazo — Yoshiwara Bin 2 com os horários literais 07:40 → 08:00
+    {id:id(),data:hoje,linha:'Yoshiwara',viagem:2,motorista:'Vini',    caminhao:'ABC-1D23',entrada:'07:40',saida:'08:00',confEntrada:quando(hoje,'07:41'),confDescarga:quando(hoje,'07:58')},
     // ⛔ finalizado com atraso
     {id:id(),data:hoje,linha:'Vale',     viagem:6,motorista:'Pedro',   caminhao:'PQR-6S23',entrada:hm(-50),saida:hm(-15),confEntrada:at(-49),confDescarga:at(-7)},
     // ⚪ agendado (ainda vai começar)
-    {id:id(),data:hoje,linha:'Yoshiwara',viagem:11,motorista:'Vini',   caminhao:'ABC-1D23',entrada:hm(35), saida:hm(60),confEntrada:null,confDescarga:null},
+    {id:id(),data:hoje,linha:'Norte',    viagem:3,motorista:'João',    caminhao:'MNO-5P01',entrada:hm(35), saida:hm(60),confEntrada:null,confDescarga:null},
   ];
   salvar(); render(); popularMotoristas();
 }
@@ -593,7 +606,7 @@ function tick(){
 }
 /* ================= Boot ================= */
 (function init(){
-  const t=localStorage.getItem(LS_TOL); if(t!==null)$('tol').value=t;
+  const t=store.get(LS_TOL); if(t!==null)$('tol').value=t;
   carregar(); popularMotoristas(); tick(); setInterval(tick,1000);
   $('overlay').addEventListener('click',e=>{ if(e.target===$('overlay'))fecharModal(); });
 })();
