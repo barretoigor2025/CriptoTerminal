@@ -7,28 +7,29 @@
 <style>
   :root{
     --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --line:#2a3340;
-    --txt:#e6edf3; --muted:#8b98a5; --accent:#3b82f6;
+    --txt:#e6edf3; --muted:#8b98a5;
+    --accent:#d7dee6; --accent-ink:#0e1116;   /* destaque neutro (branco/cinza) */
     --verde:#22c55e; --amarelo:#eab308; --vermelho:#ef4444; --cinza:#64748b; --azul:#38bdf8;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Segoe UI',system-ui,-apple-system,Roboto,'Noto Sans JP',Arial,sans-serif;
     background:var(--bg);color:var(--txt);min-height:100vh;-webkit-font-smoothing:antialiased}
   header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#161b22,#12161c);
-    border-bottom:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    border-bottom:1px solid var(--line);padding:8px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
-  .brand .logo{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#3b82f6,#22c55e);display:grid;place-items:center;font-size:17px}
+  .brand .logo{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#3a4553,#1c232d);border:1px solid var(--line);display:grid;place-items:center;font-size:17px}
   .brand small{display:block;font-size:11px;color:var(--muted);font-weight:500}
   .tabs{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px}
   .tabs button{border:0;background:transparent;color:var(--muted);font-weight:600;padding:8px 13px;border-radius:8px;cursor:pointer;font-size:13px;display:flex;gap:6px;align-items:center}
-  .tabs button.active{background:var(--accent);color:#fff}
+  .tabs button.active{background:var(--accent);color:var(--accent-ink)}
   .langbtn{border:1px solid var(--line);background:var(--panel2);color:var(--txt);font-weight:700;padding:8px 12px;border-radius:9px;cursor:pointer;font-size:13px}
   .clock{margin-left:auto;text-align:right;font-variant-numeric:tabular-nums}
   .clock .time{font-size:23px;font-weight:700;letter-spacing:1px}
   .clock .date{font-size:11px;color:var(--muted);text-transform:capitalize}
-  main{padding:14px;max-width:1500px;margin:0 auto}
+  main{padding:12px;max-width:1500px;margin:0 auto}
 
   /* barra do dia */
-  .daybar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:11px 14px}
+  .daybar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 12px}
   .daynav{display:flex;gap:8px}
   .daynav button{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);font-size:16px;cursor:pointer}
   .dayinfo{min-width:180px}
@@ -36,7 +37,7 @@
   .dayinfo .small{font-size:12px;color:var(--muted)}
   input[type=date],input[type=time],input[type=number],input[type=text],select,input[type=search]{
     background:var(--panel2);border:1px solid var(--line);color:var(--txt);padding:8px 10px;border-radius:9px;font-size:13px;outline:none;font-family:inherit}
-  .btn{background:var(--accent);border:0;color:#fff;font-weight:600;padding:9px 13px;border-radius:9px;cursor:pointer;font-size:13px;display:inline-flex;gap:6px;align-items:center}
+  .btn{background:var(--accent);border:0;color:var(--accent-ink);font-weight:700;padding:9px 13px;border-radius:9px;cursor:pointer;font-size:13px;display:inline-flex;gap:6px;align-items:center}
   .btn.ghost{background:var(--panel2);border:1px solid var(--line);color:var(--txt)}
   .btn.small{padding:6px 10px;font-size:12px}
   .btn.verde{background:var(--verde)} .btn.azul{background:var(--azul);color:#04222e}
@@ -45,14 +46,14 @@
   .tol{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
   .tol input{width:56px}
 
-  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:14px}
-  .tile{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 15px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:.15s}
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:8px 11px;display:flex;align-items:center;gap:9px;cursor:pointer;transition:.15s}
   .tile:hover{border-color:var(--accent)} .tile.sel{outline:2px solid var(--accent)}
-  .tile .dot{width:13px;height:13px;border-radius:4px}
-  .tile .n{font-size:26px;font-weight:800;line-height:1}
-  .tile .lbl{font-size:12px;color:var(--muted);margin-top:2px}
+  .tile .dot{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
+  .tile .n{font-size:20px;font-weight:800;line-height:1}
+  .tile .lbl{font-size:10px;color:var(--muted);margin-top:2px;line-height:1.2}
 
-  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
   #busca{min-width:200px}
 
   /* faixas empilhadas (uma linha por rota) */
@@ -90,15 +91,15 @@
   .lane-name{font-size:15px;font-weight:800}
   .lane-meta{font-size:11px;color:var(--muted)}
   .lane-count{margin-left:auto;font-size:11px;color:var(--muted)}
-  .lane-bins{display:flex;gap:9px;overflow-x:auto;padding:4px 2px 4px}
+  .lane-bins{display:flex;gap:9px;overflow-x:auto;padding:12px 2px 6px}
   .tile2{flex:0 0 auto;width:172px;background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--cinza);border-radius:11px;padding:9px 10px;position:relative}
   .tile2.verde{border-left-color:var(--verde)} .tile2.amarelo{border-left-color:var(--amarelo)}
   .tile2.vermelho{border-left-color:var(--vermelho)} .tile2.cinza{border-left-color:var(--cinza)}
-  .tile2.atual{outline:2px solid var(--accent);background:#1b2431}
-  .tile2.done{opacity:.62}
-  .t2-tag{position:absolute;top:-8px;left:9px;font-size:8px;font-weight:800;background:var(--accent);color:#fff;padding:1px 7px;border-radius:6px;text-transform:uppercase;letter-spacing:.5px}
+  .tile2.atual{outline:2px solid var(--accent);background:#20262e}
+  .tile2.done{opacity:.6}
+  .t2-tag{position:absolute;top:-8px;left:9px;font-size:8px;font-weight:800;background:var(--accent);color:var(--accent-ink);padding:1px 7px;border-radius:6px;text-transform:uppercase;letter-spacing:.5px}
   .t2-top{display:flex;align-items:center;gap:6px;margin-bottom:6px}
-  .t2-bin{font-size:11px;font-weight:800;color:#93c5fd;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.4);padding:1px 6px;border-radius:6px;white-space:nowrap}
+  .t2-bin{font-size:11px;font-weight:800;color:var(--txt);background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18);padding:1px 6px;border-radius:6px;white-space:nowrap}
   .t2-mot{font-size:12px;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .t2-luz{width:11px;height:11px;border-radius:50%;flex:0 0 auto}
   .t2-time{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.2}
@@ -135,13 +136,17 @@
   .lineblock{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:14px}
   .lineblock h3{font-size:17px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
   .shift{border:1px dashed var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px}
-  .shift.dia{border-color:rgba(234,179,8,.4)} .shift.noite{border-color:rgba(56,189,248,.4)}
   .shift-h{font-size:13px;font-weight:800;margin-bottom:8px;display:flex;align-items:center;gap:7px}
-  .asgn{display:grid;grid-template-columns:64px 92px 92px 1fr 1fr 34px;gap:8px;align-items:center;margin-bottom:7px}
+  .asgn{display:grid;grid-template-columns:56px 88px 88px 1fr 1fr 32px;gap:7px;align-items:center;margin-bottom:4px}
   .asgn label{display:none}
   .asgn .rm{background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:8px;height:34px;cursor:pointer}
   .asgn .rm:hover{color:var(--vermelho)}
-  .asgn-head{display:grid;grid-template-columns:64px 92px 92px 1fr 1fr 34px;gap:8px;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:5px}
+  .asgn-head{display:grid;grid-template-columns:56px 88px 88px 1fr 1fr 32px;gap:7px;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:5px}
+  .asgn-days{display:flex;gap:4px;margin:0 0 10px 0;flex-wrap:wrap;align-items:center}
+  .asgn-days .dlbl{font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-right:2px}
+  .dchip{width:22px;height:22px;border-radius:6px;border:1px solid var(--line);background:var(--panel2);color:var(--muted);font-size:11px;font-weight:700;display:grid;place-items:center;cursor:pointer;user-select:none}
+  .dchip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
   /* modal */
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
@@ -287,6 +292,7 @@
       <div class="wk" id="wkLabel">—<small id="wkSub">—</small></div>
       <input type="date" id="weekPick" onchange="setSemana(this.value)">
       <div class="spacer"></div>
+      <button class="btn small" onclick="abrirLinha()" data-i18n="add_linha_bins">＋ Linha + bins</button>
       <button class="btn ghost small" onclick="replicarProx()" data-i18n="replicar">Replicar próxima semana</button>
       <button class="btn ghost small" onclick="expandirSemanas()" data-i18n="expandir">Expandir semanas</button>
       <button class="btn warn small" onclick="trocarTurnos()" data-i18n="trocar_turnos">Trocar turnos</button>
@@ -295,6 +301,25 @@
     <div id="progEditor"></div>
   </section>
 </main>
+
+<!-- modal Nova linha com bins -->
+<div class="overlay" id="ovLinha">
+  <div class="modal">
+    <h3 data-i18n="nova_linha">Nova linha (com bins)</h3>
+    <div class="field"><label data-i18n="nome_linha">Nome da linha</label><input type="text" id="nlNome" placeholder="Ex: Yoshiwara"></div>
+    <div class="grid2">
+      <div class="field"><label data-i18n="qtd_bins">Nº de bins</label><input type="number" id="nlQtd" min="1" max="20" value="4"></div>
+      <div class="field"><label data-i18n="turno_label">Turno</label><select id="nlTurno"><option value="dia">☀️ <span>Dia</span></option><option value="noite">🌙 Noite</option></select></div>
+      <div class="field"><label data-i18n="entrada_1">Entrada do 1º bin</label><input type="time" id="nlEnt" value="07:00"></div>
+      <div class="field"><label data-i18n="duracao">Duração (min)</label><input type="number" id="nlDur" min="5" value="20"></div>
+      <div class="field"><label data-i18n="intervalo">Intervalo entre bins (min)</label><input type="number" id="nlInt" min="0" value="60"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="fecharLinha()" data-i18n="cancelar">Cancelar</button>
+      <button class="btn" onclick="criarLinha()" data-i18n="criar">Criar</button>
+    </div>
+  </div>
+</div>
 
 <!-- modal genérico (expandir) -->
 <div class="overlay" id="overlay">
@@ -323,6 +348,8 @@ const I18N={
   nome_linha:'Nome da linha',nome_motorista:'Nome do motorista',numero_caminhao:'Número (ex: 5615)',
   replicar:'Replicar próxima semana',expandir:'Expandir semanas',trocar_turnos:'Trocar turnos',
   cancelar:'Cancelar',confirmar:'Confirmar',
+  nova_linha:'Nova linha (com bins)',qtd_bins:'Nº de bins',duracao:'Duração (min)',intervalo:'Intervalo entre bins (min)',
+  entrada_1:'Entrada do 1º bin',turno_label:'Turno',dias_label:'Dias',add_linha_bins:'＋ Linha + bins',criar:'Criar',
   turno_dia:'Turno Dia',turno_noite:'Turno Noite',semana:'Semana',
   add_bin:'+ Bin',add_linha_sem:'+ Adicionar linha à semana',
   bin:'Bin',mot:'Motorista',cam:'Caminhão',rem_linha:'remover linha da semana',
@@ -352,6 +379,8 @@ const I18N={
   nome_linha:'ライン名',nome_motorista:'ドライバー名',numero_caminhao:'番号 (例: 5615)',
   replicar:'翌週に複製',expandir:'複数週に展開',trocar_turnos:'シフト交代',
   cancelar:'キャンセル',confirmar:'確定',
+  nova_linha:'新規ライン（ビン付き）',qtd_bins:'ビン数',duracao:'所要（分）',intervalo:'ビン間隔（分）',
+  entrada_1:'最初のビンの入場',turno_label:'シフト',dias_label:'曜日',add_linha_bins:'＋ ライン＋ビン',criar:'作成',
   turno_dia:'日勤',turno_noite:'夜勤',semana:'週',
   add_bin:'+ ビン',add_linha_sem:'+ 週にラインを追加',
   bin:'ビン',mot:'ドライバー',cam:'トラック',rem_linha:'週からラインを削除',
@@ -399,6 +428,7 @@ function ymd(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDa
 function ymdHoje(){ return ymd(new Date()); }
 function quando(dataStr,hhmm){ const [Y,Mo,D]=dataStr.split('-').map(Number); const [h,m]=hhmm.split(':').map(Number); return new Date(Y,Mo-1,D,h,m,0,0); }
 function saidaDate(v){ let d=quando(v.data,v.saida); if(v.saida<=v.entrada) d=new Date(d.getTime()+86400000); return d; } // vira meia-noite (turno noite)
+function addMin(hhmm,mins){ const [h,m]=hhmm.split(':').map(Number); let tot=(h*60+m+mins)%1440; if(tot<0)tot+=1440; return `${pad(Math.floor(tot/60))}:${pad(tot%60)}`; }
 function fmtHora(d){ return d?`${pad(d.getHours())}:${pad(d.getMinutes())}`:'—'; }
 function fmtHoraSeg(d){ return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }
 function tolMin(){ return Math.max(0,parseInt($('tol').value)||0); }
@@ -649,9 +679,12 @@ function renderProg(){
 function shiftBlock(linha,turno,arr){
   const icon=turno==='dia'?'☀️':'🌙'; const nome=turno==='dia'?t('turno_dia'):t('turno_noite');
   const head=`<div class="asgn-head"><div>${t('bin')}</div><div>${t('entrada')}</div><div>${t('saida')}</div><div>${t('mot')}</div><div>${t('cam')}</div><div></div></div>`;
+  const DOW=lang==='ja'?['日','月','火','水','木','金','土']:['D','S','T','Q','Q','S','S'];
   const rows=arr.map(a=>{
     const mopts=cfg.motoristas.map(m=>`<option ${m===a.motorista?'selected':''}>${esc(m)}</option>`).join('');
     const copts=cfg.caminhoes.map(c=>`<option ${c===a.caminhao?'selected':''}>${esc(c)}</option>`).join('');
+    const dias=a.dias||[1,2,3,4,5,6];
+    const chips=[1,2,3,4,5,6,0].map(d=>`<span class="dchip ${dias.includes(d)?'on':''}" onclick="toggleDia('${a.id}',${d})">${DOW[d]}</span>`).join('');
     return `<div class="asgn">
       <input type="number" value="${esc(a.bin)}" onchange="updAsgn('${a.id}','bin',this.value)">
       <input type="time" value="${esc(a.entrada)}" onchange="updAsgn('${a.id}','entrada',this.value)">
@@ -659,18 +692,44 @@ function shiftBlock(linha,turno,arr){
       <select onchange="updAsgn('${a.id}','motorista',this.value)">${mopts}</select>
       <select onchange="updAsgn('${a.id}','caminhao',this.value)">${copts}</select>
       <button class="rm" onclick="delAsgn('${a.id}')">✕</button>
-    </div>`; }).join('');
+    </div>
+    <div class="asgn-days"><span class="dlbl">${t('dias_label')}</span>${chips}</div>`; }).join('');
   return `<div class="shift ${turno}"><div class="shift-h">${icon} ${nome}</div>${arr.length?head:''}${rows}
     <button class="btn ghost small" onclick="addAsgn('${esc(linha)}','${turno}')">${t('add_bin')}</button></div>`;
 }
 function addAsgn(linha,turno){ escala[selectedWeek]=escala[selectedWeek]||[];
+  const arr=escala[selectedWeek];
+  const mesmos=arr.filter(a=>a.linha===linha&&a.turno===turno);
+  const proxBin=mesmos.length?Math.max(...mesmos.map(a=>+a.bin||0))+1:1;
   const def=turno==='dia'?['07:00','07:30']:['22:00','23:00'];
-  escala[selectedWeek].push({id:uid(),linha,bin:1,turno,entrada:def[0],saida:def[1],
+  arr.push({id:uid(),linha,bin:proxBin,turno,entrada:def[0],saida:def[1],
     motorista:cfg.motoristas[0]||'',caminhao:cfg.caminhoes[0]||'',dias:[1,2,3,4,5,6]});
   salvar(); renderProg(); }
 function updAsgn(id,campo,val){ const arr=escala[selectedWeek]||[]; const a=arr.find(x=>x.id===id); if(!a)return;
-  a[campo]=(campo==='bin')?val:val; salvar(); if(tab==='painel')render(); }
+  a[campo]=val; salvar(); if(tab==='painel')render(); }
 function delAsgn(id){ escala[selectedWeek]=(escala[selectedWeek]||[]).filter(x=>x.id!==id); salvar(); renderProg(); }
+function toggleDia(id,d){ const a=(escala[selectedWeek]||[]).find(x=>x.id===id); if(!a)return;
+  a.dias=a.dias||[1,2,3,4,5,6]; const i=a.dias.indexOf(d);
+  if(i>=0)a.dias.splice(i,1); else a.dias.push(d);
+  salvar(); renderProg(); if(tab==='painel')render(); }
+
+/* Nova linha com N bins */
+function abrirLinha(){ $('nlNome').value=''; $('nlQtd').value=4; $('nlTurno').value='dia'; $('nlEnt').value='07:00'; $('nlDur').value=20; $('nlInt').value=60; $('ovLinha').classList.add('open'); }
+function fecharLinha(){ $('ovLinha').classList.remove('open'); }
+function criarLinha(){
+  const nome=$('nlNome').value.trim(); if(!nome){ alert(lang==='ja'?'ライン名を入力してください。':'Digite o nome da linha.'); return; }
+  const qtd=Math.max(1,Math.min(20,parseInt($('nlQtd').value)||1));
+  const turno=$('nlTurno').value, dur=Math.max(5,parseInt($('nlDur').value)||20), intv=Math.max(0,parseInt($('nlInt').value)||0);
+  let ent=$('nlEnt').value||'07:00';
+  if(!cfg.linhas.includes(nome)) cfg.linhas.push(nome);
+  escala[selectedWeek]=escala[selectedWeek]||[];
+  for(let i=1;i<=qtd;i++){
+    escala[selectedWeek].push({id:uid(),linha:nome,bin:i,turno,entrada:ent,saida:addMin(ent,dur),
+      motorista:cfg.motoristas[0]||'',caminhao:cfg.caminhoes[0]||'',dias:[1,2,3,4,5,6]});
+    ent=addMin(ent,dur+intv);
+  }
+  salvar(); fecharLinha(); renderProg(); popularMotoristas();
+}
 
 function replicarProx(){ const src=escala[selectedWeek]||[]; if(!src.length){alert(lang==='ja'?'この週は空です。':'Esta semana está vazia.');return;}
   const next=addDaysStr(selectedWeek,7); escala[next]=src.map(a=>({...a,id:uid()})); salvar();
@@ -713,6 +772,7 @@ function setMode(m){ mode=m; $('btnCoord').classList.toggle('active',m==='coord'
   tick(); setInterval(tick,1000);
   $('modalOk').addEventListener('click',()=>{ const v=$('modalInput').value; const cb=modalCb; fecharModal(); if(cb)cb(v); });
   $('overlay').addEventListener('click',e=>{ if(e.target===$('overlay'))fecharModal(); });
+  $('ovLinha').addEventListener('click',e=>{ if(e.target===$('ovLinha'))fecharLinha(); });
 })();
 </script>
 </body>
