@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L/S Ratio — Indicador Violento</title>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#111823; --panel2:#18212e; --line:#232f3d;
+    --txt:#e8eef5; --muted:#8492a3;
+    --up:#16c784; --up-dim:rgba(22,199,132,.15);
+    --down:#ea3943; --down-dim:rgba(234,57,67,.15);
+    --warn:#f0b90b; --neutral:#64748b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;background:
+    radial-gradient(1200px 500px at 50% -10%,rgba(234,57,67,.06),transparent),
+    radial-gradient(1000px 500px at 80% 0,rgba(22,199,132,.05),transparent),var(--bg);
+    color:var(--txt);min-height:100vh;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1280px;margin:0 auto;padding:14px}
+  a{color:inherit}
+
+  header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .logo{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;font-size:20px;
+    background:linear-gradient(135deg,var(--up),var(--down));box-shadow:0 0 22px rgba(234,57,67,.35)}
+  .ttl{font-weight:900;font-size:20px;letter-spacing:.5px;line-height:1}
+  .ttl small{display:block;font-size:11px;color:var(--muted);font-weight:600;letter-spacing:1.5px;margin-top:3px}
+  .ctrls{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  select,button{background:var(--panel2);border:1px solid var(--line);color:var(--txt);padding:9px 12px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;outline:none}
+  select:hover,button:hover{border-color:var(--muted)}
+  .live{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+  .live .dot{width:8px;height:8px;border-radius:50%;background:var(--up);box-shadow:0 0 8px var(--up);animation:blink 1.4s infinite}
+  @keyframes blink{50%{opacity:.25}}
+
+  .banner{background:var(--down-dim);border:1px solid rgba(234,57,67,.4);color:#ffb3b8;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none}
+  .banner.show{display:block}
+
+  /* faixa de preço */
+  .ticker{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+  .tk{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px}
+  .tk .k{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700}
+  .tk .v{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:3px}
+  .tk .s{font-size:12px;font-weight:700;margin-top:1px}
+  .up{color:var(--up)} .down{color:var(--down)} .neu{color:var(--muted)}
+
+  /* HERO — batalha principal */
+  .hero{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px;position:relative;overflow:hidden}
+  .hero-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+  .hero-h .t{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+  .hero-h .ratio{margin-left:auto;font-size:14px;font-weight:800;color:var(--muted)}
+  .hero-h .ratio b{font-size:22px;color:var(--txt)}
+  .battle{position:relative;height:56px;border-radius:12px;overflow:hidden;display:flex;border:1px solid var(--line)}
+  .battle .side{display:flex;align-items:center;height:100%;transition:width .6s cubic-bezier(.2,.7,.2,1);position:relative;min-width:0}
+  .battle .L{background:linear-gradient(90deg,rgba(22,199,132,.25),var(--up-dim))}
+  .battle .S{background:linear-gradient(90deg,var(--down-dim),rgba(234,57,67,.25));justify-content:flex-end}
+  .battle .lab{padding:0 14px;font-weight:900;font-size:18px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .battle .L .lab{color:var(--up)} .battle .S .lab{color:var(--down)}
+  .battle .mid{position:absolute;top:0;bottom:0;width:2px;background:var(--bg);left:50%;transform:translateX(-1px);z-index:2}
+  .hero-sub{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px;font-weight:600;letter-spacing:.5px}
+  .verdict{margin-top:12px;padding:11px 14px;border-radius:11px;font-size:14px;font-weight:700;display:flex;gap:9px;align-items:flex-start;line-height:1.4}
+  .verdict.up{background:var(--up-dim);border:1px solid rgba(22,199,132,.35)}
+  .verdict.down{background:var(--down-dim);border:1px solid rgba(234,57,67,.35)}
+  .verdict.neu{background:rgba(100,116,139,.12);border:1px solid var(--line)}
+  .verdict .ic{font-size:18px}
+
+  h2.sec{font-size:12px;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted);font-weight:800;margin:18px 2px 10px}
+
+  /* grid de barras de posição */
+  .pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+  .pcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .pcard .ph{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+  .pcard .ph .name{font-size:14px;font-weight:800}
+  .pcard .ph .rr{margin-left:auto;font-size:12px;font-weight:800;color:var(--muted)}
+  .pcard .desc{font-size:11px;color:var(--muted);margin-bottom:11px}
+  .bar{height:30px;border-radius:8px;overflow:hidden;display:flex;border:1px solid var(--line)}
+  .bar .L{background:var(--up-dim);border-right:2px solid var(--bg);display:flex;align-items:center;padding-left:9px;transition:width .6s}
+  .bar .S{background:var(--down-dim);display:flex;align-items:center;justify-content:flex-end;padding-right:9px;transition:width .6s}
+  .bar .p{font-size:12px;font-weight:800;font-variant-numeric:tabular-nums}
+  .bar .L .p{color:var(--up)} .bar .S .p{color:var(--down)}
+  .pcard .read{font-size:12px;color:var(--txt);margin-top:10px;line-height:1.45;opacity:.92}
+  .pcard .read b.u{color:var(--up)} .pcard .read b.d{color:var(--down)}
+
+  /* histórico */
+  .hist{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .hist-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .hist-h .t{font-size:13px;font-weight:800}
+  .chart{display:flex;align-items:stretch;gap:2px;height:150px;position:relative;border-bottom:1px dashed var(--line)}
+  .chart .col{flex:1;display:flex;flex-direction:column;justify-content:center;position:relative;cursor:pointer;min-width:0}
+  .chart .col .b{width:100%;border-radius:3px;transition:.2s}
+  .chart .baseline{position:absolute;left:0;right:0;top:50%;height:1px;background:var(--line);z-index:1}
+  .chart-x{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:5px}
+  #tip{position:fixed;z-index:50;background:#0c1219;border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12px;pointer-events:none;opacity:0;transition:opacity .12s;white-space:nowrap}
+  #tip b{font-variant-numeric:tabular-nums}
+
+  /* corretoras */
+  .exwrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  .exc{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .exc .en{font-size:13px;font-weight:800;display:flex;align-items:center;gap:7px;margin-bottom:8px}
+  .exc .en .st{width:8px;height:8px;border-radius:50%;background:var(--neutral)}
+  .exc .en .st.ok{background:var(--up);box-shadow:0 0 7px var(--up)}
+  .exc .en .st.err{background:var(--down)}
+  .minibar{height:22px;border-radius:6px;overflow:hidden;display:flex;border:1px solid var(--line)}
+  .minibar .L{background:var(--up-dim)} .minibar .S{background:var(--down-dim)}
+  .exc .row{display:flex;justify-content:space-between;font-size:12px;margin-top:7px;font-weight:700}
+
+  /* cenários */
+  .scen{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+  .sc{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;border-top:4px solid var(--neutral)}
+  .sc.up{border-top-color:var(--up)} .sc.down{border-top-color:var(--down)} .sc.neu{border-top-color:var(--warn)}
+  .sc .st{font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .sc .prob{margin-left:auto;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;background:var(--panel2);border:1px solid var(--line)}
+  .sc .body{font-size:12.5px;color:var(--muted);line-height:1.5}
+  .sc .body b{color:var(--txt)}
+
+  /* leitura + educação */
+  .read-panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .read-panel p{font-size:13.5px;line-height:1.6;margin-bottom:10px;color:var(--txt)}
+  .read-panel p:last-child{margin-bottom:0}
+  .read-panel b.u{color:var(--up)} .read-panel b.d{color:var(--down)} .read-panel b.w{color:var(--warn)}
+  .edu{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+  .ed{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px}
+  .ed .t{font-size:12px;font-weight:800;margin-bottom:4px}
+  .ed .d{font-size:11.5px;color:var(--muted);line-height:1.45}
+  .foot{color:var(--muted);font-size:11px;text-align:center;margin:22px 0 8px;line-height:1.6}
+  .loading{opacity:.5}
+</style>
+</head>
+<body data-palette="#16c784,#ea3943,#f0b90b,#64748b">
+
+<div class="wrap">
+  <header>
+    <div class="logo">⚔️</div>
+    <div class="ttl">L/S RATIO<small>INDICADOR VIOLENTO · LONG × SHORT</small></div>
+    <div class="ctrls">
+      <select id="symbol"></select>
+      <select id="period">
+        <option value="5m">5m</option><option value="15m">15m</option>
+        <option value="1h" selected>1h</option><option value="4h">4h</option><option value="1d">1d</option>
+      </select>
+      <button id="refresh">↻ Atualizar</button>
+      <div class="live"><span class="dot"></span><span id="lastUpd">—</span></div>
+    </div>
+  </header>
+
+  <div class="banner" id="banner"></div>
+
+  <div class="ticker" id="ticker"></div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-h">
+      <span class="t">Long × Short — Contas Globais (varejo)</span>
+      <span class="ratio">Ratio L/S <b id="heroRatio">—</b></span>
+    </div>
+    <div class="battle" id="heroBar">
+      <div class="side L" style="width:50%"><span class="lab" id="heroL">—</span></div>
+      <div class="mid"></div>
+      <div class="side S" style="width:50%"><span class="lab" id="heroS">—</span></div>
+    </div>
+    <div class="hero-sub"><span>🟢 LONG (comprados)</span><span>SHORT (vendidos) 🔴</span></div>
+    <div class="verdict neu" id="verdict"><span class="ic">⏳</span><span id="verdictTxt">Carregando dados ao vivo…</span></div>
+  </div>
+
+  <h2 class="sec">Barras de Posição — quem está de que lado</h2>
+  <div class="pgrid" id="pgrid"></div>
+
+  <h2 class="sec">Histórico do Ratio L/S (desvio de 1.0)</h2>
+  <div class="hist">
+    <div class="hist-h"><span class="t" id="histTitle">Ratio L/S por período</span><span class="s neu" id="histNote" style="font-size:11px"></span></div>
+    <div class="chart" id="chart"><div class="baseline"></div></div>
+    <div class="chart-x"><span id="histFrom">—</span><span>1.0 = equilíbrio · acima = mais LONG · abaixo = mais SHORT</span><span id="histTo">agora</span></div>
+  </div>
+
+  <h2 class="sec">Corretoras — Long/Short de contas por exchange</h2>
+  <div class="exwrap" id="exwrap"></div>
+
+  <h2 class="sec">Leitura do Mercado — o que está acontecendo</h2>
+  <div class="read-panel" id="readPanel"><p class="neu">Carregando…</p></div>
+
+  <h2 class="sec">Cenários — o que pode acontecer</h2>
+  <div class="scen" id="scen"></div>
+
+  <h2 class="sec">Como ler cada indicador</h2>
+  <div class="edu">
+    <div class="ed"><div class="t">Ratio L/S de contas</div><div class="d">Quantas contas estão compradas vs vendidas. &gt;1 = maioria long. É sentimento do varejo — muitas vezes <b>contrário</b> ao movimento.</div></div>
+    <div class="ed"><div class="t">Top Traders (posição)</div><div class="d">O tamanho real das posições dos maiores traders. Mais confiável que contagem de contas: mostra pra onde o <b>dinheiro grande</b> aponta.</div></div>
+    <div class="ed"><div class="t">Fluxo Taker</div><div class="d">Ordens a mercado (agressoras). Compra taker &gt; venda taker = pressão compradora imediata empurrando o preço.</div></div>
+    <div class="ed"><div class="t">Open Interest (OI)</div><div class="d">Contratos em aberto. OI subindo = dinheiro novo entrando; caindo = posições sendo fechadas/liquidadas.</div></div>
+    <div class="ed"><div class="t">Funding Rate</div><div class="d">Taxa paga entre longs e shorts. Positivo alto = comprados pagando (mercado esticado ↑, risco de long squeeze). Negativo = vendidos pagando (risco de short squeeze).</div></div>
+    <div class="ed"><div class="t">Squeeze</div><div class="d"><b>Long squeeze</b>: excesso de comprados é liquidado e o preço despenca. <b>Short squeeze</b>: excesso de vendidos é forçado a recomprar e o preço dispara.</div></div>
+  </div>
+
+  <p class="foot" id="foot">Fonte: APIs públicas de futuros (Binance · OKX · Bybit). Dados informativos, não são recomendação de investimento. Cripto é volátil — gerencie risco.</p>
+</div>
+
+<div id="tip"></div>
+
+<script>
+const FAPI='https://fapi.binance.com';
+const $=id=>document.getElementById(id);
+const SYMBOLS=['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','DOGEUSDT','1000PEPEUSDT','AVAXUSDT','LINKUSDT','SUIUSDT'];
+let sym='BTCUSDT', period='1h', timer=null, usandoDemo=false;
+
+/* ---------- init selects ---------- */
+$('symbol').innerHTML=SYMBOLS.map(s=>`<option ${s===sym?'selected':''}>${s}</option>`).join('');
+$('symbol').onchange=e=>{sym=e.target.value;carregar();};
+$('period').onchange=e=>{period=e.target.value;carregar();};
+$('refresh').onclick=()=>carregar();
+
+/* ---------- helpers ---------- */
+const fmtNum=(n,d=2)=>Number(n).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+function fmtUSD(n){ n=+n; if(n>=1e9)return '$'+(n/1e9).toFixed(2)+'B'; if(n>=1e6)return '$'+(n/1e6).toFixed(2)+'M'; if(n>=1e3)return '$'+(n/1e3).toFixed(2)+'K'; return '$'+fmtNum(n,2); }
+function fmtPrice(n){ n=+n; if(n>=1000)return fmtNum(n,2); if(n>=1)return fmtNum(n,3); return fmtNum(n,6); }
+async function getJSON(url,ms=6000){ const c=new AbortController(); const t=setTimeout(()=>c.abort(),ms);
+  try{ const r=await fetch(url,{signal:c.signal}); if(!r.ok)throw new Error(r.status); return await r.json(); } finally{ clearTimeout(t); } }
+const pct=x=>(x*100);
+
+/* ============ CARGA PRINCIPAL ============ */
+async function carregar(){
+  document.querySelector('.wrap').classList.add('loading');
+  usandoDemo=false;
+  const q=`symbol=${sym}&period=${period}&limit=48`;
+  const R=await Promise.allSettled([
+    getJSON(`${FAPI}/fapi/v1/ticker/24hr?symbol=${sym}`),
+    getJSON(`${FAPI}/fapi/v1/premiumIndex?symbol=${sym}`),
+    getJSON(`${FAPI}/futures/data/globalLongShortAccountRatio?${q}`),
+    getJSON(`${FAPI}/futures/data/topLongShortAccountRatio?${q}`),
+    getJSON(`${FAPI}/futures/data/topLongShortPositionRatio?${q}`),
+    getJSON(`${FAPI}/futures/data/takerlongshortRatio?${q}`),
+    getJSON(`${FAPI}/futures/data/openInterestHist?${q}`),
+  ]);
+  const ok=v=>v.status==='fulfilled'?v.value:null;
+  let [ticker,prem,glob,topA,topP,taker,oi]=R.map(ok);
+
+  if(!glob||!glob.length){ // falhou o principal → modo demo
+    ({ticker,prem,glob,topA,topP,taker,oi}=demoData());
+    usandoDemo=true;
+  }
+  $('banner').classList.toggle('show',usandoDemo);
+  if(usandoDemo)$('banner').textContent='⚠️ Sem conexão com as corretoras (rede/localização bloqueada). Mostrando DADOS SIMULADOS para demonstração — abra em um navegador com acesso às APIs de futuros para ver dados ao vivo.';
+
+  const M=montarModelo({ticker,prem,glob,topA,topP,taker,oi});
+  renderTicker(M); renderHero(M); renderBarras(M); renderHist(M); renderLeitura(M); renderCenarios(M);
+  carregarCorretoras();
+  $('lastUpd').textContent=(usandoDemo?'simulado · ':'')+new Date().toLocaleTimeString('pt-BR');
+  document.querySelector('.wrap').classList.remove('loading');
+}
+
+function last(arr){ return arr&&arr.length?arr[arr.length-1]:null; }
+function montarModelo({ticker,prem,glob,topA,topP,taker,oi}){
+  const g=last(glob), ta=last(topA), tp=last(topP), tk=last(taker), o=last(oi), o0=oi&&oi[0];
+  const price=+((ticker&&ticker.lastPrice)|| (prem&&prem.markPrice) ||0);
+  const chg=+((ticker&&ticker.priceChangePercent)||0);
+  const funding=+((prem&&prem.lastFundingRate)||0)*100;
+  const nextFund=prem&&prem.nextFundingTime;
+  const oiVal=o?+o.sumOpenInterestValue:0, oiVal0=o0?+o0.sumOpenInterestValue:0;
+  const oiChg=oiVal0?((oiVal-oiVal0)/oiVal0*100):0;
+  const takerBuy=tk?+tk.buyVol:0, takerSell=tk?+tk.sellVol:0, takerTot=takerBuy+takerSell||1;
+  return {
+    price,chg,funding,nextFund,oiVal,oiChg,
+    glob:frac(g), topA:frac(ta), topP:frac(tp),
+    taker:{ L:takerBuy/takerTot, S:takerSell/takerTot, ratio: takerSell? takerBuy/takerSell : 1 },
+    vol:+((ticker&&ticker.quoteVolume)||0),
+    histGlob:(glob||[]).map(x=>({t:x.timestamp,r:+x.longShortRatio})),
+    histOI:(oi||[]).map(x=>({t:x.timestamp,v:+x.sumOpenInterestValue})),
+  };
+}
+function frac(x){ if(!x)return {L:.5,S:.5,ratio:1}; const L=+x.longAccount, S=+x.shortAccount; return {L,S,ratio:+x.longShortRatio||(S?L/S:1)}; }
+
+/* ============ RENDER ============ */
+function renderTicker(M){
+  const cls=M.chg>=0?'up':'down', fCls=M.funding>=0?'up':'down';
+  const oiCls=M.oiChg>=0?'up':'down';
+  let cd='—'; if(M.nextFund){ const s=Math.max(0,Math.floor((M.nextFund-Date.now())/1000)); cd=`${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor(s%3600/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
+  $('ticker').innerHTML=`
+    <div class="tk"><div class="k">${sym}</div><div class="v">$${fmtPrice(M.price)}</div><div class="s ${cls}">${M.chg>=0?'▲':'▼'} ${fmtNum(Math.abs(M.chg),2)}% (24h)</div></div>
+    <div class="tk"><div class="k">Funding Rate</div><div class="v ${fCls}">${M.funding>=0?'+':''}${fmtNum(M.funding,4)}%</div><div class="s neu">próx: ${cd}</div></div>
+    <div class="tk"><div class="k">Open Interest</div><div class="v">${fmtUSD(M.oiVal)}</div><div class="s ${oiCls}">${M.oiChg>=0?'▲':'▼'} ${fmtNum(Math.abs(M.oiChg),2)}% (período)</div></div>
+    <div class="tk"><div class="k">Volume 24h</div><div class="v">${fmtUSD(M.vol)}</div><div class="s neu">${sym.replace('USDT','')}/USDT perp</div></div>`;
+}
+
+function renderHero(M){
+  const L=pct(M.glob.L), S=pct(M.glob.S);
+  $('heroBar').querySelector('.L').style.width=L+'%';
+  $('heroBar').querySelector('.S').style.width=S+'%';
+  $('heroL').textContent=`${fmtNum(L,1)}%`;
+  $('heroS').textContent=`${fmtNum(S,1)}%`;
+  $('heroRatio').textContent=fmtNum(M.glob.ratio,2);
+  const v=$('verdict'), vt=$('verdictTxt');
+  let tone='neu',ic='⚖️',txt='';
+  if(M.glob.L>.58){ tone='down'; ic='🔥'; txt=`Varejo fortemente COMPRADO (${fmtNum(L,0)}%). Excesso de longs costuma ser combustível para quedas/long squeeze — sinal de cautela.`; }
+  else if(M.glob.S>.58){ tone='up'; ic='🚀'; txt=`Varejo fortemente VENDIDO (${fmtNum(S,0)}%). Excesso de shorts alimenta short squeeze — pressão altista latente.`; }
+  else if(M.glob.L>.52){ tone='neu'; ic='🟢'; txt=`Leve predominância de LONGs (${fmtNum(L,0)}%). Mercado inclinado pra cima, sem extremo.`; }
+  else if(M.glob.S>.52){ tone='neu'; ic='🔴'; txt=`Leve predominância de SHORTs (${fmtNum(S,0)}%). Mercado inclinado pra baixo, sem extremo.`; }
+  else { tone='neu'; ic='⚖️'; txt=`Equilíbrio entre comprados e vendidos (${fmtNum(L,0)}% / ${fmtNum(S,0)}%). Sem viés dominante do varejo.`; }
+  v.className='verdict '+tone; v.querySelector('.ic').textContent=ic; vt.textContent=txt;
+}
+
+function barra(name,desc,obj,readFn){
+  const L=pct(obj.L),S=pct(obj.S);
+  return `<div class="pcard">
+    <div class="ph"><span class="name">${name}</span><span class="rr">L/S ${fmtNum(obj.ratio,2)}</span></div>
+    <div class="desc">${desc}</div>
+    <div class="bar"><div class="L" style="width:${L}%"><span class="p">${fmtNum(L,1)}%</span></div><div class="S" style="width:${S}%"><span class="p">${fmtNum(S,1)}%</span></div></div>
+    <div class="read">${readFn(L,S,obj.ratio)}</div>
+  </div>`;
+}
+function renderBarras(M){
+  const U=t=>`<b class="u">${t}</b>`, D=t=>`<b class="d">${t}</b>`;
+  $('pgrid').innerHTML=[
+    barra('Contas Globais (varejo)','Todas as contas com posição — sentimento da massa',M.glob,
+      (L,S,r)=> L>S? `Maioria ${U('comprada')}. Varejo otimista; se virar euforia, vira risco de reversão.` : `Maioria ${D('vendida')}. Varejo pessimista — historicamente contrário.`),
+    barra('Top Traders — Contas','Contas dos maiores traders (contagem)',M.topA,
+      (L,S,r)=> L>S? `Grandes contas mais ${U('compradas')} que a média.` : `Grandes contas mais ${D('vendidas')}.`),
+    barra('Top Traders — Posição','Tamanho real das posições dos grandes ($$)',M.topP,
+      (L,S,r)=> L>S? `Dinheiro grande posicionado ${U('LONG')} — o lado forte aposta na alta.` : `Dinheiro grande posicionado ${D('SHORT')} — o lado forte aposta na baixa.`),
+    barra('Fluxo Taker (agressor)','Ordens a mercado: compra vs venda',M.taker,
+      (L,S,r)=> L>S? `Agressão ${U('compradora')} dominando o fluxo agora.` : `Agressão ${D('vendedora')} dominando o fluxo agora.`),
+  ].join('');
+}
+
+function renderHist(M){
+  const h=M.histGlob; const el=$('chart');
+  el.querySelectorAll('.col').forEach(n=>n.remove());
+  if(!h.length){ return; }
+  const devs=h.map(x=>x.r-1);
+  const max=Math.max(0.25,...devs.map(d=>Math.abs(d)));
+  h.forEach(x=>{
+    const dev=x.r-1, up=dev>=0;
+    const hgt=Math.min(50,Math.abs(dev)/max*50);
+    const col=document.createElement('div'); col.className='col';
+    const b=document.createElement('div'); b.className='b';
+    b.style.height=hgt+'%';
+    b.style.background=up?'var(--up)':'var(--down)';
+    b.style.alignSelf=up?'flex-end':'flex-start';
+    b.style.marginBottom=up?'50%':''; b.style.marginTop=up?'':'50%';
+    col.appendChild(b);
+    const dt=new Date(x.t);
+    col.addEventListener('mousemove',e=>{ const tip=$('tip'); tip.style.opacity=1;
+      tip.style.left=Math.min(e.clientX+12,innerWidth-160)+'px'; tip.style.top=(e.clientY+12)+'px';
+      tip.innerHTML=`${dt.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}<br>Ratio L/S <b>${fmtNum(x.r,3)}</b> · ${up?'🟢 mais long':'🔴 mais short'}`; });
+    col.addEventListener('mouseleave',()=>$('tip').style.opacity=0);
+    el.appendChild(col);
+  });
+  $('histFrom').textContent=new Date(h[0].t).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  const r0=h[0].r, r1=last(h).r, d=((r1-r0)/r0*100);
+  $('histNote').textContent=`${period} · variação do ratio no período: ${d>=0?'+':''}${fmtNum(d,1)}%`;
+}
+
+/* ============ LEITURA (síntese) ============ */
+function renderLeitura(M){
+  const U=t=>`<b class="u">${t}</b>`,D=t=>`<b class="d">${t}</b>`,W=t=>`<b class="w">${t}</b>`;
+  const gL=pct(M.glob.L), tpL=pct(M.topP.L);
+  const ps=[];
+  // 1. varejo vs dinheiro grande
+  if(M.glob.L>.52 && M.topP.L<.5)
+    ps.push(`<p>⚠️ ${W('Divergência clássica')}: o ${D('varejo está comprado')} (${fmtNum(gL,0)}%) enquanto o ${D('dinheiro grande está vendido')} em posição (${fmtNum(tpL,0)}% long). Quando a massa está de um lado e os grandes do outro, o lado da massa costuma perder — viés de ${D('queda / long squeeze')}.`);
+  else if(M.glob.S>.52 && M.topP.L>.5)
+    ps.push(`<p>⚠️ ${W('Divergência')}: o ${U('varejo está vendido')} (${fmtNum(pct(M.glob.S),0)}%) mas o ${U('dinheiro grande está comprado')} em posição (${fmtNum(tpL,0)}% long). Configuração de ${U('short squeeze / alta')}.`);
+  else if(M.glob.L>.5 && M.topP.L>.5)
+    ps.push(`<p>Varejo e grandes players ${U('alinhados em LONG')} (${fmtNum(gL,0)}% e ${fmtNum(tpL,0)}%). Consenso comprador — tendência de alta enquanto durar, mas fica ${W('lotado')} e vulnerável a sacudidas.`);
+  else
+    ps.push(`<p>Varejo e grandes players ${D('alinhados em SHORT')}. Consenso vendedor — pressão de baixa, mas mercado ${W('lotado de shorts')} pode estopar num repique.`);
+  // 2. funding
+  if(M.funding>0.03) ps.push(`<p>${W('Funding muito positivo')} (${fmtNum(M.funding,4)}%): comprados pagando caro para manter posição. Mercado ${D('esticado para cima')} — propenso a correção brusca / long squeeze.</p>`);
+  else if(M.funding>0.005) ps.push(`<p>Funding positivo (${fmtNum(M.funding,4)}%): leve predomínio de comprados pagando. Normal em tendência de alta.</p>`);
+  else if(M.funding<-0.01) ps.push(`<p>${W('Funding negativo')} (${fmtNum(M.funding,4)}%): vendidos pagando os comprados. Pressão de ${U('short squeeze')} se o preço reagir.</p>`);
+  else ps.push(`<p>Funding próximo de zero (${fmtNum(M.funding,4)}%): sem excesso de alavancagem de nenhum lado — mercado saudável.</p>`);
+  // 3. OI + preço
+  const oiUp=M.oiChg>=0, prUp=M.chg>=0;
+  let oiTxt;
+  if(oiUp&&prUp) oiTxt=`OI ${U('subindo')} com preço ${U('subindo')}: ${U('dinheiro novo comprando')} — tendência de alta com convicção (mas cuidado com excesso).`;
+  else if(oiUp&&!prUp) oiTxt=`OI ${D('subindo')} com preço ${D('caindo')}: ${D('dinheiro novo vendendo')} — pressão baixista genuína.`;
+  else if(!oiUp&&prUp) oiTxt=`OI ${W('caindo')} com preço ${U('subindo')}: ${U('short covering')} (vendidos recomprando) — alta pode perder força sem novos compradores.`;
+  else oiTxt=`OI ${W('caindo')} com preço ${D('caindo')}: ${D('liquidação de comprados')} (long unwinding) — desalavancagem em curso.`;
+  ps.push(`<p>📊 ${oiTxt} OI ${M.oiChg>=0?'+':''}${fmtNum(M.oiChg,2)}% no período.</p>`);
+  // 4. taker
+  ps.push(`<p>No fluxo imediato, a agressão está ${M.taker.L>=M.taker.S?U('compradora'):D('vendedora')} (${fmtNum(pct(M.taker.L),0)}% taker buy).</p>`);
+  $('readPanel').innerHTML=ps.join('');
+}
+
+/* ============ CENÁRIOS ============ */
+function renderCenarios(M){
+  const sc=[];
+  const gL=M.glob.L, tpL=M.topP.L, f=M.funding, oiUp=M.oiChg>=0;
+  // Long squeeze
+  let lsq=0; if(gL>.55)lsq+=2; if(f>0.03)lsq+=2; else if(f>0.01)lsq+=1; if(tpL<.5)lsq+=1; if(oiUp&&M.chg<0)lsq+=1;
+  // Short squeeze
+  let ssq=0; if(M.glob.S>.55)ssq+=2; if(f<-0.005)ssq+=2; if(tpL>.55)ssq+=1; if(oiUp&&M.chg>0)ssq+=1;
+  // Continuação
+  let cont=0; if(Math.abs(gL-.5)<.05)cont+=1; if(Math.abs(f)<0.01)cont+=1; if(oiUp)cont+=1;
+  const prob=v=>v>=4?'ALTA':v>=2?'MÉDIA':'BAIXA';
+  sc.push({t:'down',ic:'🔻',n:'Long Squeeze (queda)',p:prob(lsq),b:`Excesso de comprados + funding esticado → uma queda inicial liquida longs em cascata e ${'<b>acelera a baixa</b>'}. Gatilhos: perda de suporte, notícia negativa. Sinais atuais: varejo ${fmtNum(pct(gL),0)}% long, funding ${fmtNum(f,4)}%.`});
+  sc.push({t:'up',ic:'🔺',n:'Short Squeeze (alta)',p:prob(ssq),b:`Excesso de vendidos → um repique força recompra e ${'<b>dispara o preço</b>'}. Gatilhos: rompimento de resistência, funding negativo. Sinais atuais: varejo ${fmtNum(pct(M.glob.S),0)}% short.`});
+  sc.push({t:'neu',ic:'➡️',n:'Continuação / lateral',p:prob(cont),b:`Posições equilibradas e funding controlado → o preço tende a ${'<b>seguir a tendência vigente</b>'} sem estopadas violentas, até um dos lados ficar lotado.`});
+  sc.sort((a,b)=>({ALTA:0,MÉDIA:1,BAIXA:2})[a.p]-({ALTA:0,MÉDIA:1,BAIXA:2})[b.p]);
+  $('scen').innerHTML=sc.map(s=>`<div class="sc ${s.t}"><div class="st">${s.ic} ${s.n}<span class="prob">${s.p}</span></div><div class="body">${s.b}</div></div>`).join('');
+}
+
+/* ============ CORRETORAS (multi-exchange) ============ */
+async function carregarCorretoras(){
+  const box=$('exwrap');
+  const exs=[
+    {n:'Binance',fn:async()=>{ const d=await getJSON(`${FAPI}/futures/data/globalLongShortAccountRatio?symbol=${sym}&period=${period}&limit=1`); const x=last(d); return {L:+x.longAccount,S:+x.shortAccount,r:+x.longShortRatio}; }},
+    {n:'OKX',fn:async()=>{ const ccy=sym.replace('USDT',''); const d=await getJSON(`https://www.okx.com/api/v5/rubik/stat/contracts/long-short-account-ratio?ccy=${ccy}&period=${period.toUpperCase()}`); const row=d.data&&d.data[0]; const r=+row[1]; const L=r/(1+r); return {L,S:1-L,r}; }},
+    {n:'Bybit',fn:async()=>{ const d=await getJSON(`https://api.bybit.com/v5/market/account-ratio?category=linear&symbol=${sym}&period=${period}&limit=1`); const x=d.result.list[0]; const L=+x.buyRatio,S=+x.sellRatio; return {L,S,r:S?L/S:1}; }},
+  ];
+  box.innerHTML=exs.map((e,i)=>`<div class="exc" id="ex${i}"><div class="en"><span class="st"></span>${e.n}</div><div class="minibar"><div class="L" style="width:50%"></div><div class="S" style="width:50%"></div></div><div class="row"><span class="up">L —</span><span class="neu">L/S —</span><span class="down">— S</span></div></div>`).join('');
+  exs.forEach(async(e,i)=>{ const card=$('ex'+i); try{
+      const r=await e.fn(); const L=pct(r.L),S=pct(r.S);
+      card.querySelector('.st').className='st ok';
+      card.querySelector('.minibar .L').style.width=L+'%'; card.querySelector('.minibar .S').style.width=S+'%';
+      card.querySelector('.row').innerHTML=`<span class="up">L ${fmtNum(L,1)}%</span><span class="neu">L/S ${fmtNum(r.r,2)}</span><span class="down">${fmtNum(S,1)}% S</span>`;
+    }catch(err){ card.querySelector('.st').className='st err'; card.querySelector('.row').innerHTML=`<span class="neu" style="font-weight:600">indisponível (CORS/rede)</span>`; } });
+}
+
+/* ============ DEMO (fallback sem rede) ============ */
+function demoData(){
+  const now=Date.now(), per=3600000; const rnd=(a,b)=>a+Math.random()*(b-a);
+  const mk=(baseL)=>[...Array(48)].map((_,i)=>{ const L=Math.min(.72,Math.max(.3, baseL+Math.sin(i/5)*.05+rnd(-.02,.02)));
+    return {timestamp:now-(47-i)*per, longAccount:L.toFixed(4), shortAccount:(1-L).toFixed(4), longShortRatio:(L/(1-L)).toFixed(4)}; });
+  const glob=mk(.61), topA=mk(.55), topP=mk(.47);
+  const oi=[...Array(48)].map((_,i)=>({timestamp:now-(47-i)*per,sumOpenInterest:'50000',sumOpenInterestValue:(3.2e9*(1+i*0.004)).toString()}));
+  const taker=[{buyVol:'1200000',sellVol:'1050000',buySellRatio:'1.14',timestamp:now}];
+  const ticker={lastPrice:'64850.5',priceChangePercent:'-1.85',quoteVolume:'28500000000'};
+  const prem={markPrice:'64860',lastFundingRate:'0.00041',nextFundingTime:now+3.2*3600000};
+  return {ticker,prem,glob,topA,topP,taker,oi};
+}
+
+/* ---------- boot ---------- */
+carregar();
+timer=setInterval(carregar,60000);
+</script>
+</body>
+</html>
