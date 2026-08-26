@@ -84,8 +84,7 @@
         <option value="15m">15m</option><option value="1h">1h</option>
         <option value="4h" selected>4h</option><option value="1d">1d</option><option value="1w">1w</option>
       </select>
-      <div class="sens">Sensib. <input type="range" id="sens" min="1" max="8" step="0.5" value="3" style="width:90px"><span id="sensV">3.0%</span></div>
-      <button id="refresh">↻</button>
+      <button id="refresh">↻ Atualizar</button>
       <div class="live"><span class="dot"></span><span id="lastUpd">—</span></div>
     </div>
   </header>
@@ -141,12 +140,11 @@
 const FAPI='https://fapi.binance.com';
 const $=id=>document.getElementById(id);
 const SYMBOLS=['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','DOGEUSDT','AVAXUSDT','LINKUSDT'];
-let sym='BTCUSDT', interval='4h', sens=3, candles=[], demo=false;
+let sym='BTCUSDT', interval='4h', candles=[], demo=false;
 
 $('symbol').innerHTML=SYMBOLS.map(s=>`<option ${s===sym?'selected':''}>${s}</option>`).join('');
 $('symbol').onchange=e=>{sym=e.target.value;carregar();};
 $('interval').onchange=e=>{interval=e.target.value;carregar();};
-$('sens').oninput=e=>{sens=+e.target.value;$('sensV').textContent=sens.toFixed(1)+'%';analisar();};
 $('refresh').onclick=()=>carregar();
 
 const fmt=(n,d=2)=>Number(n).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -166,182 +164,207 @@ async function carregar(){
   analisar();
 }
 
-/* ===== ZigZag: detecta pivôs por reversão de X% ===== */
-function zigzag(data,pct){
+/* ===== ATR — define o limiar dos pivôs automaticamente (determinístico) ===== */
+function atr(data,p=14){ if(data.length<2)return 0; const tr=[];
+  for(let i=1;i<data.length;i++){ const h=data[i].h,l=data[i].l,pc=data[i-1].c;
+    tr.push(Math.max(h-l,Math.abs(h-pc),Math.abs(l-pc))); }
+  const s=tr.slice(-p); return s.reduce((a,b)=>a+b,0)/s.length; }
+
+/* ===== ZigZag por reversão absoluta (múltiplo de ATR) — sem parâmetro do usuário ===== */
+function zigzag(data,rev){
   const p=[]; if(data.length<3)return p;
   let trend=0, extIdx=0, extPrice=data[0].c;
   for(let k=1;k<data.length;k++){
     const c=data[k].c;
     if(trend>=0){
       if(c>=extPrice){extPrice=c;extIdx=k;}
-      else if((extPrice-c)/extPrice*100>=pct){ p.push({i:extIdx,price:extPrice,type:'H'}); trend=-1; extPrice=c; extIdx=k; }
+      else if(extPrice-c>=rev){ p.push({i:extIdx,price:extPrice,type:'H'}); trend=-1; extPrice=c; extIdx=k; }
     } else {
       if(c<=extPrice){extPrice=c;extIdx=k;}
-      else if((c-extPrice)/extPrice*100>=pct){ p.push({i:extIdx,price:extPrice,type:'L'}); trend=1; extPrice=c; extIdx=k; }
+      else if(c-extPrice>=rev){ p.push({i:extIdx,price:extPrice,type:'L'}); trend=1; extPrice=c; extIdx=k; }
     }
   }
   p.push({i:extIdx,price:extPrice,type:trend>=0?'H':'L'});
-  // remove pivôs repetidos consecutivos do mesmo tipo (mantém o extremo)
   const out=[]; for(const x of p){ const last=out[out.length-1];
     if(last&&last.type===x.type){ if((x.type==='H'&&x.price>=last.price)||(x.type==='L'&&x.price<=last.price)) out[out.length-1]=x; }
     else out.push(x); }
+  // registra o pivô de ORIGEM (extremo oposto no início, antes do 1º pivô)
+  if(out.length){ const f=out[0]; let ei=0, ep=data[0].c;
+    for(let k=0;k<=f.i;k++){ if(f.type==='H'? data[k].c<ep : data[k].c>ep){ ep=data[k].c; ei=k; } }
+    if((f.type==='H'&&ep<f.price)||(f.type==='L'&&ep>f.price)) out.unshift({i:ei,price:ep,type:f.type==='H'?'L':'H'}); }
   return out;
 }
 
-/* ===== Contagem: tenta impulso (5 ondas) nos últimos 6 pivôs ===== */
-function contarImpulso(piv){
-  if(piv.length<6) return null;
-  const s=piv.slice(-6);
-  const up = s[0].type==='L'; // impulso de alta começa num fundo
-  // valida alternância de pivôs
-  for(let i=1;i<6;i++){ if(s[i].type===s[i-1].type) return null; }
-  const P=s.map(x=>x.price);
-  const w1=Math.abs(P[1]-P[0]), w3=Math.abs(P[3]-P[2]), w5=Math.abs(P[5]-P[4]);
-  const rules=[];
-  // Onda 2 não rompe origem
-  const r2 = up ? P[2]>P[0] : P[2]<P[0];
-  rules.push({ok:r2,txt:`<b>Onda 2</b> não ultrapassa a origem da onda 1 (retração < 100%).`});
-  // Onda 3 não é a menor
-  const r3 = w3>=Math.min(w1,w5) && w3!==Math.min(w1,w3,w5) || w3>=w1 || w3>=w5;
-  const r3b = !(w3<w1 && w3<w5);
-  rules.push({ok:r3b,txt:`<b>Onda 3</b> não é a mais curta entre 1, 3 e 5.`});
-  // Onda 4 não invade onda 1
-  const r4 = up ? P[4]>P[1] : P[4]<P[1];
-  rules.push({ok:r4,txt:`<b>Onda 4</b> não invade o território da onda 1.`});
-  // Onda 5 supera onda 3
-  const r5 = up ? P[5]>P[3] : P[5]<P[3];
-  rules.push({ok:r5,txt:`<b>Onda 5</b> supera o topo/fundo da onda 3.`});
-  const conf=rules.filter(r=>r.ok).length;
-  return {tipo:up?'impulse-up':'impulse-down',up,pivots:s,labels:['0','1','2','3','4','5'],rules,conf,w:{w1,w3,w5}};
+/* ===== Ciclo de Elliott: 5 ondas de impulso + 3 de correção ===== */
+const CYCLE=['0','1','2','3','4','5','A','B','C'];
+function proxOnda(l){ const i=CYCLE.indexOf(l); return i<0?'1':(i>=CYCLE.length-1?'1 (novo ciclo)':CYCLE[i+1]); }
+function ehImpulsiva(l){ return l==='1'||l==='3'||l==='5'||l==='A'||l==='C'; }
+
+/* procura o impulso de 5 ondas (6 pivôs) mais RECENTE que satisfaz TODAS as regras */
+function acharImpulso(piv){
+  for(let end=piv.length-1; end>=5; end--){
+    const s=piv.slice(end-5,end+1); if(s.length<6) continue;
+    let alt=true; for(let i=1;i<6;i++) if(s[i].type===s[i-1].type){alt=false;break;}
+    if(!alt) continue;
+    const up=s[0].type==='L', P=s.map(x=>x.price);
+    const w1=Math.abs(P[1]-P[0]),w3=Math.abs(P[3]-P[2]),w5=Math.abs(P[5]-P[4]);
+    const r2= up?P[2]>P[0]:P[2]<P[0];
+    const r3= !(w3<w1&&w3<w5);
+    const r4= up?P[4]>P[1]:P[4]<P[1];
+    const r5= up?P[5]>P[3]:P[5]<P[3];
+    if(r2&&r3&&r4&&r5) return {endIdx:end,up,s,w1,w3,w5};
+  }
+  return null;
 }
-/* ===== Correção A-B-C nos últimos 4 pivôs ===== */
-function contarABC(piv){
-  if(piv.length<4) return null;
-  const s=piv.slice(-4);
-  for(let i=1;i<4;i++){ if(s[i].type===s[i-1].type) return null; }
-  const P=s.map(x=>x.price);
-  const down = s[0].type==='H'; // correção de baixa (após alta)
-  const A=Math.abs(P[1]-P[0]), B=Math.abs(P[2]-P[1]), C=Math.abs(P[3]-P[2]);
-  const retrB=A?B/A:0;
+
+/* Uma contagem única e determinística */
+function contar(piv){
+  if(piv.length<3) return null;
+  const imp=acharImpulso(piv);
+  if(imp){
+    let corr=piv.slice(imp.endIdx+1); if(corr.length>3) corr=corr.slice(-3);
+    const seq=[...imp.s,...corr], labels=CYCLE.slice(0,seq.length), up=imp.up;
+    const P=seq.map(x=>x.price), w=(a,b)=> a<seq.length&&b<seq.length?Math.abs(P[b]-P[a]):0;
+    const w3maior = imp.w3>=imp.w1&&imp.w3>=imp.w5;
+    const rules=[
+      {ok:true,txt:`<b>Onda 2</b> não ultrapassa a origem da onda 1.`},
+      {ok:true,txt:`<b>Onda 3</b> não é a mais curta ${w3maior?'— e ainda é a mais longa':''}.`},
+      {ok:true,txt:`<b>Onda 4</b> não invade o território da onda 1.`},
+      {ok:true,txt:`<b>Onda 5</b> supera o topo/fundo da onda 3.`},
+    ];
+    const lastLabel=labels[seq.length-1], formando=proxOnda(lastLabel);
+    return {up,seq,labels,P,rules,lastLabel,formando,w,parcial:false};
+  }
+  // fallback: impulso ainda em formação (2 a 5 pivôs)
+  const m=Math.min(piv.length,5), seq=piv.slice(-m), up=seq[0].type==='L';
+  const labels=CYCLE.slice(0,m), P=seq.map(x=>x.price), w=(a,b)=> a<seq.length&&b<seq.length?Math.abs(P[b]-P[a]):0;
   const rules=[];
-  const cSupera = down ? P[3]<P[1] : P[3]>P[1];
-  const zig = retrB<=0.75 && cSupera;
-  rules.push({ok:retrB<=0.75,txt:`<b>Onda B</b> retrai ${fmt(retrB*100,0)}% de A ${retrB<=0.75?'(≈ zigzag)':'(&gt;75% ≈ flat/irregular)'}.`});
-  rules.push({ok:cSupera,txt:`<b>Onda C</b> ${cSupera?'supera':'não supera'} o fim da onda A.`});
-  return {tipo:'zigzag',down,pivots:s,labels:['','A','B','C'],rules,conf:rules.filter(r=>r.ok).length,retrB};
+  if(m>=3) rules.push({ok: up?P[2]>P[0]:P[2]<P[0], txt:`<b>Onda 2</b> não ultrapassa a origem da onda 1.`});
+  if(m>=4) rules.push({ok: up?P[3]>P[1]:P[3]<P[1], txt:`<b>Onda 3</b> avança além do fim da onda 1.`});
+  const lastLabel=labels[m-1], formando=proxOnda(lastLabel);
+  return {up,seq,labels,P,rules,lastLabel,formando,w,parcial:true};
+}
+
+/* Alvo (Fibonacci) da onda que está se formando agora */
+function alvoDaForma(c){
+  const {P,up}=c, sgn=up?1:-1, w=c.w;
+  let alvo=null, base='';
+  switch(c.formando[0]){
+    case '2': alvo=P[1]-sgn*0.618*w(0,1); base='retração 61,8% da onda 1'; break;
+    case '3': alvo=P[2]+sgn*1.618*w(0,1); base='extensão 1,618 × onda 1'; break;
+    case '4': alvo=P[3]-sgn*0.382*w(2,3); base='retração 38,2% da onda 3'; break;
+    case '5': alvo=P[4]+sgn*w(0,1); base='igualdade com a onda 1 (100%)'; break;
+    case 'A': alvo=P[5]-sgn*0.382*(P[5]-P[0]); base='retração 38,2% do impulso'; break;
+    case 'B': alvo=P[6]+sgn*0.618*(P[6]-P[5]); base='repique 61,8% da onda A'; break;
+    case 'C': alvo=P[7]-sgn*w(5,6); base='onda C ≈ tamanho da onda A'; break;
+    default: base='';
+  }
+  return alvo?{alvo,base}:null;
 }
 
 let anal=null;
 function analisar(){
   if(!candles.length) return;
-  const piv=zigzag(candles,sens);
-  const imp=contarImpulso(piv);
-  const abc=contarABC(piv);
-  // escolhe a melhor estrutura recente (impulso preferido se conf>=3)
-  anal={piv, imp, abc, best: (imp&&imp.conf>=3)?imp:(abc||imp)};
+  const rev=Math.max(atr(candles)*3, candles[candles.length-1].c*0.006); // 3×ATR, piso 0,6%
+  const piv=zigzag(candles,rev);
+  const count=contar(piv);
+  anal={piv, count, best:count, rev};
   desenhar(); renderRegras(); renderFib(); renderLeitura();
 }
 
 /* ===== Desenho SVG ===== */
 function desenhar(){
   const W=1000,H=400,pl=6,pr=54,pt=14,pb=18;
-  const n=candles.length; const prices=candles.map(c=>c.c);
+  const n=candles.length;
   let min=Math.min(...candles.map(c=>c.l)), max=Math.max(...candles.map(c=>c.h));
   const pad=(max-min)*0.06; min-=pad; max+=pad;
   const X=i=>pl+(i/(n-1))*(W-pl-pr);
   const Y=p=>pt+(1-(p-min)/(max-min))*(H-pt-pb);
-  const px=$('px'); const cur=candles[n-1].c;
-  $('sym').textContent=sym+' · '+interval; px.textContent='$'+fmtP(cur);
-  const b=anal.best;
-  const cnt=$('cnt');
-  if(b&&b.tipo.startsWith('impulse')){ cnt.textContent=`Impulso ${b.up?'de ALTA ▲':'de BAIXA ▼'} · ${b.conf}/4 regras`; cnt.style.color=b.up?'var(--up)':'var(--down)'; }
-  else if(b&&b.tipo==='zigzag'){ cnt.textContent=`Correção A-B-C ${b.down?'▼':'▲'} · ${b.conf}/2`; cnt.style.color='var(--warn)'; }
-  else { cnt.textContent='Sem contagem clara'; cnt.style.color='var(--muted)'; }
+  const cur=candles[n-1].c;
+  $('sym').textContent=sym+' · '+interval; $('px').textContent='$'+fmtP(cur);
+  const c=anal.count, cnt=$('cnt');
+  if(c){ const key=c.formando[0], imp=!['A','B','C'].includes(key);
+    if(imp){ cnt.textContent=`IMPULSO ${c.up?'▲':'▼'} · formando ONDA ${c.formando}`; cnt.style.color=c.up?'var(--up)':'var(--down)'; }
+    else { cnt.textContent=`CORREÇÃO ${c.up?'▼':'▲'} · formando onda ${c.formando}`; cnt.style.color='var(--warn)'; }
+  } else { cnt.textContent='aguardando dados…'; cnt.style.color='var(--muted)'; }
 
   let s='';
-  // grade de fundo
   for(let g=0;g<=4;g++){ const yy=pt+g/4*(H-pt-pb); const pv=max-(g/4)*(max-min);
     s+=`<line x1="${pl}" y1="${yy}" x2="${W-pr}" y2="${yy}" stroke="#1b2430" stroke-width="1"/>`;
     s+=`<text x="${W-pr+4}" y="${yy+3}" fill="#5b6b7d" font-size="10">${fmtP(pv)}</text>`; }
-  // linha de preço
-  let d=''; candles.forEach((c,i)=>{ d+=(i?'L':'M')+X(i).toFixed(1)+' '+Y(c.c).toFixed(1)+' '; });
+  let d=''; candles.forEach((cc,i)=>{ d+=(i?'L':'M')+X(i).toFixed(1)+' '+Y(cc.c).toFixed(1)+' '; });
   s+=`<path d="${d}" fill="none" stroke="#5b6b7d" stroke-width="1.4"/>`;
-  // fib do best
   const fibs=fibLevels();
-  if(fibs) fibs.forEach(f=>{ const yy=Y(f.price); s+=`<line x1="${pl}" y1="${yy}" x2="${W-pr}" y2="${yy}" stroke="rgba(240,185,11,.5)" stroke-width="1" stroke-dasharray="4 4"/><text x="${pl+3}" y="${yy-3}" fill="#f0b90b" font-size="9">${f.lvl}</text>`; });
-  // zigzag + ondas
-  if(b){ const P=b.pivots;
-    for(let i=1;i<P.length;i++){ const imp = b.tipo.startsWith('impulse') ? (i%2===1) : (i%2===1); // 1,3,5 impulsivas / A,C impulsivas
-      let col='var(--accent)';
-      if(b.tipo.startsWith('impulse')) col = (i%2===1)?'var(--up)':'var(--down)';
-      else col=(i===1||i===3)?'var(--down)':'var(--up)';
-      s+=`<line x1="${X(P[i-1].i)}" y1="${Y(P[i-1].price)}" x2="${X(P[i].i)}" y2="${Y(P[i].price)}" stroke="${col}" stroke-width="2.4"/>`; }
-    P.forEach((pv,i)=>{ const lab=b.labels[i]; if(lab==='')return;
-      const yy=Y(pv.price), xx=X(pv.i); const above=pv.type==='H';
-      s+=`<circle cx="${xx}" cy="${yy}" r="4" fill="#0a0e14" stroke="var(--txt)" stroke-width="1.5"/>`;
-      s+=`<text x="${xx}" y="${above?yy-9:yy+16}" fill="var(--txt)" font-size="13" font-weight="800" text-anchor="middle">${lab}</text>`; });
-  } else if(anal.piv.length){ // só zigzag
-    const P=anal.piv.slice(-8); let dz='';
-    P.forEach((pv,i)=>{ dz+=(i?'L':'M')+X(pv.i).toFixed(1)+' '+Y(pv.price).toFixed(1)+' '; });
-    s+=`<path d="${dz}" fill="none" stroke="var(--accent)" stroke-width="1.6"/>`;
+  if(fibs) fibs.forEach(f=>{ const yy=Y(f.price); s+=`<line x1="${pl}" y1="${yy}" x2="${W-pr}" y2="${yy}" stroke="rgba(240,185,11,.45)" stroke-width="1" stroke-dasharray="4 4"/><text x="${pl+3}" y="${yy-3}" fill="#f0b90b" font-size="9">${f.lvl}</text>`; });
+  if(c){ const seq=c.seq;
+    for(let i=1;i<seq.length;i++){ const upLeg=seq[i].price>=seq[i-1].price; const col=upLeg?'var(--up)':'var(--down)';
+      s+=`<line x1="${X(seq[i-1].i)}" y1="${Y(seq[i-1].price)}" x2="${X(seq[i].i)}" y2="${Y(seq[i].price)}" stroke="${col}" stroke-width="2.6"/>`; }
+    seq.forEach((pv,i)=>{ const lab=c.labels[i]; if(lab==='0')return;
+      const yy=Y(pv.price), xx=X(pv.i), above=pv.type==='H';
+      s+=`<circle cx="${xx}" cy="${yy}" r="4.5" fill="#0a0e14" stroke="var(--txt)" stroke-width="1.6"/>`;
+      s+=`<text x="${xx}" y="${above?yy-9:yy+17}" fill="var(--txt)" font-size="14" font-weight="800" text-anchor="middle">${lab}</text>`; });
+    // onda em formação: do último pivô até o preço atual + projeção ao alvo
+    const lp=seq[seq.length-1]; const al=alvoDaForma(c);
+    s+=`<line x1="${X(lp.i)}" y1="${Y(lp.price)}" x2="${X(n-1)}" y2="${Y(cur)}" stroke="var(--accent)" stroke-width="2.2" stroke-dasharray="1 0"/>`;
+    if(al){ s+=`<line x1="${X(n-1)}" y1="${Y(cur)}" x2="${W-pr}" y2="${Y(al.alvo)}" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="5 4" opacity=".8"/>`;
+      s+=`<circle cx="${W-pr}" cy="${Y(al.alvo)}" r="3.5" fill="var(--accent)"/><text x="${W-pr-4}" y="${Y(al.alvo)-5}" fill="var(--accent)" font-size="11" font-weight="800" text-anchor="end">alvo onda ${c.formando}: $${fmtP(al.alvo)}</text>`; }
+    s+=`<text x="${(X(lp.i)+X(n-1))/2}" y="${Y((lp.price+cur)/2)-6}" fill="var(--accent)" font-size="12" font-weight="800" text-anchor="middle">${c.formando}?</text>`;
   }
-  // preço atual
-  s+=`<line x1="${pl}" y1="${Y(cur)}" x2="${W-pr}" y2="${Y(cur)}" stroke="#e8eef5" stroke-width="0.8" stroke-dasharray="2 3" opacity=".5"/>`;
+  s+=`<line x1="${pl}" y1="${Y(cur)}" x2="${W-pr}" y2="${Y(cur)}" stroke="#e8eef5" stroke-width="0.8" stroke-dasharray="2 3" opacity=".45"/>`;
   const svg=$('chart'); svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.innerHTML=s;
 }
 
 function fibLevels(){
-  const b=anal.best; if(!b) return null;
-  const P=b.pivots.map(x=>x.price);
-  let lo,hi;
-  if(b.tipo.startsWith('impulse')){ lo=Math.min(P[0],P[5]); hi=Math.max(P[0],P[5]); }
-  else { lo=Math.min(...P); hi=Math.max(...P); }
-  const rng=hi-lo; if(!rng) return null;
-  const up=b.up!==false;
-  const levels=[0,0.236,0.382,0.5,0.618,0.786,1];
-  return levels.map(L=>({lvl:(L*100).toFixed(1)+'%', v:L, price: b.up? hi-rng*L : lo+rng*L }));
+  const c=anal.count; if(!c) return null;
+  const P=c.P; let lo=Math.min(...P), hi=Math.max(...P); const rng=hi-lo; if(!rng)return null;
+  return [0,0.236,0.382,0.5,0.618,0.786,1].map(L=>({lvl:(L*100).toFixed(1)+'%', price: c.up? hi-rng*L : lo+rng*L }));
 }
 
 function renderRegras(){
-  const b=anal.best; const el=$('rules');
-  if(!b){ el.innerHTML=`<div class="rule"><span class="ic">•</span><span class="txt">Sem estrutura clara nos pivôs atuais. Ajuste a <b>sensibilidade</b> para agrupar ou detalhar os movimentos.</span></div>`; return; }
-  const title = b.tipo.startsWith('impulse') ? `Estrutura testada: <b>impulso ${b.up?'de alta':'de baixa'}</b> (1-2-3-4-5)` : `Estrutura testada: <b>correção A-B-C</b>`;
-  el.innerHTML=`<div class="rule"><span class="ic">🔎</span><span class="txt">${title} — confiança <b>${b.conf}/${b.rules.length}</b>.</span></div>`+
-    b.rules.map(r=>`<div class="rule ${r.ok?'ok':'bad'}"><span class="ic">${r.ok?'✔':'✗'}</span><span class="txt">${r.txt}</span></div>`).join('');
+  const c=anal.count, el=$('rules');
+  if(!c){ el.innerHTML=`<div class="rule"><span class="ic">•</span><span class="txt">Coletando pivôs…</span></div>`; return; }
+  const imp = !['A','B','C'].includes(c.formando[0]);
+  const title = imp ? `Contagem: <b>impulso ${c.up?'de alta':'de baixa'}</b> (1-2-3-4-5), formando a <b>onda ${c.formando}</b>.` : `Contagem: <b>correção A-B-C</b>, formando a <b>onda ${c.formando}</b>.`;
+  el.innerHTML=`<div class="rule"><span class="ic">🔎</span><span class="txt">${title}</span></div>`+
+    (c.rules.length?c.rules.map(r=>`<div class="rule ${r.ok?'ok':'bad'}"><span class="ic">${r.ok?'✔':'✗'}</span><span class="txt">${r.txt}</span></div>`).join('')
+      :`<div class="rule ok"><span class="ic">✔</span><span class="txt">Estrutura ainda curta — regras completas a partir de 5 ondas.</span></div>`);
 }
 function renderFib(){
-  const f=fibLevels(); const el=$('fib');
-  if(!f){ el.innerHTML='<div class="fib"><span class="lvl">—</span><span class="pr">defina uma estrutura</span></div>'; return; }
+  const f=fibLevels(), el=$('fib');
+  if(!f){ el.innerHTML='<div class="fib"><span class="lvl">—</span><span class="pr">—</span></div>'; return; }
   const cur=candles[candles.length-1].c;
   el.innerHTML=f.map(x=>{ const near=Math.abs((x.price-cur)/cur)<0.004;
     return `<div class="fib"><span class="lvl">${x.lvl} ${['61.8%','50.0%','38.2%'].includes(x.lvl)?'★':''}</span><span class="pr" style="${near?'color:var(--warn)':''}">$${fmtP(x.price)}</span></div>`; }).join('');
 }
 
 function renderLeitura(){
-  const b=anal.best; const el=$('read'); const cur=candles[candles.length-1].c;
+  const c=anal.count, el=$('read'), cur=candles[candles.length-1].c;
   const U=t=>`<b class="u">${t}</b>`,D=t=>`<b class="d">${t}</b>`,W=t=>`<b class="w">${t}</b>`;
-  if(!b){ el.innerHTML=`<p>Não foi possível fechar uma contagem clara com a sensibilidade atual. Elliott admite várias leituras — mova o controle de <b>sensibilidade</b>: valores menores mostram micro-ondas, maiores mostram o quadro maior.</p>`; return; }
+  if(!c){ el.innerHTML='<p>Coletando dados…</p>'; return; }
+  const key=c.formando[0], imp = !['A','B','C'].includes(key);
+  const al=alvoDaForma(c);
+  const dirBadge = c.up?'<span class="badge up">TENDÊNCIA DE ALTA</span>':'<span class="badge down">TENDÊNCIA DE BAIXA</span>';
   const ps=[];
-  const P=b.pivots;
-  if(b.tipo.startsWith('impulse')){
-    const dir=b.up?'de ALTA':'de BAIXA'; const badge=b.up?'<span class="badge up">ALTA</span>':'<span class="badge down">BAIXA</span>';
-    const lastLow=b.up?P[0].price:P[5].price;
-    ps.push(`<p>A contagem mais recente sugere um <b>impulso ${dir}</b> ${badge}, com ${b.conf} de 4 regras satisfeitas. A onda 5 terminou em <b>$${fmtP(P[5].price)}</b>.</p>`);
-    if(b.conf>=3){
-      if(b.up) ps.push(`<p>Com o impulso de alta possivelmente <b>completo</b>, o cenário-base é uma <b>correção A-B-C de baixa</b> a seguir. Retrações típicas ficam entre ${W('38,2%')} e ${W('61,8%')} de toda a subida — observe a região de Fibonacci ao lado como zona de suporte/alvo.</p>`);
-      else ps.push(`<p>Com o impulso de baixa possivelmente <b>completo</b>, espere um <b>repique corretivo A-B-C de alta</b>. Resistências prováveis nos Fibos ${W('38,2%–61,8%')} da queda.</p>`);
-    } else {
-      ps.push(`<p>${W('Atenção')}: a contagem falha em ${4-b.conf} regra(s) — pode ser uma <b>diagonal</b>, uma correção disfarçada, ou o impulso ainda estar em formação (talvez em onda 3 ou 4). Não trate como certeza.</p>`);
-    }
-    // relação da onda 3
-    const {w1,w3,w5}=b.w;
-    if(w3>=w1&&w3>=w5) ps.push(`<p>A onda 3 é a mais extensa (${U('sinal saudável')}) — típico do impulso mais forte. Projeção clássica: onda 5 ≈ 0,618–1,0 × onda 1.</p>`);
-  } else {
-    const dir=b.down?'de baixa':'de alta';
-    ps.push(`<p>Padrão recente parece uma <b>correção A-B-C ${dir}</b>. Onda B retraiu ${fmt(b.retrB*100,0)}% da onda A ${b.retrB<=0.5?'(zigzag raso)':b.retrB<=0.75?'(zigzag)':'(flat/irregular)'}.</p>`);
-    ps.push(`<p>Se a onda C estiver ${W('completando')}, o próximo movimento tende a retomar a <b>tendência principal</b> anterior à correção. Confirme com rompimento do topo/fundo da onda B.</p>`);
+  // frase decisiva de onde estamos
+  ps.push(`<p style="font-size:15px">📍 Estamos na <b style="font-size:17px">onda ${c.formando}</b> ${imp?(c.up?'de um impulso de alta':'de um impulso de baixa'):'de uma correção A-B-C'} ${dirBadge}${al?` — alvo em <b>$${fmtP(al.alvo)}</b> <span style="color:var(--muted)">(${al.base})</span>.`:'.'}</p>`);
+  // o que esperar após
+  const mapa={
+    '1':`Início de novo ciclo. Depois da onda 1 vem uma correção (onda 2) antes da forte ${U('onda 3')}.`,
+    '2':`Onda 2 corrige a 1 (tipicamente ${W('50–61,8%')}). Não pode ir além da origem. Em seguida vem a ${U('onda 3')}, geralmente a mais longa.`,
+    '3':`Onda 3 costuma ser a ${U('mais forte e extensa')} (alvo 1,618× a onda 1). É onde o movimento acelera.`,
+    '4':`Onda 4 corrige a 3 (tipicamente ${W('38,2%')}) e ${W('não pode invadir a onda 1')}. Depois vem a última perna: ${U('onda 5')}.`,
+    '5':`Onda 5 é a ${W('última')} do impulso (alvo ≈ tamanho da onda 1). Ao terminar, espere uma ${D('correção A-B-C')} contra a tendência.`,
+    'A':`Onda A inicia a ${D('correção')} do impulso anterior. Costuma retrair 38,2% e ser seguida de um repique (onda B).`,
+    'B':`Onda B é um ${W('repique enganoso')} dentro da correção (até ~61,8% da A). Depois vem a onda C, na direção da correção.`,
+    'C':`Onda C completa a correção (≈ tamanho da onda A). Ao terminar, a ${U('tendência principal')} tende a ser retomada.`
+  };
+  ps.push(`<p>${mapa[key]||'Início de um novo ciclo de 5 ondas.'}</p>`);
+  // confirmação/estrutura
+  const okRules=c.rules.filter(r=>r.ok).length;
+  if(c.rules.length){
+    ps.push(`<p>A contagem ${okRules===c.rules.length?U('respeita todas as regras'):W('respeita '+okRules+' de '+c.rules.length+' regras')} de Elliott (ver painel ao lado). Limiar dos pivôs calculado automaticamente pela volatilidade (ATR) — <b>uma leitura, sem ajuste manual</b>.</p>`);
   }
-  ps.push(`<p style="color:var(--muted);font-size:12.5px">Preço atual <b>$${fmtP(cur)}</b>. Lembre: contagem automática é um guia — sempre valide com estrutura de preço e volume, e considere contagens alternativas.</p>`);
+  ps.push(`<p style="color:var(--muted);font-size:12.5px">Preço atual <b>$${fmtP(cur)}</b> · gráfico ${interval}. Invalidação: se o preço ${c.up?'perder':'superar'} o pivô da onda ${c.lastLabel} (<b>$${fmtP(c.seq[c.seq.length-1].price)}</b>), a contagem se ajusta na próxima leitura.</p>`);
   el.innerHTML=ps.join('');
 }
 
