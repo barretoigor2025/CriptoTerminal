@@ -8,7 +8,7 @@
   :root{
     --bg:#0a0e14; --panel:#111823; --panel2:#18212e; --line:#232f3d;
     --txt:#e8eef5; --muted:#8492a3;
-    --up:#16c784; --down:#ea3943; --warn:#f0b90b; --accent:#6ea8fe; --neutral:#64748b;
+    --up:#16c784; --down:#ea3943; --warn:#f0b90b; --accent:#6ea8fe; --neutral:#64748b; --rsi:#7e57c2;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;
@@ -39,6 +39,9 @@
   .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}
   .legend span{display:flex;align-items:center;gap:5px}
   .sw{width:12px;height:3px;border-radius:2px}
+  .rsi-h{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);font-weight:700;margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+  .rsi-h b{color:var(--txt)}
+  #rsiVals .rv{font-weight:800;font-variant-numeric:tabular-nums;padding:2px 8px;border-radius:6px;margin-left:6px}
 
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   @media(max-width:820px){.grid2{grid-template-columns:1fr}}
@@ -100,11 +103,15 @@
     <svg id="chart" viewBox="0 0 1000 400" preserveAspectRatio="none"></svg>
     <div class="legend">
       <span><span class="sw" style="background:var(--muted)"></span>Preço</span>
-      <span><span class="sw" style="background:var(--accent)"></span>ZigZag (pivôs)</span>
       <span><span class="sw" style="background:var(--up)"></span>Onda impulsiva</span>
       <span><span class="sw" style="background:var(--down)"></span>Onda corretiva</span>
       <span><span class="sw" style="background:var(--warn)"></span>Fibonacci</span>
     </div>
+    <div class="rsi-h">
+      <span>RSI <b>14</b> · MMS <b>14</b> <span style="color:var(--muted)">— estilo TradingView</span></span>
+      <span id="rsiVals"></span>
+    </div>
+    <svg id="rsi" viewBox="0 0 1000 132" preserveAspectRatio="none"></svg>
   </div>
 
   <div class="grid2">
@@ -262,6 +269,17 @@ function alvoDaForma(c){
   return alvo?{alvo,base}:null;
 }
 
+/* ===== RSI (Wilder/RMA) + MMS — idêntico ao TradingView ===== */
+function rma(vals,len){ const out=new Array(vals.length).fill(null); let prev;
+  for(let i=0;i<vals.length;i++){ if(i<len-1)continue;
+    if(prev===undefined){ let s=0; for(let j=i-len+1;j<=i;j++)s+=vals[j]; prev=s/len; }
+    else prev=(prev*(len-1)+vals[i])/len; out[i]=prev; } return out; }
+function rsiCalc(closes,len=14){ const g=[],l=[];
+  for(let i=0;i<closes.length;i++){ if(i===0){g.push(0);l.push(0);continue;} const d=closes[i]-closes[i-1]; g.push(Math.max(d,0)); l.push(Math.max(-d,0)); }
+  const ag=rma(g,len), al=rma(l,len);
+  return closes.map((_,i)=> (ag[i]==null||al[i]==null)?null : (al[i]===0?100:100-100/(1+ag[i]/al[i])) ); }
+function smaOf(arr,len){ return arr.map((_,i)=>{ if(i<len-1)return null; let s=0; for(let j=i-len+1;j<=i;j++){ if(arr[j]==null)return null; s+=arr[j]; } return s/len; }); }
+
 let anal=null;
 function analisar(){
   if(!candles.length) return;
@@ -269,7 +287,38 @@ function analisar(){
   const piv=zigzag(candles,rev);
   const count=contar(piv);
   anal={piv, count, best:count, rev};
-  desenhar(); renderRegras(); renderFib(); renderLeitura();
+  desenhar(); desenharRSI(); renderRegras(); renderFib(); renderLeitura();
+}
+
+function desenharRSI(){
+  const W=1000,H=132,pl=6,pr=54,pt=10,pb=8;
+  const n=candles.length, closes=candles.map(c=>c.c);
+  const r=rsiCalc(closes,14), ma=smaOf(r,14);
+  const X=i=>pl+(i/(n-1))*(W-pl-pr);
+  const Y=v=>pt+(1-v/100)*(H-pt-pb);
+  let s='';
+  // zonas 70/30 e faixa central sombreada (estilo TradingView)
+  s+=`<rect x="${pl}" y="${Y(70)}" width="${W-pl-pr}" height="${Y(30)-Y(70)}" fill="rgba(126,87,194,.06)"/>`;
+  [[70,'var(--down)'],[50,'#3a4553'],[30,'var(--up)']].forEach(([lv,col])=>{
+    s+=`<line x1="${pl}" y1="${Y(lv)}" x2="${W-pr}" y2="${Y(lv)}" stroke="${col}" stroke-width="1" stroke-dasharray="${lv===50?'2 3':'4 4'}" opacity="${lv===50?.6:.8}"/>`;
+    s+=`<text x="${W-pr+4}" y="${Y(lv)+3}" fill="#5b6b7d" font-size="10">${lv}</text>`; });
+  // preenchimento entre RSI e MMS (verde quando RSI>MMS, vermelho quando <)
+  let fillUp='', fillDn='';
+  for(let i=1;i<n;i++){ if(r[i]==null||ma[i]==null||r[i-1]==null||ma[i-1]==null)continue;
+    const poly=`${X(i-1)},${Y(r[i-1])} ${X(i)},${Y(r[i])} ${X(i)},${Y(ma[i])} ${X(i-1)},${Y(ma[i-1])}`;
+    if(r[i]>=ma[i]) fillUp+=`<polygon points="${poly}" fill="rgba(22,199,132,.18)"/>`;
+    else fillDn+=`<polygon points="${poly}" fill="rgba(234,57,67,.16)"/>`; }
+  s+=fillUp+fillDn;
+  // MMS (amarela)
+  let dm=''; ma.forEach((v,i)=>{ if(v==null)return; dm+=(dm?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)+' '; });
+  s+=`<path d="${dm}" fill="none" stroke="var(--warn)" stroke-width="1.6"/>`;
+  // RSI (roxo)
+  let dr=''; r.forEach((v,i)=>{ if(v==null)return; dr+=(dr?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)+' '; });
+  s+=`<path d="${dr}" fill="none" stroke="var(--rsi)" stroke-width="1.8"/>`;
+  const svg=$('rsi'); svg.innerHTML=s;
+  const rv=r[n-1], mv=ma[n-1];
+  $('rsiVals').innerHTML = (rv!=null?`<span class="rv" style="background:rgba(126,87,194,.22);color:#c4abff">RSI ${fmt(rv,2)}</span>`:'')+
+    (mv!=null?`<span class="rv" style="background:rgba(240,185,11,.18);color:#f0d24b">MMS ${fmt(mv,2)}</span>`:'');
 }
 
 /* ===== Desenho SVG ===== */
