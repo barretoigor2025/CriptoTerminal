@@ -174,6 +174,17 @@
   <h2 class="sec">Corretoras — Long/Short de contas por exchange</h2>
   <div class="exwrap" id="exwrap"></div>
 
+  <h2 class="sec">Momentum — RSI &amp; Divergências</h2>
+  <div class="hist" style="padding:14px">
+    <div class="hist-h">
+      <span class="t">Preço + RSI 14 · MMS 14 <span class="neu" style="font-size:11px;font-weight:600">— estilo TradingView</span></span>
+      <span id="rsiVals2"></span>
+    </div>
+    <svg id="mprice" viewBox="0 0 1000 220" preserveAspectRatio="none" style="width:100%;height:clamp(180px,32vh,300px);display:block"></svg>
+    <svg id="mrsi" viewBox="0 0 1000 140" preserveAspectRatio="none" style="width:100%;height:140px;display:block;margin-top:8px"></svg>
+    <div class="read" id="mverdict" style="margin-top:12px"></div>
+  </div>
+
   <h2 class="sec">Leitura do Mercado — o que está acontecendo</h2>
   <div class="read-panel" id="readPanel"><p class="neu">Carregando…</p></div>
 
@@ -241,7 +252,7 @@ async function carregar(){
 
   const M=montarModelo({ticker,prem,glob,topA,topP,taker,oi});
   renderTicker(M); renderHero(M); renderBarras(M); renderHist(M); renderLeitura(M); renderCenarios(M);
-  carregarCorretoras();
+  carregarCorretoras(); loadMomentum();
   $('lastUpd').textContent=(usandoDemo?'simulado · ':'')+new Date().toLocaleTimeString('pt-BR');
   document.querySelector('.wrap').classList.remove('loading');
 }
@@ -413,6 +424,87 @@ async function carregarCorretoras(){
       card.querySelector('.row').innerHTML=`<span class="up">L ${fmtNum(L,1)}%</span><span class="neu">L/S ${fmtNum(r.r,2)}</span><span class="down">${fmtNum(S,1)}% S</span>`;
     }catch(err){ card.querySelector('.st').className='st err'; card.querySelector('.row').innerHTML=`<span class="neu" style="font-weight:600">indisponível (CORS/rede)</span>`; } });
 }
+
+/* ============ MOMENTUM — RSI + Divergências ============ */
+function rma(vals,len){ const out=new Array(vals.length).fill(null); let prev;
+  for(let i=0;i<vals.length;i++){ if(i<len-1)continue;
+    if(prev===undefined){ let s=0; for(let j=i-len+1;j<=i;j++)s+=vals[j]; prev=s/len; }
+    else prev=(prev*(len-1)+vals[i])/len; out[i]=prev; } return out; }
+function rsiCalc(cl,len=14){ const g=[],l=[];
+  for(let i=0;i<cl.length;i++){ if(i===0){g.push(0);l.push(0);continue;} const d=cl[i]-cl[i-1]; g.push(Math.max(d,0)); l.push(Math.max(-d,0)); }
+  const ag=rma(g,len), al=rma(l,len);
+  return cl.map((_,i)=> (ag[i]==null||al[i]==null)?null:(al[i]===0?100:100-100/(1+ag[i]/al[i])) ); }
+function smaOf(a,len){ return a.map((_,i)=>{ if(i<len-1)return null; let s=0; for(let j=i-len+1;j<=i;j++){ if(a[j]==null)return null; s+=a[j]; } return s/len; }); }
+function achaPivos(v,k=3){ const hi=[],lo=[]; for(let i=k;i<v.length-k;i++){ let H=true,L=true;
+  for(let j=i-k;j<=i+k;j++){ if(v[j]>v[i])H=false; if(v[j]<v[i])L=false; } if(H)hi.push({i,price:v[i]}); if(L)lo.push({i,price:v[i]}); } return {hi,lo}; }
+function momDiv(v,r){ const {hi,lo}=achaPivos(v,3), out=[];
+  if(hi.length>=2){ const a=hi[hi.length-2],b=hi[hi.length-1],ra=r[a.i],rb=r[b.i];
+    if(ra!=null&&rb!=null){ if(b.price>a.price&&rb<ra)out.push({classe:'regular',tipo:'baixa',a,b,ra,rb});
+      else if(b.price<a.price&&rb>ra)out.push({classe:'oculta',tipo:'baixa',a,b,ra,rb}); } }
+  if(lo.length>=2){ const a=lo[lo.length-2],b=lo[lo.length-1],ra=r[a.i],rb=r[b.i];
+    if(ra!=null&&rb!=null){ if(b.price<a.price&&rb>ra)out.push({classe:'regular',tipo:'alta',a,b,ra,rb});
+      else if(b.price>a.price&&rb<ra)out.push({classe:'oculta',tipo:'alta',a,b,ra,rb}); } }
+  return out; }
+
+async function loadMomentum(){
+  let v;
+  try{ const k=await getJSON(`${FAPI}/fapi/v1/klines?symbol=${sym}&interval=${period}&limit=200`); v=k.map(c=>+c[4]); }
+  catch(e){ v=momDemo(); }
+  if(!v||v.length<40){ v=momDemo(); }
+  drawMomentum(v);
+}
+function drawMomentum(v){
+  const n=v.length, r=rsiCalc(v,14), ma=smaOf(r,14), divs=momDiv(v,r);
+  // ---- preço ----
+  const W=1000,H=220,pl=6,pr=56,pt=10,pb=10;
+  let mn=Math.min(...v),mx=Math.max(...v); const pd=(mx-mn)*.06; mn-=pd; mx+=pd;
+  const X=i=>pl+(i/(n-1))*(W-pl-pr), Y=p=>pt+(1-(p-mn)/(mx-mn))*(H-pt-pb);
+  let s='';
+  for(let g=0;g<=3;g++){ const yy=pt+g/3*(H-pt-pb), pv=mx-g/3*(mx-mn);
+    s+=`<line x1="${pl}" y1="${yy}" x2="${W-pr}" y2="${yy}" stroke="#1b2430"/><text x="${W-pr+4}" y="${yy+3}" fill="#5b6b7d" font-size="10">$${fmtPrice(pv)}</text>`; }
+  let d=''; v.forEach((c,i)=>{ d+=(i?'L':'M')+X(i).toFixed(1)+' '+Y(c).toFixed(1)+' '; });
+  s+=`<path d="${d}" fill="none" stroke="#8492a3" stroke-width="1.4"/>`;
+  divs.forEach(dv=>{ const col=dv.tipo==='baixa'?'var(--down)':'var(--up)', oc=dv.classe==='oculta';
+    s+=`<line x1="${X(dv.a.i)}" y1="${Y(dv.a.price)}" x2="${X(dv.b.i)}" y2="${Y(dv.b.price)}" stroke="${col}" stroke-width="1.6" stroke-dasharray="${oc?'2 3':'5 3'}"/>`;
+    s+=`<circle cx="${X(dv.a.i)}" cy="${Y(dv.a.price)}" r="3" fill="${col}"/><circle cx="${X(dv.b.i)}" cy="${Y(dv.b.price)}" r="3" fill="${col}"/>`;
+    const mmx=(X(dv.a.i)+X(dv.b.i))/2, mmy=(Y(dv.a.price)+Y(dv.b.price))/2;
+    s+=`<text x="${mmx}" y="${dv.tipo==='baixa'?mmy-5:mmy+13}" fill="${col}" font-size="10" font-weight="800" text-anchor="middle">${oc?'div. oculta':'divergência'}</text>`; });
+  document.getElementById('mprice').innerHTML=s;
+  // ---- RSI ----
+  const HW=1000,HH=140,rpt=8,rpb=8;
+  const RX=i=>pl+(i/(n-1))*(HW-pl-pr), RY=val=>rpt+(1-val/100)*(HH-rpt-rpb);
+  let q='';
+  for(let i=1;i<n;i++){ if(r[i]==null||r[i-1]==null)continue; const x0=RX(i-1),x1=RX(i);
+    if(r[i]>70&&r[i-1]>70) q+=`<rect x="${x0}" y="${rpt}" width="${x1-x0+0.6}" height="${RY(70)-rpt}" fill="rgba(234,57,67,.16)"/>`;
+    if(r[i]<30&&r[i-1]<30) q+=`<rect x="${x0}" y="${RY(30)}" width="${x1-x0+0.6}" height="${(HH-rpb)-RY(30)}" fill="rgba(22,199,132,.16)"/>`; }
+  [[70,'var(--down)'],[50,'#3a4553'],[30,'var(--up)']].forEach(([lv,c])=>{ q+=`<line x1="${pl}" y1="${RY(lv)}" x2="${HW-pr}" y2="${RY(lv)}" stroke="${c}" stroke-width="1" stroke-dasharray="${lv===50?'2 3':'4 4'}" opacity="${lv===50?.6:.85}"/><text x="${HW-pr+4}" y="${RY(lv)+3}" fill="#5b6b7d" font-size="10">${lv}</text>`; });
+  let dm=''; ma.forEach((val,i)=>{ if(val==null)return; dm+=(dm?'L':'M')+RX(i).toFixed(1)+' '+RY(val).toFixed(1)+' '; });
+  q+=`<path d="${dm}" fill="none" stroke="var(--warn)" stroke-width="1.5"/>`;
+  let dr=''; r.forEach((val,i)=>{ if(val==null)return; dr+=(dr?'L':'M')+RX(i).toFixed(1)+' '+RY(val).toFixed(1)+' '; });
+  q+=`<path d="${dr}" fill="none" stroke="#a78bfa" stroke-width="1.8"/>`;
+  divs.forEach(dv=>{ const col=dv.tipo==='baixa'?'var(--down)':'var(--up)', oc=dv.classe==='oculta';
+    q+=`<line x1="${RX(dv.a.i)}" y1="${RY(dv.ra)}" x2="${RX(dv.b.i)}" y2="${RY(dv.rb)}" stroke="${col}" stroke-width="2" stroke-dasharray="${oc?'2 3':'5 3'}"/>`;
+    q+=`<circle cx="${RX(dv.a.i)}" cy="${RY(dv.ra)}" r="3" fill="${col}"/><circle cx="${RX(dv.b.i)}" cy="${RY(dv.rb)}" r="3" fill="${col}"/>`;
+    q+=`<text x="${(RX(dv.a.i)+RX(dv.b.i))/2}" y="${Math.min(RY(dv.ra),RY(dv.rb))-4}" fill="${col}" font-size="10" font-weight="800" text-anchor="middle">${oc?'DIV. OCULTA':'DIVERGÊNCIA'}</text>`; });
+  document.getElementById('mrsi').innerHTML=q;
+  const rv=r[n-1], mv=ma[n-1];
+  const rc = rv>70?'background:rgba(234,57,67,.25);color:#ff9ba1':rv<30?'background:rgba(22,199,132,.25);color:#7ff0c0':'background:rgba(167,139,250,.22);color:#c4abff';
+  document.getElementById('rsiVals2').innerHTML=(rv!=null?`<span class="rv" style="${rc};font-weight:800;padding:2px 8px;border-radius:6px">RSI ${fmtNum(rv,2)}${rv>70?' · sobrecompra':rv<30?' · sobrevenda':''}</span>`:'')+(mv!=null?`<span class="rv" style="background:rgba(240,185,11,.18);color:#f0d24b;font-weight:800;padding:2px 8px;border-radius:6px;margin-left:6px">MMS ${fmtNum(mv,2)}</span>`:'');
+  // ---- veredito ----
+  const el=document.getElementById('mverdict');
+  if(!divs.length){ el.innerHTML=`<p style="color:var(--muted)">Sem divergência ativa entre os últimos topos/fundos. RSI atual <b>${fmtNum(rv,1)}</b>${rv>70?' (sobrecomprado)':rv<30?' (sobrevendido)':''}.</p>`; return; }
+  el.innerHTML=divs.map(dv=>{
+    const dd=`(${fmtNum(dv.ra,1)} → ${fmtNum(dv.rb,1)})`;
+    if(dv.classe==='regular') return dv.tipo==='baixa'
+      ? `<p>⚠️ <b style="color:var(--down)">Divergência REGULAR de baixa</b> — preço fez topo maior, RSI topo menor ${dd}. Sinal de <b>reversão para baixo</b> (enfraquecimento da alta).</p>`
+      : `<p>⚠️ <b style="color:var(--up)">Divergência REGULAR de alta</b> — preço fez fundo menor, RSI fundo maior ${dd}. Sinal de <b>reversão para cima</b>.</p>`;
+    return dv.tipo==='baixa'
+      ? `<p>🔁 <b style="color:var(--down)">Divergência OCULTA de baixa</b> — topo mais baixo no preço, RSI topo mais alto ${dd}. <b>Continuação da baixa</b>.</p>`
+      : `<p>🔁 <b style="color:var(--up)">Divergência OCULTA de alta</b> — fundo mais alto no preço, RSI fundo mais baixo ${dd}. <b>Continuação da alta</b>.</p>`;
+  }).join('');
+}
+function momDemo(){ const out=[]; let v=60000; const legs=[[60000,72000],[72000,66000],[66000,84000],[84000,78000],[78000,90000],[90000,80000],[80000,86000],[86000,74000]];
+  legs.forEach(([a,b])=>{ for(let j=0;j<25;j++){ out.push(a+(b-a)*(j/25)+(Math.random()-0.5)*(Math.abs(b-a))*0.05); } }); return out; }
 
 /* ============ DEMO (fallback sem rede) ============ */
 function demoData(){
