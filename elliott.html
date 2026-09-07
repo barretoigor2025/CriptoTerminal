@@ -322,37 +322,31 @@ function desenharRSI(){
   const X=i=>pl+(i/(n-1))*(W-pl-pr);
   const Y=v=>pt+(1-v/100)*(H-pt-pb);
   let s='';
-  // (a) fundo destacado: sobrecompra (>70) vermelho, sobrevenda (<30) verde
-  let obUp='',osDn='';
-  for(let i=1;i<n;i++){ if(r[i]==null||r[i-1]==null)continue; const x0=X(i-1),x1=X(i);
-    if(r[i]>70&&r[i-1]>70) obUp+=`<rect x="${x0}" y="${pt}" width="${x1-x0+0.6}" height="${Y(70)-pt}" fill="rgba(234,57,67,.16)"/>`;
-    if(r[i]<30&&r[i-1]<30) osDn+=`<rect x="${x0}" y="${Y(30)}" width="${x1-x0+0.6}" height="${(H-pb)-Y(30)}" fill="rgba(22,199,132,.16)"/>`; }
-  s+=obUp+osDn;
-  // linhas 70/50/30
-  [[70,'var(--down)'],[50,'#3a4553'],[30,'var(--up)']].forEach(([lv,col])=>{
-    s+=`<line x1="${pl}" y1="${Y(lv)}" x2="${W-pr}" y2="${Y(lv)}" stroke="${col}" stroke-width="1" stroke-dasharray="${lv===50?'2 3':'4 4'}" opacity="${lv===50?.6:.85}"/>`;
+  // faixa 30–70 sombreada de roxo (estilo TradingView)
+  s+=`<rect x="${pl}" y="${Y(70)}" width="${W-pl-pr}" height="${Y(30)-Y(70)}" fill="rgba(126,87,194,.08)"/>`;
+  // linhas 70 / 50 / 30 (tracejadas, neutras)
+  [[70,'4 4',.55],[50,'2 5',.4],[30,'4 4',.55]].forEach(([lv,dash,op])=>{
+    s+=`<line x1="${pl}" y1="${Y(lv)}" x2="${W-pr}" y2="${Y(lv)}" stroke="#7180a0" stroke-width="1" stroke-dasharray="${dash}" opacity="${op}"/>`;
     s+=`<text x="${W-pr+4}" y="${Y(lv)+3}" fill="#5b6b7d" font-size="10">${lv}</text>`; });
-  // preenchimento entre RSI e MMS (verde quando RSI>MMS, vermelho quando <)
-  let fillUp='', fillDn='';
-  for(let i=1;i<n;i++){ if(r[i]==null||ma[i]==null||r[i-1]==null||ma[i-1]==null)continue;
-    const poly=`${X(i-1)},${Y(r[i-1])} ${X(i)},${Y(r[i])} ${X(i)},${Y(ma[i])} ${X(i-1)},${Y(ma[i-1])}`;
-    if(r[i]>=ma[i]) fillUp+=`<polygon points="${poly}" fill="rgba(22,199,132,.18)"/>`;
-    else fillDn+=`<polygon points="${poly}" fill="rgba(234,57,67,.16)"/>`; }
-  s+=fillUp+fillDn;
+  // MMS (amarela) e RSI (roxo) — linhas limpas, sem preenchimento
   let dm=''; ma.forEach((v,i)=>{ if(v==null)return; dm+=(dm?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)+' '; });
   s+=`<path d="${dm}" fill="none" stroke="var(--warn)" stroke-width="1.6"/>`;
   let dr=''; r.forEach((v,i)=>{ if(v==null)return; dr+=(dr?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)+' '; });
-  s+=`<path d="${dr}" fill="none" stroke="var(--rsi)" stroke-width="1.8"/>`;
-  // (b) marca divergências no RSI (regular 3→5 e oculta 2→4)
+  s+=`<path d="${dr}" fill="none" stroke="var(--rsi)" stroke-width="1.9"/>`;
+  // divergências (mantidas)
   (anal.divs||[]).forEach(dv=>{ const xA=X(dv.pA.i),yA=Y(dv.rA),xB=X(dv.pB.i),yB=Y(dv.rB);
     const col=dv.tipo==='baixa'?'var(--down)':'var(--up)'; const oculta=dv.classe==='oculta';
     s+=`<line x1="${xA}" y1="${yA}" x2="${xB}" y2="${yB}" stroke="${col}" stroke-width="2" stroke-dasharray="${oculta?'2 3':'5 3'}"/>`;
     s+=`<circle cx="${xA}" cy="${yA}" r="3.5" fill="${col}"/><circle cx="${xB}" cy="${yB}" r="3.5" fill="${col}"/>`;
     s+=`<text x="${(xA+xB)/2}" y="${Math.min(yA,yB)-4}" fill="${col}" font-size="10.5" font-weight="800" text-anchor="middle">${oculta?'DIV. OCULTA':'DIVERGÊNCIA'}</text>`; });
-  const svg=$('rsi'); svg.innerHTML=s;
   const rv=r[n-1], mv=ma[n-1];
-  const rvCol = rv>70?'background:rgba(234,57,67,.25);color:#ff9ba1' : rv<30?'background:rgba(22,199,132,.25);color:#7ff0c0' : 'background:rgba(126,87,194,.22);color:#c4abff';
-  $('rsiVals').innerHTML = (rv!=null?`<span class="rv" style="${rvCol}">RSI ${fmt(rv,2)}${rv>70?' · sobrecompra':rv<30?' · sobrevenda':''}</span>`:'')+
+  // caixas de valor na borda direita (estilo TradingView)
+  if(mv!=null){ const yy=Y(mv); s+=`<rect x="${W-pr}" y="${yy-8}" width="52" height="16" rx="3" fill="var(--warn)"/><text x="${W-pr+26}" y="${yy+4}" fill="#1a1205" font-size="11" font-weight="800" text-anchor="middle">${fmt(mv,2)}</text>`; }
+  if(rv!=null){ const yy=Y(rv); s+=`<rect x="${W-pr}" y="${yy-8}" width="52" height="16" rx="3" fill="var(--rsi)"/><text x="${W-pr+26}" y="${yy+4}" fill="#fff" font-size="11" font-weight="800" text-anchor="middle">${fmt(rv,2)}</text>`; }
+  // título estilo TradingView
+  s=`<text x="${pl+2}" y="${pt+9}" fill="#8492a3" font-size="12" font-weight="700">RSI <tspan fill="#e8eef5">14</tspan> close</text>`+s;
+  $('rsi').innerHTML=s;
+  $('rsiVals').innerHTML = (rv!=null?`<span class="rv" style="background:rgba(126,87,194,.22);color:#c4abff">RSI ${fmt(rv,2)}${rv>70?' · sobrecompra':rv<30?' · sobrevenda':''}</span>`:'')+
     (mv!=null?`<span class="rv" style="background:rgba(240,185,11,.18);color:#f0d24b">MMS ${fmt(mv,2)}</span>`:'');
 }
 
