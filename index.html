@@ -1473,7 +1473,7 @@ function rsiOf(closes, len){
    (adicionável/removível). Segue o zoom/scroll ancorando cada ponto por tempo.
    ========================================================================= */
 const RSI = {
-  cfg:{ on:false, len:14, ma1:9, ma2:21 },
+  cfg:{ on:false, len:14, ma1:14, ma2:21 },
   vals:[], ma1arr:[], ma2arr:[],
   // UM único frame embaixo (separado do gráfico de preço) com VOLUME + RSI
   // SOBREPOSTOS — mais baixo que antes, sobrando mais altura pro preço.
@@ -1547,27 +1547,36 @@ const RSI = {
     ctx.beginPath(); ctx.moveTo(0,yTopF+.5); ctx.lineTo(W,yTopF+.5); ctx.stroke();
     // níveis 70 / 50 / 30 do RSI
     const y70=this.yOf(70), y50=this.yOf(50), y30=this.yOf(30);
+    // faixa 30–70 sombreada de roxo (estilo TradingView)
+    ctx.fillStyle='rgba(150,110,220,.07)'; ctx.fillRect(0, y70, rightEdge, y30-y70);
     ctx.lineWidth=1; ctx.setLineDash([3,4]);
-    ctx.strokeStyle='rgba(239,83,80,.28)';  ctx.beginPath(); ctx.moveTo(0,y70); ctx.lineTo(rightEdge,y70); ctx.stroke();
-    ctx.strokeStyle='rgba(38,166,154,.28)';  ctx.beginPath(); ctx.moveTo(0,y30); ctx.lineTo(rightEdge,y30); ctx.stroke();
-    ctx.strokeStyle='rgba(150,160,180,.14)'; ctx.beginPath(); ctx.moveTo(0,y50); ctx.lineTo(rightEdge,y50); ctx.stroke();
+    ctx.strokeStyle='rgba(239,83,80,.30)';  ctx.beginPath(); ctx.moveTo(0,y70); ctx.lineTo(rightEdge,y70); ctx.stroke();
+    ctx.strokeStyle='rgba(38,166,154,.30)';  ctx.beginPath(); ctx.moveTo(0,y30); ctx.lineTo(rightEdge,y30); ctx.stroke();
+    ctx.strokeStyle='rgba(150,160,180,.16)'; ctx.setLineDash([2,5]); ctx.beginPath(); ctx.moveTo(0,y50); ctx.lineTo(rightEdge,y50); ctx.stroke();
     ctx.setLineDash([]);
-    // as duas médias primeiro (ficam atrás), depois o RSI por cima
-    this.poly(this.ma2arr, '#4dd0e1', 1.2);   // média lenta
-    this.poly(this.ma1arr, '#ffd54f', 1.2);   // média rápida
-    this.poly(this.vals,   '#b17ce0', 1.7);   // RSI
+    // MMS (amarela) por baixo, RSI (roxo) por cima — igual ao TradingView
+    this.poly(this.ma1arr, '#ffd54f', 1.4);   // MMS 14
+    this.poly(this.vals,   '#a77bea', 1.9);   // RSI
     // rótulos e valores atuais
     const lastOf=a=>{ for(let i=a.length-1;i>=0;i--) if(a[i]!=null) return a[i]; return null; };
-    const rv=lastOf(this.vals), m1=lastOf(this.ma1arr), m2=lastOf(this.ma2arr);
+    const rv=lastOf(this.vals), m1=lastOf(this.ma1arr);
     ctx.font="9px 'IBM Plex Mono', monospace"; ctx.textBaseline='middle';
     ctx.fillStyle='rgba(239,83,80,.7)';  ctx.fillText('70', 3, y70);
     ctx.fillStyle='rgba(38,166,154,.7)'; ctx.fillText('30', 3, y30);
+    // título estilo TradingView
     ctx.textBaseline='top'; let x=6; const yLbl=yTopF+4;
     const chip=(t,col)=>{ ctx.fillStyle=col; ctx.fillText(t,x,yLbl); x+=ctx.measureText(t).width+8; };
-    chip('VOL·RSI', THEME.cur.volLbl);
-    if(rv!=null) chip((this.cfg.len)+' '+rv.toFixed(1), rv>=70?'#ef5350':rv<=30?'#26a69a':'#b17ce0');
-    if(m1!=null) chip('MM'+this.cfg.ma1+' '+m1.toFixed(1), '#ffd54f');
-    if(m2!=null) chip('MM'+this.cfg.ma2+' '+m2.toFixed(1), '#4dd0e1');
+    chip('VOL', THEME.cur.volLbl);
+    chip('RSI '+this.cfg.len+' close', '#a77bea');
+    chip('MMS '+this.cfg.ma1, '#ffd54f');
+    // caixas de valor na borda direita (estilo TradingView)
+    const box=(val,bg,fg)=>{ if(val==null) return; const yy=this.yOf(val), w=36,h=13, bx=rightEdge-w-1;
+      ctx.fillStyle=bg; ctx.beginPath();
+      if(ctx.roundRect) ctx.roundRect(bx, yy-h/2, w, h, 3); else ctx.rect(bx, yy-h/2, w, h);
+      ctx.fill();
+      ctx.fillStyle=fg; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(val.toFixed(2), bx+w/2, yy); ctx.textAlign='left'; };
+    box(m1,'#ffd54f','#241a00');
+    box(rv,'#a77bea','#150c26');
     ctx.restore();
   }
 };
