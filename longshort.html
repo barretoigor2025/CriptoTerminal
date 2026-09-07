@@ -474,10 +474,8 @@ function drawMomentum(v){
   const HW=1000,HH=140,rpt=8,rpb=8;
   const RX=i=>pl+(i/(n-1))*(HW-pl-pr), RY=val=>rpt+(1-val/100)*(HH-rpt-rpb);
   let q='';
-  for(let i=1;i<n;i++){ if(r[i]==null||r[i-1]==null)continue; const x0=RX(i-1),x1=RX(i);
-    if(r[i]>70&&r[i-1]>70) q+=`<rect x="${x0}" y="${rpt}" width="${x1-x0+0.6}" height="${RY(70)-rpt}" fill="rgba(234,57,67,.16)"/>`;
-    if(r[i]<30&&r[i-1]<30) q+=`<rect x="${x0}" y="${RY(30)}" width="${x1-x0+0.6}" height="${(HH-rpb)-RY(30)}" fill="rgba(22,199,132,.16)"/>`; }
-  [[70,'var(--down)'],[50,'#3a4553'],[30,'var(--up)']].forEach(([lv,c])=>{ q+=`<line x1="${pl}" y1="${RY(lv)}" x2="${HW-pr}" y2="${RY(lv)}" stroke="${c}" stroke-width="1" stroke-dasharray="${lv===50?'2 3':'4 4'}" opacity="${lv===50?.6:.85}"/><text x="${HW-pr+4}" y="${RY(lv)+3}" fill="#5b6b7d" font-size="10">${lv}</text>`; });
+  q+=`<rect x="${pl}" y="${RY(70)}" width="${HW-pl-pr}" height="${RY(30)-RY(70)}" fill="rgba(167,139,250,.08)"/>`;
+  [[70,'4 4',.55],[50,'2 5',.4],[30,'4 4',.55]].forEach(([lv,dash,op])=>{ q+=`<line x1="${pl}" y1="${RY(lv)}" x2="${HW-pr}" y2="${RY(lv)}" stroke="#7180a0" stroke-width="1" stroke-dasharray="${dash}" opacity="${op}"/><text x="${HW-pr+4}" y="${RY(lv)+3}" fill="#5b6b7d" font-size="10">${lv}</text>`; });
   let dm=''; ma.forEach((val,i)=>{ if(val==null)return; dm+=(dm?'L':'M')+RX(i).toFixed(1)+' '+RY(val).toFixed(1)+' '; });
   q+=`<path d="${dm}" fill="none" stroke="var(--warn)" stroke-width="1.5"/>`;
   let dr=''; r.forEach((val,i)=>{ if(val==null)return; dr+=(dr?'L':'M')+RX(i).toFixed(1)+' '+RY(val).toFixed(1)+' '; });
@@ -486,8 +484,12 @@ function drawMomentum(v){
     q+=`<line x1="${RX(dv.a.i)}" y1="${RY(dv.ra)}" x2="${RX(dv.b.i)}" y2="${RY(dv.rb)}" stroke="${col}" stroke-width="2" stroke-dasharray="${oc?'2 3':'5 3'}"/>`;
     q+=`<circle cx="${RX(dv.a.i)}" cy="${RY(dv.ra)}" r="3" fill="${col}"/><circle cx="${RX(dv.b.i)}" cy="${RY(dv.rb)}" r="3" fill="${col}"/>`;
     q+=`<text x="${(RX(dv.a.i)+RX(dv.b.i))/2}" y="${Math.min(RY(dv.ra),RY(dv.rb))-4}" fill="${col}" font-size="10" font-weight="800" text-anchor="middle">${oc?'DIV. OCULTA':'DIVERGÊNCIA'}</text>`; });
-  document.getElementById('mrsi').innerHTML=q;
   const rv=r[n-1], mv=ma[n-1];
+  // caixas de valor na borda direita + título (estilo TradingView)
+  if(mv!=null){ const yy=RY(mv); q+=`<rect x="${HW-pr}" y="${yy-8}" width="52" height="16" rx="3" fill="var(--warn)"/><text x="${HW-pr+26}" y="${yy+4}" fill="#1a1205" font-size="11" font-weight="800" text-anchor="middle">${fmtNum(mv,2)}</text>`; }
+  if(rv!=null){ const yy=RY(rv); q+=`<rect x="${HW-pr}" y="${yy-8}" width="52" height="16" rx="3" fill="#a78bfa"/><text x="${HW-pr+26}" y="${yy+4}" fill="#1a1030" font-size="11" font-weight="800" text-anchor="middle">${fmtNum(rv,2)}</text>`; }
+  q=`<text x="${pl+2}" y="${rpt+9}" fill="#8492a3" font-size="12" font-weight="700">RSI <tspan fill="#e8eef5">14</tspan> close</text>`+q;
+  document.getElementById('mrsi').innerHTML=q;
   const rc = rv>70?'background:rgba(234,57,67,.25);color:#ff9ba1':rv<30?'background:rgba(22,199,132,.25);color:#7ff0c0':'background:rgba(167,139,250,.22);color:#c4abff';
   document.getElementById('rsiVals2').innerHTML=(rv!=null?`<span class="rv" style="${rc};font-weight:800;padding:2px 8px;border-radius:6px">RSI ${fmtNum(rv,2)}${rv>70?' · sobrecompra':rv<30?' · sobrevenda':''}</span>`:'')+(mv!=null?`<span class="rv" style="background:rgba(240,185,11,.18);color:#f0d24b;font-weight:800;padding:2px 8px;border-radius:6px;margin-left:6px">MMS ${fmtNum(mv,2)}</span>`:'');
   // ---- veredito ----
