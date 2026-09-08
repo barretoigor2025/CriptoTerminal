@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>IB · Comunidade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0a0d13;
+    --panel:#111621;
+    --panel-2:#0d121b;
+    --hair:#1d2534;
+    --hair-2:#283245;
+    --txt:#e7ebf2;
+    --muted:#7f8a9e;
+    --muted-2:#586074;
+    --bull:#26a69a;
+    --bear:#ef5350;
+    --btc:#f7931a;
+    --draw:#41b3ff;
+    --card-shadow:0 4px 16px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--ink);
+    color:var(--txt);
+    font-family:"Space Grotesk",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    display:flex;flex-direction:column;
+  }
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+  button{font-family:inherit}
+  a{color:var(--draw)}
+
+  /* ---------- TOPBAR ---------- */
+  .topbar{
+    display:flex;align-items:center;gap:12px;
+    padding:10px 16px;background:var(--panel);
+    border-bottom:1px solid var(--hair);
+    flex:0 0 auto;
+  }
+  .brand{font-weight:700;letter-spacing:.5px}
+  .brand b{color:var(--btc)}
+  .room-tag{
+    font-size:12px;color:var(--muted);
+    padding:3px 8px;border:1px solid var(--hair-2);border-radius:6px;
+  }
+  .room-tag b{color:var(--txt)}
+  .topbar .spacer{flex:1}
+  .btn{
+    background:var(--panel-2);color:var(--txt);
+    border:1px solid var(--hair-2);border-radius:8px;
+    padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;
+    transition:border-color .15s, background .15s, opacity .15s;
+  }
+  .btn:hover{border-color:var(--btc)}
+  .btn.primary{background:var(--btc);color:#0a0d13;border-color:var(--btc)}
+  .btn.danger{background:transparent;border-color:var(--bear);color:var(--bear)}
+  .btn.danger:hover{background:rgba(239,83,80,.12)}
+  .btn.active{background:rgba(38,166,154,.15);border-color:var(--bull);color:var(--bull)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn small{font-weight:500;color:var(--muted)}
+
+  /* ---------- LAYOUT ---------- */
+  .app{flex:1;display:flex;min-height:0}
+  .col-people{
+    width:230px;flex:0 0 auto;background:var(--panel);
+    border-right:1px solid var(--hair);
+    display:flex;flex-direction:column;min-height:0;
+  }
+  .col-stage{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
+  .col-chat{
+    width:300px;flex:0 0 auto;background:var(--panel);
+    border-left:1px solid var(--hair);
+    display:flex;flex-direction:column;min-height:0;
+  }
+  .col-head{
+    padding:10px 14px;font-size:11px;letter-spacing:1px;text-transform:uppercase;
+    color:var(--muted);border-bottom:1px solid var(--hair);flex:0 0 auto;
+    display:flex;align-items:center;gap:8px;
+  }
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--bull);box-shadow:0 0 8px var(--bull)}
+
+  /* ---------- LISTA DE PARTICIPANTES ---------- */
+  .people{overflow:auto;padding:8px;flex:1}
+  .person{
+    display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;
+    transition:background .15s;
+  }
+  .person:hover{background:var(--panel-2)}
+  .avatar{
+    width:32px;height:32px;border-radius:50%;flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:13px;color:#0a0d13;
+    background:var(--btc);
+  }
+  .person.me .avatar{background:var(--draw)}
+  .person .nm{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .person .nm span{color:var(--muted);font-size:11px}
+  .mic-state{font-size:15px;flex:0 0 auto;opacity:.9}
+  .mic-state.muted{color:var(--bear)}
+  .mic-state.talking{color:var(--bull);text-shadow:0 0 10px var(--bull)}
+  .speaking{outline:2px solid var(--bull);outline-offset:-2px}
+
+  /* ---------- STAGE (telas compartilhadas) ---------- */
+  .stage{flex:1;overflow:auto;padding:14px;display:grid;gap:12px;align-content:start;
+    grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+  .stage.empty{display:flex;align-items:center;justify-content:center}
+  .empty-msg{color:var(--muted);text-align:center;max-width:360px}
+  .empty-msg .big{font-size:40px;margin-bottom:8px;opacity:.5}
+  .tile{
+    position:relative;background:#000;border:1px solid var(--hair);border-radius:12px;
+    overflow:hidden;aspect-ratio:16/9;box-shadow:var(--card-shadow);
+  }
+  .tile video{width:100%;height:100%;object-fit:contain;background:#000;display:block}
+  .tile .novid{
+    position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;
+    align-items:center;justify-content:center;background:var(--panel-2);color:var(--muted);
+  }
+  .tile .novid .avatar{width:56px;height:56px;font-size:22px}
+  .tile .label{
+    position:absolute;left:8px;bottom:8px;background:rgba(10,13,19,.8);
+    padding:4px 8px;border-radius:6px;font-size:12px;font-weight:700;
+    display:flex;align-items:center;gap:6px;
+  }
+  .tile .label .badge{color:var(--btc);font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+
+  /* ---------- CONTROLES ---------- */
+  .controls{
+    flex:0 0 auto;display:flex;gap:10px;justify-content:center;
+    padding:12px;background:var(--panel);border-top:1px solid var(--hair);
+  }
+
+  /* ---------- CHAT ---------- */
+  .messages{flex:1;overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+  .msg{max-width:100%}
+  .msg .who{font-size:11px;color:var(--muted);margin-bottom:2px}
+  .msg .who b{color:var(--btc)}
+  .msg.me .who b{color:var(--draw)}
+  .msg .body{
+    background:var(--panel-2);border:1px solid var(--hair);border-radius:10px;
+    padding:7px 10px;font-size:14px;line-height:1.35;word-wrap:break-word;overflow-wrap:anywhere;
+  }
+  .msg.me .body{background:rgba(65,179,255,.10);border-color:var(--hair-2)}
+  .msg.sys{align-self:center;text-align:center}
+  .msg.sys .body{background:transparent;border:none;color:var(--muted);font-size:12px;padding:2px}
+  .chat-input{display:flex;gap:8px;padding:10px;border-top:1px solid var(--hair);flex:0 0 auto}
+  .chat-input input{
+    flex:1;background:var(--panel-2);border:1px solid var(--hair-2);border-radius:8px;
+    color:var(--txt);padding:9px 11px;font-family:inherit;font-size:14px;outline:none;
+  }
+  .chat-input input:focus{border-color:var(--btc)}
+
+  /* ---------- OVERLAY DE ENTRADA / CONFIG ---------- */
+  .overlay{
+    position:fixed;inset:0;z-index:50;background:rgba(6,9,14,.94);
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .overlay[hidden]{display:none}
+  .card{
+    background:var(--panel);border:1px solid var(--hair);border-radius:16px;
+    padding:26px;width:100%;max-width:420px;box-shadow:var(--card-shadow);
+  }
+  .card h1{margin:0 0 4px;font-size:22px}
+  .card h1 b{color:var(--btc)}
+  .card p{color:var(--muted);font-size:13px;line-height:1.5;margin:0 0 18px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;letter-spacing:.3px}
+  .field input{
+    width:100%;background:var(--panel-2);border:1px solid var(--hair-2);border-radius:9px;
+    color:var(--txt);padding:11px 12px;font-family:inherit;font-size:15px;outline:none;
+  }
+  .field input:focus{border-color:var(--btc)}
+  .card .btn.primary{width:100%;justify-content:center;padding:12px;font-size:15px;margin-top:4px}
+  .note{margin-top:16px;font-size:12px;color:var(--muted-2);line-height:1.5}
+  .note code{color:var(--draw);background:var(--panel-2);padding:1px 5px;border-radius:4px}
+  .warn{
+    background:rgba(247,147,26,.10);border:1px solid rgba(247,147,26,.4);
+    border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.5;color:#f2c07a;margin-bottom:16px;
+  }
+  .warn b{color:var(--btc)}
+
+  /* toast */
+  .toast{
+    position:fixed;left:50%;bottom:20px;transform:translateX(-50%);
+    background:var(--panel);border:1px solid var(--hair-2);border-radius:10px;
+    padding:10px 16px;font-size:13px;z-index:60;box-shadow:var(--card-shadow);
+    opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+
+  @media (max-width:820px){
+    .col-people{display:none}
+    .col-chat{width:100%;position:fixed;inset:0;top:52px;z-index:30;transform:translateX(100%);transition:transform .2s}
+    .col-chat.open{transform:none}
+    .app{position:relative}
+  }
+</style>
+</head>
+<body>
+
+  <!-- ===================== OVERLAY DE ENTRADA ===================== -->
+  <div class="overlay" id="overlay">
+    <div class="card">
+      <h1>Comunidade <b>IB</b></h1>
+      <p>Sala de voz + tela pra galera se conectar. Roda direto no navegador — só entrar.</p>
+
+      <div class="warn" id="cfgWarn" hidden>
+        <b>Falta configurar o Firebase.</b> Abra este arquivo e cole as chaves do seu projeto
+        no bloco <code>FIREBASE_CONFIG</code> no topo do &lt;script&gt;. Passo a passo no rodapé desta tela.
+      </div>
+
+      <div class="field">
+        <label for="inName">Seu nome</label>
+        <input id="inName" type="text" placeholder="Ex: Igor" maxlength="24" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="inRoom">Sala</label>
+        <input id="inRoom" type="text" placeholder="Ex: geral" maxlength="40" autocomplete="off" />
+      </div>
+      <button class="btn primary" id="btnJoin">🎧 Entrar na sala</button>
+
+      <div class="note" id="setupNote">
+        <b style="color:var(--txt)">Como ligar o Firebase (grátis, uma vez só):</b><br>
+        1. Crie um projeto em <a href="https://console.firebase.google.com" target="_blank" rel="noopener">console.firebase.google.com</a><br>
+        2. Em <i>Build → Firestore Database</i>, clique <i>Criar banco</i> (modo de teste).<br>
+        3. Em <i>Configurações do projeto → Seus apps → Web</i>, registre um app e copie o objeto <code>firebaseConfig</code>.<br>
+        4. Cole no bloco <code>FIREBASE_CONFIG</code> no topo do script deste arquivo e salve.
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== TOPBAR ===================== -->
+  <div class="topbar">
+    <div class="brand">Comunidade <b>IB</b></div>
+    <div class="room-tag">sala: <b id="roomLabel">—</b></div>
+    <div class="spacer"></div>
+    <button class="btn" id="btnInvite" title="Copiar link de convite">🔗 Convidar</button>
+    <button class="btn" id="btnChatToggle" title="Chat" style="display:none">💬</button>
+  </div>
+
+  <!-- ===================== APP ===================== -->
+  <div class="app">
+    <!-- Participantes -->
+    <div class="col-people">
+      <div class="col-head"><span class="dot"></span> Na sala · <span id="peopleCount">0</span></div>
+      <div class="people" id="people"></div>
+    </div>
+
+    <!-- Stage -->
+    <div class="col-stage">
+      <div class="stage empty" id="stage">
+        <div class="empty-msg">
+          <div class="big">🖥️</div>
+          Ninguém está compartilhando tela ainda.<br>
+          Clique em <b>Compartilhar tela</b> pra mostrar a sua.
+        </div>
+      </div>
+      <div class="controls">
+        <button class="btn" id="btnMic">🎙️ <span>Mutar</span></button>
+        <button class="btn" id="btnScreen">🖥️ <span>Compartilhar tela</span></button>
+        <button class="btn danger" id="btnLeave">Sair</button>
+      </div>
+    </div>
+
+    <!-- Chat -->
+    <div class="col-chat" id="chat">
+      <div class="col-head">💬 Chat da sala</div>
+      <div class="messages" id="messages"></div>
+      <div class="chat-input">
+        <input id="chatInput" type="text" placeholder="Mensagem…" maxlength="500" autocomplete="off" />
+        <button class="btn primary" id="btnSend">Enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script type="module">
+/* =========================================================================
+   CONFIG DO FIREBASE  —  COLE AS SUAS CHAVES AQUI
+   Pegue em: Console do Firebase → Configurações do projeto → Seus apps (Web)
+   ========================================================================= */
+const FIREBASE_CONFIG = {
+  apiKey: "COLE_AQUI",
+  authDomain: "COLE_AQUI",
+  projectId: "COLE_AQUI",
+  storageBucket: "COLE_AQUI",
+  messagingSenderId: "COLE_AQUI",
+  appId: "COLE_AQUI"
+};
+
+/* Servidores de ICE: STUN descobre o IP público; TURN faz o relay quando a
+   conexão direta é bloqueada (redes/celulares restritos). Os TURN abaixo são
+   públicos e gratuitos — para produção séria, use um TURN próprio. */
+const ICE_SERVERS = [
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun1.l.google.com:19302" },
+  {
+    urls: [
+      "turn:openrelay.metered.ca:80",
+      "turn:openrelay.metered.ca:443",
+      "turn:openrelay.metered.ca:443?transport=tcp"
+    ],
+    username: "openrelayproject",
+    credential: "openrelayproject"
+  }
+];
+
+const HEARTBEAT_MS = 8000;   // atualiza presença a cada 8s
+const STALE_MS     = 25000;  // considera offline quem não bate ping há 25s
+
+/* ========================================================================= */
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot,
+  addDoc, query, orderBy, serverTimestamp, getDocs, limit
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ---------- refs de UI ----------
+const $ = (id) => document.getElementById(id);
+const overlay = $("overlay"), cfgWarn = $("cfgWarn");
+const inName = $("inName"), inRoom = $("inRoom"), btnJoin = $("btnJoin");
+const roomLabel = $("roomLabel"), peopleEl = $("people"), peopleCount = $("peopleCount");
+const stageEl = $("stage"), messagesEl = $("messages"), chatInput = $("chatInput");
+const btnMic = $("btnMic"), btnScreen = $("btnScreen"), btnLeave = $("btnLeave");
+const btnSend = $("btnSend"), btnInvite = $("btnInvite"), btnChatToggle = $("btnChatToggle");
+const toastEl = $("toast"), chatCol = $("chat");
+
+// ---------- estado ----------
+const myId = Math.random().toString(36).slice(2, 10);
+let myName = "", roomId = "", db = null;
+let localStream = null, screenStream = null, screenSender = new Map();
+let micEnabled = true;
+const peers = new Map();        // remoteId -> { pc, polite, makingOffer, ignoreOffer, pending:[], stream, tile }
+const roster = new Map();       // remoteId -> { name, ts, speaking }
+let unsubPeers = null, unsubSignals = null, unsubMessages = null, heartbeat = null;
+
+// =========================================================================
+// helpers
+// =========================================================================
+function toast(msg){
+  toastEl.textContent = msg; toastEl.classList.add("show");
+  clearTimeout(toast._t); toast._t = setTimeout(()=>toastEl.classList.remove("show"), 2600);
+}
+function initials(n){ return (n||"?").trim().slice(0,2).toUpperCase(); }
+function configOk(){ return FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey !== "COLE_AQUI"; }
+function esc(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
+
+// prefill nome/sala salvos e da URL
+(function prefill(){
+  if(!configOk()) cfgWarn.hidden = false;
+  const url = new URL(location.href);
+  const r = url.searchParams.get("room");
+  inName.value = localStorage.getItem("ib_name") || "";
+  inRoom.value = r || localStorage.getItem("ib_room") || "geral";
+  (inName.value ? btnJoin : inName).focus?.();
+})();
+
+// =========================================================================
+// ENTRAR NA SALA
+// =========================================================================
+btnJoin.onclick = join;
+inName.addEventListener("keydown", e => { if(e.key==="Enter") inRoom.focus(); });
+inRoom.addEventListener("keydown", e => { if(e.key==="Enter") join(); });
+
+async function join(){
+  if(!configOk()){ cfgWarn.hidden = false; toast("Configure o Firebase primeiro"); return; }
+  myName = (inName.value || "").trim();
+  roomId = (inRoom.value || "").trim().toLowerCase().replace(/[^a-z0-9_-]/g,"") || "geral";
+  if(!myName){ toast("Digite seu nome"); inName.focus(); return; }
+
+  localStorage.setItem("ib_name", myName);
+  localStorage.setItem("ib_room", roomId);
+
+  btnJoin.disabled = true; btnJoin.textContent = "Pedindo microfone…";
+
+  // 1) microfone
+  try{
+    localStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation:true, noiseSuppression:true, autoGainControl:true },
+      video: false
+    });
+  }catch(err){
+    btnJoin.disabled = false; btnJoin.textContent = "🎧 Entrar na sala";
+    toast("Não consegui acessar o microfone");
+    console.error(err); return;
+  }
+
+  // 2) firebase
+  try{
+    const appFb = initializeApp(FIREBASE_CONFIG);
+    db = getFirestore(appFb);
+  }catch(err){
+    btnJoin.disabled = false; btnJoin.textContent = "🎧 Entrar na sala";
+    toast("Erro ao conectar no Firebase — confira as chaves");
+    console.error(err); return;
+  }
+
+  roomLabel.textContent = roomId;
+  overlay.hidden = true;
+  history.replaceState(null, "", `?room=${encodeURIComponent(roomId)}`);
+
+  setupVoiceMeter();
+  await enterRoom();
+  wireControls();
+}
+
+// caminhos no Firestore
+const peersCol   = () => collection(db, "rooms", roomId, "peers");
+const peerDoc    = (id) => doc(db, "rooms", roomId, "peers", id);
+const signalsCol = (id) => collection(db, "rooms", roomId, "peers", id, "signals");
+const msgsCol    = () => collection(db, "rooms", roomId, "messages");
+
+// =========================================================================
+// PRESENÇA + DESCOBERTA DE PARES
+// =========================================================================
+async function enterRoom(){
+  // registra minha presença
+  await setDoc(peerDoc(myId), { name: myName, ts: Date.now() });
+  heartbeat = setInterval(() => {
+    updateDoc(peerDoc(myId), { ts: Date.now() }).catch(()=>{});
+  }, HEARTBEAT_MS);
+
+  // ouve minha caixa de sinalização
+  unsubSignals = onSnapshot(signalsCol(myId), snap => {
+    snap.docChanges().forEach(async ch => {
+      if(ch.type !== "added") return;
+      const data = ch.data();
+      try{ await handleSignal(data.from, data.payload); }
+      catch(e){ console.warn("signal err", e); }
+      deleteDoc(ch.doc.ref).catch(()=>{});
+    });
+  });
+
+  // ouve a lista de participantes
+  unsubPeers = onSnapshot(peersCol(), snap => {
+    const now = Date.now();
+    const active = new Set();
+    snap.forEach(d => {
+      const id = d.id, data = d.data();
+      const alive = data.ts && (now - data.ts) < STALE_MS;
+      if(id === myId) return;
+      if(alive){
+        active.add(id);
+        const wasNew = !roster.has(id);
+        roster.set(id, { ...(roster.get(id)||{}), name: data.name, ts: data.ts });
+        // par "impolido" (id menor) inicia a conexão; o outro cria sob demanda
+        if(!peers.has(id) && myId < id) createPeer(id);
+        if(wasNew) sysMsg(`${data.name} entrou`);
+      }else{
+        // presença velha -> tenta limpar
+        deleteDoc(peerDoc(id)).catch(()=>{});
+      }
+    });
+    // saíram
+    for(const id of [...roster.keys()]){
+      if(!active.has(id)){
+        const nm = roster.get(id)?.name;
+        dropPeer(id);
+        if(nm) sysMsg(`${nm} saiu`);
+      }
+    }
+    renderPeople();
+  });
+
+  // ouve o chat
+  const qMsgs = query(msgsCol(), orderBy("ts", "asc"), limit(200));
+  unsubMessages = onSnapshot(qMsgs, snap => {
+    snap.docChanges().forEach(ch => { if(ch.type==="added") renderMessage(ch.doc.data()); });
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  });
+
+  renderPeople();
+}
+
+// =========================================================================
+// WEBRTC — negociação perfeita (perfect negotiation)
+// =========================================================================
+function createPeer(remoteId){
+  const polite = myId > remoteId;   // o id maior é o "educado" em caso de colisão
+  const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+  const st = { pc, polite, makingOffer:false, ignoreOffer:false, pending:[], stream:null, tile:null };
+  peers.set(remoteId, st);
+
+  // envia meu áudio (e a tela, se já estiver compartilhando)
+  localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+  if(screenStream){
+    screenStream.getTracks().forEach(t => {
+      const sender = pc.addTrack(t, screenStream);
+      screenSender.set(remoteId, sender);
+    });
+  }
+
+  pc.onicecandidate = e => {
+    if(e.candidate) sendSignal(remoteId, { kind:"candidate", candidate: e.candidate.toJSON() });
+  };
+
+  pc.onnegotiationneeded = async () => {
+    try{
+      st.makingOffer = true;
+      await pc.setLocalDescription();
+      sendSignal(remoteId, { kind:"sdp", description: { type: pc.localDescription.type, sdp: pc.localDescription.sdp } });
+    }catch(e){ console.warn("negotiation", e); }
+    finally{ st.makingOffer = false; }
+  };
+
+  pc.ontrack = e => {
+    if(!st.stream){ st.stream = new MediaStream(); }
+    st.stream.addTrack(e.track);
+    attachStream(remoteId);
+    e.track.onmute = () => refreshTile(remoteId);
+    e.track.onunmute = () => refreshTile(remoteId);
+    e.track.onended = () => { st.stream.removeTrack(e.track); refreshTile(remoteId); };
+    refreshTile(remoteId);
+  };
+
+  pc.onconnectionstatechange = () => {
+    if(["failed","closed"].includes(pc.connectionState)){
+      // deixa a limpeza de presença cuidar; failed pode se recuperar via ICE restart
+    }
+  };
+
+  return st;
+}
+
+async function handleSignal(fromId, payload){
+  let st = peers.get(fromId);
+  if(!st) st = createPeer(fromId);   // lado educado cria a conexão sob demanda
+  const pc = st.pc;
+
+  if(payload.kind === "sdp"){
+    const desc = payload.description;
+    const collision = desc.type === "offer" && (st.makingOffer || pc.signalingState !== "stable");
+    st.ignoreOffer = !st.polite && collision;
+    if(st.ignoreOffer) return;
+    await pc.setRemoteDescription(desc);
+    // descarrega candidatos que chegaram antes da descrição
+    for(const c of st.pending.splice(0)){ try{ await pc.addIceCandidate(c); }catch{} }
+    if(desc.type === "offer"){
+      await pc.setLocalDescription();
+      sendSignal(fromId, { kind:"sdp", description: { type: pc.localDescription.type, sdp: pc.localDescription.sdp } });
+    }
+  }else if(payload.kind === "candidate"){
+    if(!pc.remoteDescription){ st.pending.push(payload.candidate); return; }
+    try{ await pc.addIceCandidate(payload.candidate); }
+    catch(e){ if(!st.ignoreOffer) console.warn("ice", e); }
+  }
+}
+
+function sendSignal(toId, payload){
+  addDoc(signalsCol(toId), { from: myId, payload, ts: Date.now() }).catch(()=>{});
+}
+
+function dropPeer(id){
+  const st = peers.get(id);
+  if(st){ try{ st.pc.close(); }catch{} }
+  peers.delete(id);
+  roster.delete(id);
+  screenSender.delete(id);
+  const tile = document.getElementById("tile-"+id);
+  if(tile) tile.remove();
+  updateStageEmpty();
+}
+
+// =========================================================================
+// STAGE (telas / vídeo remoto)
+// =========================================================================
+function attachStream(id){
+  let tile = document.getElementById("tile-"+id);
+  if(!tile){
+    tile = document.createElement("div");
+    tile.className = "tile"; tile.id = "tile-"+id;
+    const name = roster.get(id)?.name || "amigo";
+    tile.innerHTML = `
+      <video autoplay playsinline></video>
+      <div class="novid"><div class="avatar">${esc(initials(name))}</div><span>${esc(name)}</span></div>
+      <div class="label"><span class="badge">tela</span> ${esc(name)}</div>`;
+    stageEl.appendChild(tile);
+  }
+  const v = tile.querySelector("video");
+  if(v.srcObject !== peers.get(id)?.stream) v.srcObject = peers.get(id)?.stream || null;
+  refreshTile(id);
+}
+
+function refreshTile(id){
+  const st = peers.get(id); if(!st) return;
+  const tile = document.getElementById("tile-"+id); if(!tile) return;
+  const hasVideo = st.stream && st.stream.getVideoTracks().some(t => t.readyState==="live" && !t.muted);
+  tile.querySelector("video").style.display = hasVideo ? "block" : "none";
+  tile.querySelector(".novid").style.display = hasVideo ? "none" : "flex";
+  updateStageEmpty();
+}
+
+function updateStageEmpty(){
+  // mostra o placeholder só quando nenhum tile tem vídeo
+  const anyVideo = [...stageEl.querySelectorAll(".tile video")].some(v => v.style.display === "block")
+                 || (screenStream && document.getElementById("tile-self"));
+  if(stageEl.children.length === 0 || (!anyVideo && !stageEl.querySelector(".tile"))){
+    if(!stageEl.querySelector(".empty-msg")){
+      stageEl.classList.add("empty");
+      stageEl.innerHTML = `<div class="empty-msg"><div class="big">🖥️</div>
+        Ninguém está compartilhando tela ainda.<br>Clique em <b>Compartilhar tela</b> pra mostrar a sua.</div>`;
+    }
+  }else{
+    const em = stageEl.querySelector(".empty-msg");
+    if(em){ em.remove(); }
+    stageEl.classList.remove("empty");
+  }
+}
+
+// =========================================================================
+// LISTA DE PARTICIPANTES
+// =========================================================================
+function renderPeople(){
+  const all = [{ id: myId, name: myName+" (você)", me:true, muted:!micEnabled }];
+  for(const [id, r] of roster){ all.push({ id, name: r.name, me:false }); }
+  peopleCount.textContent = all.length;
+  peopleEl.innerHTML = "";
+  for(const p of all){
+    const div = document.createElement("div");
+    div.className = "person" + (p.me ? " me" : "");
+    div.id = "person-"+p.id;
+    const micIcon = p.me ? (micEnabled ? "🎙️" : "🔇") : "🎙️";
+    div.innerHTML = `
+      <div class="avatar">${esc(initials(p.name))}</div>
+      <div class="nm">${esc(p.name)}</div>
+      <div class="mic-state ${p.me && !micEnabled ? "muted":""}">${micIcon}</div>`;
+    peopleEl.appendChild(div);
+  }
+}
+
+// =========================================================================
+// DETECTOR DE FALA (destaca quem está falando) — só o meu, localmente
+// =========================================================================
+function setupVoiceMeter(){
+  try{
+    const ac = new (window.AudioContext||window.webkitAudioContext)();
+    const src = ac.createMediaStreamSource(localStream);
+    const an = ac.createAnalyser(); an.fftSize = 512;
+    src.connect(an);
+    const buf = new Uint8Array(an.frequencyBinCount);
+    const loop = () => {
+      an.getByteFrequencyData(buf);
+      let sum=0; for(const v of buf) sum+=v;
+      const level = sum / buf.length;
+      const me = document.getElementById("person-"+myId);
+      if(me){
+        const ms = me.querySelector(".mic-state");
+        if(micEnabled && level > 18){ ms.classList.add("talking"); me.classList.add("speaking"); }
+        else { ms.classList.remove("talking"); me.classList.remove("speaking"); }
+      }
+      requestAnimationFrame(loop);
+    };
+    loop();
+  }catch(e){ /* sem medidor, sem problema */ }
+}
+
+// =========================================================================
+// CHAT
+// =========================================================================
+function renderMessage(m){
+  const div = document.createElement("div");
+  if(m.system){
+    div.className = "msg sys";
+    div.innerHTML = `<div class="body">${esc(m.text)}</div>`;
+  }else{
+    const mine = m.fromId === myId;
+    div.className = "msg" + (mine ? " me":"");
+    div.innerHTML = `<div class="who"><b>${esc(m.name)}</b></div><div class="body">${esc(m.text)}</div>`;
+  }
+  messagesEl.appendChild(div);
+}
+function sysMsg(text){ renderMessage({ system:true, text }); messagesEl.scrollTop = messagesEl.scrollHeight; }
+
+function sendChat(){
+  const text = chatInput.value.trim();
+  if(!text) return;
+  chatInput.value = "";
+  addDoc(msgsCol(), { fromId: myId, name: myName, text, ts: Date.now() }).catch(()=>toast("Falha ao enviar"));
+}
+
+// =========================================================================
+// CONTROLES (mic, tela, sair, convite, chat mobile)
+// =========================================================================
+function wireControls(){
+  btnMic.onclick = () => {
+    micEnabled = !micEnabled;
+    localStream.getAudioTracks().forEach(t => t.enabled = micEnabled);
+    btnMic.querySelector("span").textContent = micEnabled ? "Mutar" : "Ativar mic";
+    btnMic.firstChild.textContent = micEnabled ? "🎙️ " : "🔇 ";
+    btnMic.classList.toggle("active", !micEnabled);
+    renderPeople();
+  };
+
+  btnScreen.onclick = toggleScreen;
+  btnLeave.onclick = leave;
+
+  btnSend.onclick = sendChat;
+  chatInput.addEventListener("keydown", e => { if(e.key==="Enter") sendChat(); });
+
+  btnInvite.onclick = () => {
+    const link = `${location.origin}${location.pathname}?room=${encodeURIComponent(roomId)}`;
+    navigator.clipboard?.writeText(link).then(
+      () => toast("Link de convite copiado!"),
+      () => toast(link)
+    );
+  };
+
+  btnChatToggle.style.display = "";
+  btnChatToggle.onclick = () => chatCol.classList.toggle("open");
+}
+
+async function toggleScreen(){
+  if(screenStream){ stopScreen(); return; }
+  try{
+    screenStream = await navigator.mediaDevices.getDisplayMedia({ video:true, audio:false });
+  }catch(e){ return; /* usuário cancelou */ }
+
+  const track = screenStream.getVideoTracks()[0];
+  track.onended = stopScreen;   // quando parar pela barra do navegador
+
+  // adiciona a tela em todas as conexões (dispara renegociação)
+  for(const [id, st] of peers){
+    const sender = st.pc.addTrack(track, screenStream);
+    screenSender.set(id, sender);
+  }
+
+  showSelfScreen();
+  btnScreen.classList.add("active");
+  btnScreen.querySelector("span").textContent = "Parar tela";
+}
+
+function stopScreen(){
+  if(!screenStream) return;
+  screenStream.getTracks().forEach(t => t.stop());
+  for(const [id, st] of peers){
+    const sender = screenSender.get(id);
+    if(sender){ try{ st.pc.removeTrack(sender); }catch{} screenSender.delete(id); }
+  }
+  screenStream = null;
+  const selfTile = document.getElementById("tile-self");
+  if(selfTile) selfTile.remove();
+  updateStageEmpty();
+  btnScreen.classList.remove("active");
+  btnScreen.querySelector("span").textContent = "Compartilhar tela";
+}
+
+function showSelfScreen(){
+  let tile = document.getElementById("tile-self");
+  if(!tile){
+    tile = document.createElement("div"); tile.className="tile"; tile.id="tile-self";
+    tile.innerHTML = `<video autoplay playsinline muted></video>
+      <div class="label"><span class="badge">sua tela</span> ${esc(myName)}</div>`;
+    stageEl.appendChild(tile);
+  }
+  tile.querySelector("video").srcObject = screenStream;
+  updateStageEmpty();
+}
+
+// =========================================================================
+// SAIR / LIMPEZA
+// =========================================================================
+async function leave(){
+  await cleanup();
+  location.reload();
+}
+
+async function cleanup(){
+  try{
+    clearInterval(heartbeat);
+    unsubPeers?.(); unsubSignals?.(); unsubMessages?.();
+    if(screenStream) screenStream.getTracks().forEach(t=>t.stop());
+    localStream?.getTracks().forEach(t=>t.stop());
+    for(const [id] of peers) dropPeer(id);
+    if(db){
+      // apaga minha presença e minhas mensagens de sinalização
+      const sigs = await getDocs(signalsCol(myId)).catch(()=>null);
+      if(sigs) sigs.forEach(d => deleteDoc(d.ref).catch(()=>{}));
+      await deleteDoc(peerDoc(myId)).catch(()=>{});
+    }
+  }catch(e){ console.warn(e); }
+}
+
+// tenta limpar ao fechar a aba (best-effort)
+window.addEventListener("pagehide", () => { if(db) deleteDoc(peerDoc(myId)).catch(()=>{}); });
+window.addEventListener("beforeunload", () => { if(db) deleteDoc(peerDoc(myId)); });
+</script>
+</body>
+</html>
