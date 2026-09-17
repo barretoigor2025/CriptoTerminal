@@ -662,10 +662,10 @@
         <div class="ind-row">
           <label class="sw"><input type="checkbox" id="eventsOn"><span></span></label>
           <span class="ind-name">
-            <span class="dotc" style="background:#3d7dff"></span><span class="dotc" style="background:#b26bff;margin-left:-4px"></span><span class="dotc" style="background:#ef5350;margin-left:-4px"></span><span class="dotc" style="background:#26a69a;margin-left:-4px"></span>
+            <span class="dotc" style="background:#3d7dff"></span><span class="dotc" style="background:#b26bff;margin-left:-4px"></span><span class="dotc" style="background:#ef5350;margin-left:-4px"></span><span class="dotc" style="background:#26a69a;margin-left:-4px"></span><span class="dotc" style="background:#f7931a;margin-left:-4px"></span>
             🇺🇸 Eventos macro
           </span>
-          <span class="ind-params">eleições (pres · midterm) + decisões de juros do Fed (alta · corte) — histórico</span>
+          <span class="ind-params">eleições (pres · midterm) + juros do Fed (alta · corte) + halvings do BTC — histórico</span>
         </div>
 
         <div class="ind-row">
@@ -736,6 +736,7 @@
       <div class="evleg-i"><i style="background:#b26bff"></i>Eleição midterm</div>
       <div class="evleg-i"><i style="background:#ef5350"></i>▲ Alta de juros (Fed)</div>
       <div class="evleg-i"><i style="background:#26a69a"></i>▼ Corte de juros (Fed)</div>
+      <div class="evleg-i"><i style="background:#f7931a"></i>½ Halving do Bitcoin</div>
     </div>
 
     <div class="banner" id="banner">
@@ -2540,7 +2541,9 @@ const CYCLE = {
    ========================================================================= */
 const EVENTS = {
   cfg:{ on:false },
-  COL:{ pres:'#3d7dff', mid:'#b26bff', hike:'#ef5350', cut:'#26a69a' },
+  COL:{ pres:'#3d7dff', mid:'#b26bff', hike:'#ef5350', cut:'#26a69a', halv:'#f7931a' },
+  // halvings do Bitcoin (data UTC do bloco). O de 2028 (~bloco 1.050.000) é estimado e aparece sozinho quando chegar.
+  HALV:['2012-11-28','2016-07-09','2020-05-11','2024-04-20','2028-04-20'],
   // eleições (Election Day). O midterm de 2026 já fica pronto e aparece sozinho quando a data chegar.
   ELE:[
     {d:'2012-11-06',t:'pres'}, {d:'2014-11-04',t:'mid'},
@@ -2593,6 +2596,15 @@ const EVENTS = {
       ctx.save(); ctx.globalAlpha=.5; line(x,0,x,H,col,[2,4]); ctx.restore();
       this.tri(x, 26, hike, col);
       this._pts.push({x, y:26, col, title:(hike?'Alta de juros +':'Corte de juros −')+Math.abs(f.b)+' bps (FOMC)', date:f.d});
+    }
+    // ---- halvings do Bitcoin (linha laranja sólida + etiqueta ½) ----
+    for(const d of this.HALV){
+      const sec=this.secOf(d); if(sec>now) continue;
+      const x=this.timeToX(sec); if(x==null||x<-40||x>W+40) continue;
+      const col=this.COL.halv;
+      ctx.save(); ctx.globalAlpha=.9; line(x,0,x,H,col,[]); ctx.restore();
+      this.flag(x, col, '½ HALVING');
+      this._pts.push({x, y:16, col, title:'Halving do Bitcoin', date:d});
     }
   },
   flag(x, col, txt){
