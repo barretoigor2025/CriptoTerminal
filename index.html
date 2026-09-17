@@ -394,6 +394,19 @@
   .trumptip .tt-b{font-size:11.5px;line-height:1.4;color:var(--txt)}
   .trumptip .tt-a{display:inline-block;margin-top:5px;font-size:10px;color:#41b3ff;text-decoration:none}
 
+  /* tooltip + legenda dos eventos macro (eleições / juros do Fed) */
+  .eventstip{position:absolute;z-index:7;max-width:220px;background:var(--tip-bg);
+    border:1px solid var(--hair-2);border-radius:8px;padding:6px 9px;box-shadow:var(--card-shadow);pointer-events:none}
+  .eventstip[hidden]{display:none}
+  .eventstip .tt-h{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--muted);margin-bottom:2px}
+  .eventstip .tt-b{font-size:12px;line-height:1.35;color:var(--txt);font-weight:600}
+  .evleg{position:absolute;right:60px;top:8px;z-index:6;background:var(--tip-bg);
+    border:1px solid var(--hair-2);border-radius:8px;padding:6px 9px;box-shadow:var(--card-shadow);pointer-events:none}
+  .evleg[hidden]{display:none}
+  .evleg .evleg-h{font-size:10px;font-weight:700;color:var(--txt);margin-bottom:4px}
+  .evleg .evleg-i{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);line-height:1.6}
+  .evleg .evleg-i i{width:9px;height:9px;border-radius:2px;flex:0 0 auto}
+
   body.grid-on .sidepanel{display:none}
   /* mostra a mensagem "vazio" só quando NENHUM card está visível */
   .side-inner:has(> div:not(.side-empty):not([hidden])) .side-empty{ display:none; }
@@ -647,6 +660,15 @@
         </div>
 
         <div class="ind-row">
+          <label class="sw"><input type="checkbox" id="eventsOn"><span></span></label>
+          <span class="ind-name">
+            <span class="dotc" style="background:#3d7dff"></span><span class="dotc" style="background:#b26bff;margin-left:-4px"></span><span class="dotc" style="background:#ef5350;margin-left:-4px"></span><span class="dotc" style="background:#26a69a;margin-left:-4px"></span>
+            🇺🇸 Eventos macro
+          </span>
+          <span class="ind-params">eleições (pres · midterm) + decisões de juros do Fed (alta · corte) — histórico</span>
+        </div>
+
+        <div class="ind-row">
           <label class="sw"><input type="checkbox" id="cycleOn"><span></span></label>
           <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,var(--bull),var(--bear))"></span>BTC Time Cycle</span>
           <span class="ind-params">
@@ -707,6 +729,14 @@
     <div id="chart"></div>
     <canvas id="overlay"></canvas>
     <div class="trumptip" id="trumptip" hidden></div>
+    <div class="eventstip" id="eventstip" hidden></div>
+    <div class="evleg" id="eventslegend" hidden>
+      <div class="evleg-h">🇺🇸 Eventos macro (EUA)</div>
+      <div class="evleg-i"><i style="background:#3d7dff"></i>Eleição presidencial</div>
+      <div class="evleg-i"><i style="background:#b26bff"></i>Eleição midterm</div>
+      <div class="evleg-i"><i style="background:#ef5350"></i>▲ Alta de juros (Fed)</div>
+      <div class="evleg-i"><i style="background:#26a69a"></i>▼ Corte de juros (Fed)</div>
+    </div>
 
     <div class="banner" id="banner">
       <h3>Sem dados do mercado</h3>
@@ -782,7 +812,7 @@ const S = {
 
 /* ---------- persistência (localStorage com proteção) ---------- */
 const store = {
-  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, symbol:S.symbol, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined), pat:(typeof PATTERNS!=='undefined'?PATTERNS.cfg:undefined), battle:(typeof BATTLE!=='undefined'?{on:BATTLE.cfg.on}:undefined), flow:(typeof FLOW!=='undefined'?{on:FLOW.cfg.on}:undefined), liq:(typeof LIQ!=='undefined'?LIQ.cfg:undefined), trump:(typeof TRUMP!=='undefined'?{on:TRUMP.cfg.on}:undefined), rsi:(typeof RSI!=='undefined'?RSI.cfg:undefined), sum:(typeof SUMMARY!=='undefined'?{on:SUMMARY.cfg.on}:undefined)})); }catch(e){} },
+  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, symbol:S.symbol, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined), pat:(typeof PATTERNS!=='undefined'?PATTERNS.cfg:undefined), battle:(typeof BATTLE!=='undefined'?{on:BATTLE.cfg.on}:undefined), flow:(typeof FLOW!=='undefined'?{on:FLOW.cfg.on}:undefined), liq:(typeof LIQ!=='undefined'?LIQ.cfg:undefined), trump:(typeof TRUMP!=='undefined'?{on:TRUMP.cfg.on}:undefined), events:(typeof EVENTS!=='undefined'?{on:EVENTS.cfg.on}:undefined), rsi:(typeof RSI!=='undefined'?RSI.cfg:undefined), sum:(typeof SUMMARY!=='undefined'?{on:SUMMARY.cfg.on}:undefined)})); }catch(e){} },
   load(){ try{ return JSON.parse(localStorage.getItem('ib_term')||'{}'); }catch(e){ return {}; } }
 };
 
@@ -2501,6 +2531,104 @@ const CYCLE = {
   renderBox(){ const box=$('#cyclebox'); if(box) box.hidden=true; }
 };
 
+/* =========================================================================
+   EVENTOS MACRO (EUA) — marcações verticais no gráfico, histórico até hoje:
+   • Eleições presidenciais (azul) e de meio de mandato/midterm (roxo)
+   • Decisões de juros do Fed (FOMC): ALTA (vermelho ▲) e CORTE (verde ▼)
+   Datas de juros: fonte oficial Federal Reserve (openmarket.htm — data de
+   vigência). Para atualizar, é só acrescentar na lista FOMC/ELE abaixo.
+   ========================================================================= */
+const EVENTS = {
+  cfg:{ on:false },
+  COL:{ pres:'#3d7dff', mid:'#b26bff', hike:'#ef5350', cut:'#26a69a' },
+  // eleições (Election Day). O midterm de 2026 já fica pronto e aparece sozinho quando a data chegar.
+  ELE:[
+    {d:'2012-11-06',t:'pres'}, {d:'2014-11-04',t:'mid'},
+    {d:'2016-11-08',t:'pres'}, {d:'2018-11-06',t:'mid'},
+    {d:'2020-11-03',t:'pres'}, {d:'2022-11-08',t:'mid'},
+    {d:'2024-11-05',t:'pres'}, {d:'2026-11-03',t:'mid'},
+  ],
+  // decisões do FOMC que MUDARAM a taxa (bps com sinal: + alta, − corte)
+  FOMC:[
+    {d:'2015-12-17',b:25},
+    {d:'2016-12-15',b:25},
+    {d:'2017-03-16',b:25},{d:'2017-06-15',b:25},{d:'2017-12-14',b:25},
+    {d:'2018-03-22',b:25},{d:'2018-06-14',b:25},{d:'2018-09-27',b:25},{d:'2018-12-20',b:25},
+    {d:'2019-08-01',b:-25},{d:'2019-09-19',b:-25},{d:'2019-10-31',b:-25},
+    {d:'2020-03-04',b:-50},{d:'2020-03-16',b:-100},
+    {d:'2022-03-17',b:25},{d:'2022-05-05',b:50},{d:'2022-06-16',b:75},{d:'2022-07-28',b:75},
+    {d:'2022-09-22',b:75},{d:'2022-11-03',b:75},{d:'2022-12-15',b:50},
+    {d:'2023-02-02',b:25},{d:'2023-03-23',b:25},{d:'2023-05-04',b:25},{d:'2023-07-27',b:25},
+    {d:'2024-09-19',b:-50},{d:'2024-11-08',b:-25},{d:'2024-12-19',b:-25},
+    {d:'2025-09-18',b:-25},{d:'2025-10-30',b:-25},{d:'2025-12-11',b:-25},
+    {d:'2026-09-17',b:25},
+  ],
+  _pts:[],
+  // tempo -> x extrapolado por índice lógico (igual ao CYCLE: vale no passado e no futuro)
+  timeToX(t){
+    const c=S.candles, n=c.length; if(n<2) return null;
+    const t0=c[0].time, dt=(c[n-1].time-t0)/(n-1); if(dt<=0) return null;
+    return chart.timeScale().logicalToCoordinate(Math.round((t-t0)/dt));
+  },
+  secOf(d){ return Date.parse(d+'T00:00:00Z')/1000; },
+  draw(){
+    if(!this.cfg.on) return;
+    const c=S.candles, n=c.length; if(n<2) return;
+    const H=cv.clientHeight, W=cv.clientWidth, now=Date.now()/1000;
+    this._pts=[];
+    // ---- eleições (linha tracejada + bandeirinha no topo) ----
+    for(const e of this.ELE){
+      const sec=this.secOf(e.d); if(sec>now) continue;              // só histórico até a data de hoje
+      const x=this.timeToX(sec); if(x==null||x<-40||x>W+40) continue;
+      const col=this.COL[e.t];
+      ctx.save(); ctx.globalAlpha=.85; line(x,0,x,H,col,[6,4]); ctx.restore();
+      this.flag(x, col, e.t==='pres'?'PRES':'MID');
+      this._pts.push({x, y:16, col, title:(e.t==='pres'?'Eleição presidencial EUA':'Eleição midterm (meio de mandato)'), date:e.d});
+    }
+    // ---- juros do Fed (linha fina + triângulo colorido) ----
+    for(const f of this.FOMC){
+      const sec=this.secOf(f.d); if(sec>now) continue;
+      const x=this.timeToX(sec); if(x==null||x<-40||x>W+40) continue;
+      const hike=f.b>0, col=hike?this.COL.hike:this.COL.cut;
+      ctx.save(); ctx.globalAlpha=.5; line(x,0,x,H,col,[2,4]); ctx.restore();
+      this.tri(x, 26, hike, col);
+      this._pts.push({x, y:26, col, title:(hike?'Alta de juros +':'Corte de juros −')+Math.abs(f.b)+' bps (FOMC)', date:f.d});
+    }
+  },
+  flag(x, col, txt){
+    ctx.save();
+    ctx.font="700 9px 'IBM Plex Mono', monospace"; ctx.textBaseline='middle'; ctx.textAlign='left';
+    const w=ctx.measureText(txt).width+8;
+    ctx.globalAlpha=.92; ctx.fillStyle='rgba(13,18,27,.9)'; ctx.fillRect(x+2, 6, w, 15);
+    ctx.globalAlpha=1; ctx.strokeStyle=col; ctx.lineWidth=1; ctx.strokeRect(x+2, 6, w, 15);
+    ctx.fillStyle=col; ctx.fillText(txt, x+6, 14);
+    ctx.restore();
+  },
+  tri(x, y, up, col){
+    const s=5;
+    ctx.save(); ctx.fillStyle=col; ctx.globalAlpha=.95; ctx.beginPath();
+    if(up){ ctx.moveTo(x, y-s*1.5); ctx.lineTo(x-s, y); ctx.lineTo(x+s, y); }
+    else  { ctx.moveTo(x, y); ctx.lineTo(x-s, y-s*1.5); ctx.lineTo(x+s, y-s*1.5); }
+    ctx.closePath(); ctx.fill();
+    ctx.globalAlpha=1; ctx.strokeStyle='rgba(10,13,19,.6)'; ctx.lineWidth=.8; ctx.stroke();
+    ctx.restore();
+  },
+  tip(px, py){
+    const el=$('#eventstip'); if(!el) return;
+    if(!this.cfg.on || !this._pts.length){ el.hidden=true; return; }
+    let best=null, bd=1e9;
+    for(const p of this._pts){ const d=Math.abs(px-p.x); if(d<bd){ bd=d; best=p; } }
+    if(best && bd<6){
+      const dt=new Date(best.date+'T00:00:00Z').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+      el.innerHTML='<div class="tt-h">'+dt+'</div><div class="tt-b">'+best.title+'</div>';
+      el.style.borderColor=best.col;
+      el.style.left=Math.min(cv.clientWidth-200, best.x+12)+'px';
+      el.style.top=Math.max(6, py-34)+'px';
+      el.hidden=false;
+    } else el.hidden=true;
+  }
+};
+
 /* efeito de explosão quando um Order Block é destruído (saúde 0) */
 const EXPLOSION = {
   list:[],
@@ -2949,6 +3077,7 @@ function redraw(){
   ctx.beginPath(); ctx.rect(0,0,cv.clientWidth,paneBot); ctx.clip();
   LIQ.draw();
   CYCLE.draw();
+  EVENTS.draw();
   OB.draw();
   BATTLE.draw();
   PATTERNS.draw();
@@ -3189,6 +3318,15 @@ $('#src').addEventListener('change', e=>{ S.source=e.target.value; store.save();
 $('#emaOn').addEventListener('change', renderEMA);
 $('#emaLen').addEventListener('change', renderEMA);
 
+// ---- Eventos macro EUA (eleições + juros do Fed) ----
+function syncEvents(){
+  EVENTS.cfg.on = $('#eventsOn').checked;
+  const leg=$('#eventslegend'); if(leg) leg.hidden = !EVENTS.cfg.on;
+  const tip=$('#eventstip'); if(tip && !EVENTS.cfg.on) tip.hidden=true;
+  store.save();
+}
+$('#eventsOn').addEventListener('change', syncEvents);
+
 // ---- Order Blocks (toggle e parâmetros ao vivo, estilo TradingView) ----
 function syncOB(){
   OB.cfg.on    = $('#obOn').checked;
@@ -3244,7 +3382,10 @@ function syncTrump(){
 }
 $('#trumpOn').addEventListener('change', syncTrump);
 // tooltip ao passar o cursor sobre o marcador
-chart.subscribeCrosshairMove(param=>{ if(param&&param.point) TRUMP.tip(param.point.x, param.point.y); else { const el=$('#trumptip'); if(el) el.hidden=true; } });
+chart.subscribeCrosshairMove(param=>{
+  if(param&&param.point){ TRUMP.tip(param.point.x, param.point.y); EVENTS.tip(param.point.x, param.point.y); }
+  else { const t=$('#trumptip'); if(t) t.hidden=true; const e=$('#eventstip'); if(e) e.hidden=true; }
+});
 
 // rede de segurança: recalcula os Order Blocks periodicamente (novos aparecem,
 // mitigados somem) mesmo que o flag de fechamento do WebSocket falhe — sem refresh
@@ -3592,6 +3733,7 @@ $('#cycleDays').addEventListener('change', syncCycle);
     $('#liqOn').checked=LIQ.cfg.on; if($('#liqLook'))$('#liqLook').value=LIQ.cfg.look; if($('#liqGamma'))$('#liqGamma').value=Math.round(LIQ.cfg.gamma*100); }
   LIQ.compute();
   if(saved.trump){ TRUMP.cfg.on=!!saved.trump.on; $('#trumpOn').checked=TRUMP.cfg.on; if(TRUMP.cfg.on) syncTrump(); }
+  if(saved.events){ EVENTS.cfg.on=!!saved.events.on; $('#eventsOn').checked=EVENTS.cfg.on; syncEvents(); }
   if(saved.rsi){ Object.assign(RSI.cfg, saved.rsi); $('#rsiOn').checked=RSI.cfg.on; if($('#rsiLen'))$('#rsiLen').value=RSI.cfg.len; RSI.panes(RSI.cfg.on); RSI.compute(); }
   if(saved.sum){ SUMMARY.cfg.on=!!saved.sum.on; $('#sumOn').checked=SUMMARY.cfg.on; if(SUMMARY.cfg.on){ SUMMARY.set(true); FG.set(true); } }
   if(saved.sound){ SOUND.on=true; $('#soundOn').checked=true; }  // áudio libera no 1º clique
