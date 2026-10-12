@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Pool WBTC/SOL</title>
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #080a0e;
+      --panel: #0f141b;
+      --line: #232b37;
+      --text: #e8edf4;
+      --muted: #7e8794;
+      --green: #27b38d;
+      --red: #e15561;
+      --amber: #f0a13a;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #101720, #0b1017);
+      flex: 0 0 auto;
+    }
+
+    .pair {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 800;
+      letter-spacing: .3px;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      background: var(--amber);
+      box-shadow: 0 0 10px rgba(240, 161, 58, .75);
+    }
+
+    .price {
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-weight: 700;
+      font-size: clamp(1rem, 4vw, 1.65rem);
+    }
+
+    .badge {
+      border: 1px solid rgba(255, 255, 255, .18);
+      border-radius: 7px;
+      padding: 3px 8px;
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: .78rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .badge.ok {
+      color: var(--green);
+      border-color: rgba(39, 179, 141, .42);
+      background: rgba(39, 179, 141, .08);
+    }
+
+    .badge.out {
+      color: var(--amber);
+      border-color: rgba(240, 161, 58, .42);
+      background: rgba(240, 161, 58, .08);
+    }
+
+    .spacer { flex: 1; }
+
+    .tf {
+      display: inline-flex;
+      gap: 4px;
+      padding: 2px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0b1017;
+    }
+
+    .tf button {
+      border: 0;
+      border-radius: 6px;
+      padding: 5px 8px;
+      background: transparent;
+      color: var(--muted);
+      font: 700 .75rem "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      cursor: pointer;
+    }
+
+    .tf button.active {
+      background: rgba(240, 161, 58, .18);
+      color: var(--amber);
+    }
+
+    .back {
+      color: var(--muted);
+      text-decoration: none;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-size: .82rem;
+      white-space: nowrap;
+    }
+
+    main {
+      position: relative;
+      min-height: 0;
+      flex: 1;
+      padding: 8px;
+    }
+
+    .stage {
+      position: relative;
+      height: 100%;
+      min-height: 360px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #080c12;
+    }
+
+    #chart,
+    #overlay {
+      position: absolute;
+      inset: 0;
+    }
+
+    #overlay {
+      pointer-events: none;
+      z-index: 4;
+    }
+
+    .loading {
+      position: absolute;
+      left: 12px;
+      bottom: 10px;
+      z-index: 5;
+      color: var(--muted);
+      font: 600 .78rem "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: rgba(8, 10, 14, .78);
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: 7px;
+      padding: 7px 9px;
+    }
+
+    .loading[hidden] { display: none; }
+
+    @media (max-width: 680px) {
+      header { gap: 7px; padding: 6px 8px; }
+      .pair span:last-child { display: none; }
+      .badge { display: none; }
+      .tf button { padding: 5px 7px; }
+      main { padding: 6px; }
+      .stage { border-radius: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="pair"><span class="dot"></span><span>WBTC/SOL</span></div>
+    <div class="price" id="ratio">--</div>
+    <div class="badge ok" id="rangeStatus">In Range</div>
+    <div class="badge" id="rangeText">721.82 - 797.73</div>
+    <div class="spacer"></div>
+    <div class="tf" aria-label="Timeframe">
+      <button data-tf="1h" class="active">1H</button>
+      <button data-tf="4h">4H</button>
+      <button data-tf="1d">1D</button>
+    </div>
+    <a class="back" href="index.html">Terminal</a>
+  </header>
+
+  <main>
+    <section class="stage" id="stage" aria-label="Grafico limpo da pool WBTC/SOL">
+      <div id="chart"></div>
+      <canvas id="overlay"></canvas>
+      <div class="loading" id="loading">carregando BTC/SOL...</div>
+    </section>
+  </main>
+
+  <script>
+    const POOL = {
+      capital: 3669.971423,
+      lower: 721.816316,
+      upper: 797.726412,
+      solAmount: 18.6127605,
+      btcAmount: 0.01735508,
+      harvestedFees: 12.70,
+      pendingFees: 0.44
+    };
+
+    const perMs = { "1h": 3600000, "4h": 14400000, "1d": 86400000 };
+    const state = {
+      tf: "1h",
+      candles: [],
+      btcUsd: 0,
+      solUsd: 0
+    };
+
+    const $ = id => document.getElementById(id);
+    const chartEl = $("chart");
+    const overlay = $("overlay");
+    const ctx = overlay.getContext("2d");
+
+    const chart = LightweightCharts.createChart(chartEl, {
+      layout: {
+        background: { type: "solid", color: "#080c12" },
+        textColor: "#8e98a8",
+        fontFamily: "IBM Plex Mono, ui-monospace, SFMono-Regular, Menlo, monospace"
+      },
+      grid: {
+        vertLines: { color: "rgba(255,255,255,.045)" },
+        horzLines: { color: "rgba(255,255,255,.055)" }
+      },
+      rightPriceScale: {
+        borderColor: "rgba(255,255,255,.12)",
+        scaleMargins: { top: .08, bottom: .12 }
+      },
+      timeScale: {
+        borderColor: "rgba(255,255,255,.12)",
+        rightOffset: 14,
+        barSpacing: 9,
+        timeVisible: true,
+        secondsVisible: false
+      },
+      crosshair: {
+        mode: LightweightCharts.CrosshairMode.Normal,
+        vertLine: { color: "rgba(255,255,255,.24)", style: 3 },
+        horzLine: { color: "rgba(255,255,255,.24)", style: 3 }
+      },
+      handleScroll: true,
+      handleScale: true
+    });
+
+    const series = chart.addCandlestickSeries({
+      upColor: "#26a69a",
+      downColor: "#ef5350",
+      borderUpColor: "#26a69a",
+      borderDownColor: "#ef5350",
+      wickUpColor: "#26a69a",
+      wickDownColor: "#ef5350",
+      priceFormat: { type: "price", precision: 2, minMove: .01 }
+    });
+
+    const rangeTop = series.createPriceLine({
+      price: POOL.upper,
+      color: "rgba(255,255,255,.92)",
+      lineWidth: 2,
+      lineStyle: LightweightCharts.LineStyle.Solid,
+      axisLabelVisible: true,
+      title: "Range alto"
+    });
+
+    const rangeBottom = series.createPriceLine({
+      price: POOL.lower,
+      color: "rgba(255,255,255,.92)",
+      lineWidth: 2,
+      lineStyle: LightweightCharts.LineStyle.Solid,
+      axisLabelVisible: true,
+      title: "Range baixo"
+    });
+
+    function usd(n) {
+      return "$" + (Number(n) || 0).toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
+    function pct(n) {
+      const v = (Number(n) || 0) * 100;
+      return (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
+    }
+
+    function resize() {
+      const r = $("stage").getBoundingClientRect();
+      chart.applyOptions({ width: Math.max(1, r.width), height: Math.max(1, r.height) });
+      const dpr = window.devicePixelRatio || 1;
+      overlay.width = Math.max(1, Math.floor(r.width * dpr));
+      overlay.height = Math.max(1, Math.floor(r.height * dpr));
+      overlay.style.width = r.width + "px";
+      overlay.style.height = r.height + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawOverlay();
+    }
+
+    function normalizeTf(tf) {
+      return tf === "1d" ? "1d" : tf;
+    }
+
+    async function hyperCandles(symbol, tf) {
+      const now = Date.now();
+      const interval = normalizeTf(tf);
+      const start = now - (perMs[tf] || perMs["1h"]) * 520;
+      const res = await fetch("https://api.hyperliquid.xyz/info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "candleSnapshot",
+          req: {
+            coin: symbol,
+            interval,
+            startTime: start,
+            endTime: now
+          }
+        })
+      });
+      if (!res.ok) throw new Error("hyperliquid " + res.status);
+      const data = await res.json();
+      if (!Array.isArray(data) || !data.length) throw new Error("sem candles");
+      return data.map(k => ({
+        time: Math.floor(k.t / 1000),
+        open: Number(k.o),
+        high: Number(k.h),
+        low: Number(k.l),
+        close: Number(k.c),
+        volume: Number(k.v) || 0
+      }));
+    }
+
+    async function binanceCandles(symbol, tf) {
+      const map = { "1h": "1h", "4h": "4h", "1d": "1d" };
+      const url = "https://api.binance.com/api/v3/klines?symbol=" + symbol + "&interval=" + map[tf] + "&limit=520";
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("binance " + res.status);
+      const data = await res.json();
+      return data.map(k => ({
+        time: Math.floor(k[0] / 1000),
+        open: Number(k[1]),
+        high: Number(k[2]),
+        low: Number(k[3]),
+        close: Number(k[4]),
+        volume: Number(k[5]) || 0
+      }));
+    }
+
+    async function loadUsdCandles(tf) {
+      try {
+        return await Promise.all([hyperCandles("BTC", tf), hyperCandles("SOL", tf)]);
+      } catch (err) {
+        return Promise.all([binanceCandles("BTCUSDT", tf), binanceCandles("SOLUSDT", tf)]);
+      }
+    }
+
+    function buildRatioCandles(btc, sol) {
+      const solMap = new Map(sol.map(c => [c.time, c]));
+      const out = [];
+      for (const b of btc) {
+        const s = solMap.get(b.time);
+        if (!s || !s.open || !s.high || !s.low || !s.close) continue;
+        out.push({
+          time: b.time,
+          open: b.open / s.open,
+          high: b.high / s.low,
+          low: b.low / s.high,
+          close: b.close / s.close
+        });
+      }
+      const lastBtc = btc[btc.length - 1];
+      const lastSol = sol[sol.length - 1];
+      if (lastBtc && lastSol) {
+        state.btcUsd = lastBtc.close;
+        state.solUsd = lastSol.close;
+      }
+      return out;
+    }
+
+    async function load() {
+      $("loading").hidden = false;
+      try {
+        const [btc, sol] = await loadUsdCandles(state.tf);
+        state.candles = buildRatioCandles(btc, sol);
+        series.setData(state.candles);
+        chart.timeScale().fitContent();
+        chart.timeScale().applyOptions({ rightOffset: 14 });
+        renderHeader();
+        drawOverlay();
+        $("loading").hidden = true;
+      } catch (err) {
+        $("loading").textContent = "falha ao carregar precos: " + err.message;
+      }
+    }
+
+    function currentRatio() {
+      const last = state.candles[state.candles.length - 1];
+      return last ? last.close : 0;
+    }
+
+    function liquidity() {
+      return POOL.solAmount * state.solUsd + POOL.btcAmount * state.btcUsd + POOL.pendingFees;
+    }
+
+    function renderHeader() {
+      const ratio = currentRatio();
+      const inside = ratio >= POOL.lower && ratio <= POOL.upper;
+      $("ratio").textContent = ratio ? ratio.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " SOL" : "--";
+      $("rangeStatus").textContent = inside ? "In Range" : (ratio < POOL.lower ? "Abaixo" : "Acima");
+      $("rangeStatus").className = "badge " + (inside ? "ok" : "out");
+      $("rangeText").textContent = POOL.lower.toFixed(2) + " - " + POOL.upper.toFixed(2);
+    }
+
+    function roundedRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    function drawOverlay() {
+      const w = overlay.clientWidth || 0;
+      const h = overlay.clientHeight || 0;
+      ctx.clearRect(0, 0, w, h);
+      if (!state.candles.length) return;
+
+      const yHigh = series.priceToCoordinate(POOL.upper);
+      const yLow = series.priceToCoordinate(POOL.lower);
+      const ratio = currentRatio();
+      const yNow = series.priceToCoordinate(ratio);
+      const last = state.candles[state.candles.length - 1];
+      const xLast = chart.timeScale().timeToCoordinate(last.time);
+      const spacing = chart.timeScale().options().barSpacing || 9;
+      const anchorX = (xLast == null ? w - 190 : xLast + spacing * 3);
+      const anchorY = yNow == null ? h * .36 : yNow;
+
+      if (yHigh != null && yLow != null) {
+        const top = Math.min(yHigh, yLow);
+        const bottom = Math.max(yHigh, yLow);
+        ctx.save();
+        ctx.fillStyle = "rgba(255,255,255,.035)";
+        ctx.fillRect(0, top, w, Math.max(1, bottom - top));
+        ctx.strokeStyle = "rgba(255,255,255,.95)";
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(0, yHigh);
+        ctx.lineTo(w, yHigh);
+        ctx.moveTo(0, yLow);
+        ctx.lineTo(w, yLow);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      if (yNow != null) {
+        ctx.save();
+        ctx.setLineDash([4, 5]);
+        ctx.strokeStyle = "rgba(240,161,58,.85)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, yNow);
+        ctx.lineTo(w, yNow);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      const liq = liquidity();
+      const pnl = liq - POOL.capital;
+      const pnlPct = POOL.capital ? pnl / POOL.capital : 0;
+      const fees = POOL.harvestedFees + POOL.pendingFees;
+      const pnlColor = pnl >= 0 ? "#27b38d" : "#e15561";
+
+      const bw = 188;
+      const bh = 86;
+      let bx = anchorX;
+      let by = anchorY - bh / 2;
+      if (by < 10) by = 10;
+      if (by + bh > h - 10) by = h - bh - 10;
+
+      ctx.save();
+      roundedRect(bx, by, bw, bh, 7);
+      ctx.fillStyle = "rgba(8,10,14,.88)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(240,161,58,.78)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.font = "700 10px IBM Plex Mono, ui-monospace, monospace";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#f0a13a";
+      ctx.fillText("MINHA POOL", bx + 10, by + 14);
+
+      ctx.font = "600 11px IBM Plex Mono, ui-monospace, monospace";
+      ctx.fillStyle = "#8e98a8";
+      ctx.fillText("Liquidez", bx + 10, by + 34);
+      ctx.fillText("PnL", bx + 10, by + 52);
+      ctx.fillText("% capital", bx + 10, by + 70);
+
+      ctx.textAlign = "right";
+      ctx.fillStyle = "#e8edf4";
+      ctx.fillText(usd(liq), bx + bw - 10, by + 34);
+      ctx.fillStyle = pnlColor;
+      ctx.fillText(usd(pnl), bx + bw - 10, by + 52);
+      ctx.fillText(pct(pnlPct), bx + bw - 10, by + 70);
+
+      ctx.textAlign = "left";
+      ctx.font = "600 9px IBM Plex Mono, ui-monospace, monospace";
+      ctx.fillStyle = "rgba(39,179,141,.9)";
+      ctx.fillText("Fees " + usd(fees), bx + 10, by + bh - 7);
+      ctx.restore();
+    }
+
+    new ResizeObserver(resize).observe($("stage"));
+    chart.timeScale().subscribeVisibleTimeRangeChange(drawOverlay);
+    chart.timeScale().subscribeVisibleLogicalRangeChange(drawOverlay);
+    chart.subscribeCrosshairMove(drawOverlay);
+
+    document.querySelectorAll(".tf button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tf button").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        state.tf = btn.dataset.tf;
+        load();
+      });
+    });
+
+    window.addEventListener("resize", resize);
+    resize();
+    load();
+    setInterval(load, 120000);
+    requestAnimationFrame(function loop() {
+      drawOverlay();
+      requestAnimationFrame(loop);
+    });
+  </script>
+</body>
+</html>
