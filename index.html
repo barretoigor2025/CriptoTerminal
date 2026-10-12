@@ -1106,14 +1106,15 @@ const MALABELS = {
     let paneBot=cv.clientHeight-4; try{ if(RSI.cfg.on) paneBot=RSI.band().v0-4; }catch(_){}
     const tf=tfShort(S.tf);
     ctx.save(); ctx.font="9px 'IBM Plex Mono', ui-monospace, monospace"; ctx.textBaseline='middle';
-    // âncora: ~2 velas À FRENTE da última vela (na abertura à direita), como no TradingView
     const c=S.candles, xLast=c.length?xOf(c[c.length-1].time):null;
     let bs=6; try{ bs=chart.timeScale().options().barSpacing||6; }catch(_){}
     const aheadX=(xLast!=null?xLast:rightEdge) + bs*2;
-    const fmtV=v=>{ const a=Math.abs(v); const d=a>=1000?0:a>=1?2:a>=0.01?4:6;
+    const fmtV=v=>{
+      const a=Math.abs(v), d=a>=1000?0:a>=1?2:a>=0.01?4:6;
       return S.symbol==='BTCSOL'
         ? v.toLocaleString('en-US',{minimumFractionDigits:2, maximumFractionDigits:2})+' SOL'
-        : '
+        : '$'+v.toLocaleString('en-US',{minimumFractionDigits:d, maximumFractionDigits:d});
+    };
     const arr=[]; let maxBw=0;
     for(const it of this.items){ let y=yOf(it.v); if(y==null) continue;
       y=Math.max(9, Math.min(paneBot-9, y));
@@ -1123,7 +1124,6 @@ const MALABELS = {
     arr.sort((a,b)=>a.y-b.y);
     const bh=14, gap=1;
     for(let i=1;i<arr.length;i++){ if(arr[i].y < arr[i-1].y+bh+gap) arr[i].y = arr[i-1].y+bh+gap; }
-    // coluna alinhada pela esquerda; não deixa passar por baixo da escala de preços
     const x0=Math.max(2, Math.min(aheadX, rightEdge-maxBw));
     const bg = THEME.name==='light' ? 'rgba(255,255,255,.92)' : 'rgba(10,13,19,.82)';
     for(const it of arr){
@@ -1138,7 +1138,6 @@ const MALABELS = {
   }
 };
 
-
 /* =========================================================================
    POOL WBTC/SOL — range + baloes no grafico BTC/SOL
    ========================================================================= */
@@ -1151,19 +1150,97 @@ const POOL = {
   harvestedFees: 12.70,
   pendingFees: 0.44,
   quotes: { btcUsd: 82302.97, solUsd: 107.54 },
-  fmtUsd(v){ return '
+  fmtUsd(v){ return '$'+(Number(v)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); },
+  fmtPct(v){ const n=(Number(v)||0)*100; return (n>=0?'+':'')+n.toFixed(2)+'%'; },
+  drawPill(x,y,text,color){
+    ctx.save();
+    ctx.font="9px 'IBM Plex Mono', ui-monospace, monospace"; ctx.textBaseline='middle';
+    const bw=ctx.measureText(text).width+12, bh=15, r=4;
+    const bg = THEME.name==='light' ? 'rgba(255,255,255,.94)' : 'rgba(10,13,19,.86)';
+    ctx.beginPath(); ctx.moveTo(x+r,y-bh/2);
+    ctx.arcTo(x+bw,y-bh/2,x+bw,y+bh/2,r); ctx.arcTo(x+bw,y+bh/2,x,y+bh/2,r);
+    ctx.arcTo(x,y+bh/2,x,y-bh/2,r); ctx.arcTo(x,y-bh/2,x+bw,y-bh/2,r); ctx.closePath();
+    ctx.fillStyle=bg; ctx.fill(); ctx.strokeStyle=color; ctx.lineWidth=1; ctx.stroke();
+    ctx.fillStyle=color; ctx.textAlign='left'; ctx.fillText(text,x+6,y+.5);
+    ctx.restore();
+  },
+  draw(){
+    if(S.symbol!=='BTCSOL' || !S.candles.length) return;
+    const low=this.lower, high=this.upper, cur=S.candles[S.candles.length-1].close;
+    let rsw=0; try{ rsw=chart.priceScale('right').width()||0; }catch(_){}
+    const rightEdge=cv.clientWidth-rsw-2;
+    let paneBot=cv.clientHeight-4; try{ if(RSI.cfg.on) paneBot=RSI.band().v0-4; }catch(_){}
+    const yLow=yOf(low), yHigh=yOf(high), yCur=yOf(cur);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0,0,rightEdge,paneBot); ctx.clip();
+    if(yLow!=null && yHigh!=null){
+      const top=Math.min(yLow,yHigh), bottom=Math.max(yLow,yHigh);
+      ctx.fillStyle='rgba(38,166,154,.08)'; ctx.fillRect(0,top,rightEdge,bottom-top);
+      ctx.strokeStyle='rgba(38,166,154,.85)'; ctx.lineWidth=1.2;
+      ctx.beginPath(); ctx.moveTo(0,yHigh); ctx.lineTo(rightEdge,yHigh); ctx.moveTo(0,yLow); ctx.lineTo(rightEdge,yLow); ctx.stroke();
+      this.drawPill(Math.max(6,rightEdge-94), yHigh, 'Range '+high.toFixed(2), '#26a69a');
+      this.drawPill(Math.max(6,rightEdge-94), yLow, 'Range '+low.toFixed(2), '#26a69a');
+    }
+    if(yCur!=null){
+      ctx.setLineDash([3,4]); ctx.strokeStyle='rgba(247,147,26,.72)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(0,yCur); ctx.lineTo(rightEdge,yCur); ctx.stroke(); ctx.setLineDash([]);
+    }
+    const btcUsd=this.quotes.btcUsd||0, solUsd=this.quotes.solUsd||0;
+    const liquidity=this.solAmount*solUsd + this.btcAmount*btcUsd + this.pendingFees;
+    const pnl=liquidity-this.capital, pnlPct=this.capital?pnl/this.capital:0;
+    const fees=this.harvestedFees+this.pendingFees;
+    const col=pnl>=0?'#26a69a':'#ef5350';
+    let x=rightEdge-184, y=Math.max(26, Math.min(paneBot-72, yCur==null?paneBot*.36:yCur-38));
+    x=Math.max(6,x);
+    this.drawPill(x,y,      'Liquidez  '+this.fmtUsd(liquidity), '#f7931a');
+    this.drawPill(x,y+18,   'PnL        '+this.fmtUsd(pnl), col);
+    this.drawPill(x,y+36,   'Capital    '+this.fmtPct(pnlPct), col);
+    this.drawPill(x,y+54,   'Fees       '+this.fmtUsd(fees), '#26a69a');
+    ctx.restore();
+  }
+};
+
+function buildBtcSolCandles(btc, sol){
+  const solByTime=new Map(sol.map(c=>[c.time,c]));
+  const out=[];
+  for(const b of btc){
+    const s=solByTime.get(b.time);
+    if(!s || !s.open || !s.high || !s.low || !s.close) continue;
+    out.push({
+      time:b.time,
+      open:b.open/s.open,
+      high:b.high/s.low,
+      low:b.low/s.high,
+      close:b.close/s.close,
+      volume:b.volume||0
+    });
+  }
+  const lastB=btc[btc.length-1], lastS=sol[sol.length-1];
+  if(lastB && lastS){ POOL.quotes={btcUsd:lastB.close, solUsd:lastS.close}; }
+  return out;
+}
+
+async function loadBtcSolCandles(tf){
+  const src=SOURCES[S.source];
+  const sourceTf = tf==='1y' ? '1M' : tf;
+  const [btc, sol] = await Promise.all([src.rest(sourceTf,'BTCUSDT'), src.rest(sourceTf,'SOLUSDT')]);
+  const ratio = buildBtcSolCandles(btc, sol);
+  return tf==='1y' ? aggregateYearly(ratio) : ratio;
+}
+
+/* =========================================================================
+   CARREGAMENTO + TEMPO REAL
+   ========================================================================= */
 function setStatus(state, txt){
   const led=$('#led'); led.className='led'+(state==='live'?' live':state==='err'?' err':'');
   $('#statusTxt').textContent = txt;
 }
 
-// com autoScale desligado (escala manual), faz UM fit de preço na carga e depois trava
 function fitPriceOnce(ch){
   try{ const ps=ch.priceScale('right'); ps.applyOptions({autoScale:true});
     setTimeout(()=>{ try{ ps.applyOptions({autoScale:false}); }catch(e){} }, 150); }catch(e){}
 }
 
-// agrega candles mensais em anuais (exchanges não têm kline anual nativo)
 function aggregateYearly(monthly){
   const map={}, order=[];
   for(const c of monthly){
@@ -1192,15 +1269,15 @@ async function loadData(){
     RSI.compute();
     PATTERNS.detect();
     chart.timeScale().fitContent();
-    fitPriceOnce(chart);   // fit de preço 1x (depois escala manual)
+    fitPriceOnce(chart);
     updateTicker(candles[candles.length-1], candles[candles.length-2]);
     if(S.symbol==='BTCSOL'){ pauseSingle(); setStatus('live','BTC/SOL calculado'); }
-    else if(S.tf==='1y'){ setStatus('live','anual (histórico)'); }  // sem stream nativo p/ anual
+    else if(S.tf==='1y'){ setStatus('live','anual (histórico)'); }
     else { openSocket(); setStatus('live','ao vivo'); }
   }catch(err){
     console.error(err);
     setStatus('err','falha na fonte');
-    $('#bannerMsg').textContent = `Não consegui carregar de "${S.source}" (${err.message}). Pode ser bloqueio de região/CORS aí do Japão. Troque a fonte e tente de novo.`;
+    $('#bannerMsg').textContent = 'Nao consegui carregar de "'+S.source+'" ('+err.message+'). Troque a fonte e tente de novo.';
     const other = S.source==='binance'?'bybit':'binance';
     $('#bannerBtn').textContent = 'Tentar '+other[0].toUpperCase()+other.slice(1);
     $('#banner').classList.add('show');
@@ -1225,23 +1302,20 @@ function onLiveCandle(c, closed){
   candleSeries.update(c);
   volSeries.update({time:c.time, value:c.volume, color:c.close>=c.open?'#26a69a55':'#ef535055'});
 
-  // EMA ao vivo (incremental sobre o último fechado)
   if($('#emaOn').checked && S.emaPrev!==null){
     const len=Math.max(2,+$('#emaLen').value||21), k=2/(len+1);
     emaSeries.update({time:c.time, value:c.close*k + S.emaPrev*(1-k)});
     if(closed) S.emaPrev = c.close*k + S.emaPrev*(1-k);
   } else if(closed){ renderEMA(); }
 
-  // Médias Móveis: último ponto ao vivo; recomputa tudo no fechamento
   MA.live(c);
   if(closed) MA.render();
 
-  // Order Blocks só recalculam quando o candle fecha (mitigação = barra confirmada)
   if(closed) OB.compute();
   if(closed) LIQ.compute();
-  if(RSI.cfg.on) RSI.compute();   // RSI acompanha o preço ao vivo (recálculo barato)
+  if(RSI.cfg.on) RSI.compute();
   if(closed) PATTERNS.detect();
-  if(OB.cfg.on){ OB.checkAlerts(); OB.sweepDead(); MTFOB.render(); }   // alertas + remove mortos + confluência MTF ao vivo
+  if(OB.cfg.on){ OB.checkAlerts(); OB.sweepDead(); MTFOB.render(); }
 
   updateTicker(c, arr[arr.length-2]);
   setStatus('live','ao vivo');
