@@ -120,6 +120,10 @@
     }
 
     .back {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 30px;
       color: var(--muted);
       text-decoration: none;
       border: 1px solid var(--line);
@@ -127,6 +131,18 @@
       padding: 6px 8px;
       font-size: .82rem;
       white-space: nowrap;
+    }
+
+    .action-btn {
+      background: #0b1017;
+      cursor: pointer;
+      font: 700 .78rem Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .action-btn:hover,
+    .back:hover {
+      border-color: rgba(240, 161, 58, .45);
+      color: var(--amber);
     }
 
     main {
@@ -174,9 +190,10 @@
 
     @media (max-width: 680px) {
       header { gap: 7px; padding: 6px 8px; }
-      .pair span:last-child { display: none; }
       .badge { display: none; }
       .tf button { padding: 5px 7px; }
+      .price { font-size: .9rem; }
+      .back { padding: 5px 7px; font-size: .75rem; }
       main { padding: 6px; }
       .stage { border-radius: 8px; }
     }
@@ -188,12 +205,14 @@
     <div class="price" id="ratio">--</div>
     <div class="badge ok" id="rangeStatus">In Range</div>
     <div class="badge" id="rangeText">721.82 - 797.73</div>
+    <div class="badge" id="liveText">auto 30s</div>
     <div class="spacer"></div>
     <div class="tf" aria-label="Timeframe">
       <button data-tf="1h" class="active">1H</button>
       <button data-tf="4h">4H</button>
       <button data-tf="1d">1D</button>
     </div>
+    <button class="back action-btn" id="fullscreenBtn" type="button">Tela cheia</button>
     <a class="back" href="index.html">Terminal</a>
   </header>
 
@@ -221,7 +240,8 @@
       tf: "1h",
       candles: [],
       btcUsd: 0,
-      solUsd: 0
+      solUsd: 0,
+      lastUpdate: null
     };
 
     const $ = id => document.getElementById(id);
@@ -397,6 +417,7 @@
       try {
         const [btc, sol] = await loadUsdCandles(state.tf);
         state.candles = buildRatioCandles(btc, sol);
+        state.lastUpdate = new Date();
         series.setData(state.candles);
         chart.timeScale().fitContent();
         chart.timeScale().applyOptions({ rightOffset: 14 });
@@ -420,10 +441,13 @@
     function renderHeader() {
       const ratio = currentRatio();
       const inside = ratio >= POOL.lower && ratio <= POOL.upper;
-      $("ratio").textContent = ratio ? ratio.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " SOL" : "--";
+      $("ratio").textContent = ratio ? ratio.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " SOL/WBTC" : "--";
       $("rangeStatus").textContent = inside ? "In Range" : (ratio < POOL.lower ? "Abaixo" : "Acima");
       $("rangeStatus").className = "badge " + (inside ? "ok" : "out");
       $("rangeText").textContent = POOL.lower.toFixed(2) + " - " + POOL.upper.toFixed(2);
+      $("liveText").textContent = state.lastUpdate
+        ? "auto 30s · " + state.lastUpdate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+        : "auto 30s";
     }
 
     function roundedRect(x, y, w, h, r) {
@@ -541,10 +565,29 @@
       });
     });
 
+    $("fullscreenBtn").addEventListener("click", async () => {
+      try {
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+        } else {
+          await document.exitFullscreen();
+        }
+      } catch (err) {
+        $("loading").hidden = false;
+        $("loading").textContent = "nao consegui abrir tela cheia neste navegador";
+      }
+      setTimeout(resize, 120);
+    });
+
+    document.addEventListener("fullscreenchange", () => {
+      $("fullscreenBtn").textContent = document.fullscreenElement ? "Sair" : "Tela cheia";
+      setTimeout(resize, 120);
+    });
+
     window.addEventListener("resize", resize);
     resize();
     load();
-    setInterval(load, 120000);
+    setInterval(load, 30000);
     requestAnimationFrame(function loop() {
       drawOverlay();
       requestAnimationFrame(loop);
