@@ -69,6 +69,7 @@
       font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
       font-weight: 700;
       font-size: clamp(1rem, 4vw, 1.65rem);
+      min-width: 6.2ch;
     }
 
     .badge {
@@ -205,7 +206,7 @@
     <div class="price" id="ratio">--</div>
     <div class="badge ok" id="rangeStatus">In Range</div>
     <div class="badge" id="rangeText">721.82 - 797.73</div>
-    <div class="badge" id="liveText">auto 30s</div>
+    <div class="badge" id="liveText">tick 1s</div>
     <div class="spacer"></div>
     <div class="tf" aria-label="Timeframe">
       <button data-tf="1h" class="active">1H</button>
@@ -241,7 +242,10 @@
       candles: [],
       btcUsd: 0,
       solUsd: 0,
-      lastUpdate: null
+      lastUpdate: null,
+      firstLoad: true,
+      loading: false,
+      ticking: false
     };
 
     const $ = id => document.getElementById(id);
@@ -413,19 +417,110 @@
     }
 
     async function load() {
+      if (state.loading) return;
+      state.loading = true;
       $("loading").hidden = false;
       try {
         const [btc, sol] = await loadUsdCandles(state.tf);
         state.candles = buildRatioCandles(btc, sol);
         state.lastUpdate = new Date();
         series.setData(state.candles);
-        chart.timeScale().fitContent();
-        chart.timeScale().applyOptions({ rightOffset: 14 });
+        if (state.firstLoad) {
+          chart.timeScale().fitContent();
+          state.firstLoad = false;
+        }
+        chart.timeScale().applyOptions({ rightOffset: 24 });
         renderHeader();
         drawOverlay();
         $("loading").hidden = true;
+        tick();
       } catch (err) {
         $("loading").textContent = "falha ao carregar precos: " + err.message;
+      } finally {
+        state.loading = false;
+      }
+    }
+
+    async function hyperSpotPrices() {
+      const res = await fetch("https://api.hyperliquid.xyz/info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "allMids" })
+      });
+      if (!res.ok) throw new Error("hyperliquid ticker " + res.status);
+      const data = await res.json();
+      return {
+        btc: Number(data.BTC),
+        sol: Number(data.SOL)
+      };
+    }
+
+    async function binanceSpotPrices() {
+      const symbols = encodeURIComponent(JSON.stringify(["BTCUSDT", "SOLUSDT"]));
+      const res = await fetch("https://api.binance.com/api/v3/ticker/price?symbols=" + symbols);
+      if (!res.ok) throw new Error("binance ticker " + res.status);
+      const data = await res.json();
+      const map = Object.fromEntries(data.map(item => [item.symbol, Number(item.price)]));
+      return { btc: map.BTCUSDT, sol: map.SOLUSDT };
+    }
+
+    async function fetchSpotPrices() {
+      try {
+        return await hyperSpotPrices();
+      } catch (err) {
+        return binanceSpotPrices();
+      }
+    }
+
+    function bucketTime(nowMs) {
+      const step = perMs[state.tf] || perMs["1h"];
+      return Math.floor(nowMs / step) * step / 1000;
+    }
+
+    function applySpotPrices(btcUsd, solUsd) {
+      if (!btcUsd || !solUsd || !state.candles.length) return;
+      state.btcUsd = btcUsd;
+      state.solUsd = solUsd;
+      state.lastUpdate = new Date();
+
+      const ratio = btcUsd / solUsd;
+      const time = bucketTime(Date.now());
+      const last = state.candles[state.candles.length - 1];
+      let candle;
+      if (time > last.time) {
+        candle = {
+          time,
+          open: last.close,
+          high: Math.max(last.close, ratio),
+          low: Math.min(last.close, ratio),
+          close: ratio
+        };
+        state.candles.push(candle);
+        if (state.candles.length > 540) state.candles.shift();
+      } else {
+        candle = {
+          ...last,
+          high: Math.max(last.high, ratio),
+          low: Math.min(last.low, ratio),
+          close: ratio
+        };
+        state.candles[state.candles.length - 1] = candle;
+      }
+      series.update(candle);
+      renderHeader();
+      drawOverlay();
+    }
+
+    async function tick() {
+      if (state.ticking || !state.candles.length) return;
+      state.ticking = true;
+      try {
+        const prices = await fetchSpotPrices();
+        applySpotPrices(prices.btc, prices.sol);
+      } catch (err) {
+        $("liveText").textContent = "tick falhou";
+      } finally {
+        state.ticking = false;
       }
     }
 
@@ -441,13 +536,13 @@
     function renderHeader() {
       const ratio = currentRatio();
       const inside = ratio >= POOL.lower && ratio <= POOL.upper;
-      $("ratio").textContent = ratio ? ratio.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " SOL/WBTC" : "--";
+      $("ratio").textContent = ratio ? ratio.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "--";
       $("rangeStatus").textContent = inside ? "In Range" : (ratio < POOL.lower ? "Abaixo" : "Acima");
       $("rangeStatus").className = "badge " + (inside ? "ok" : "out");
       $("rangeText").textContent = POOL.lower.toFixed(2) + " - " + POOL.upper.toFixed(2);
       $("liveText").textContent = state.lastUpdate
-        ? "auto 30s · " + state.lastUpdate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-        : "auto 30s";
+        ? "tick 1s · " + state.lastUpdate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+        : "tick 1s";
     }
 
     function roundedRect(x, y, w, h, r) {
@@ -511,10 +606,12 @@
       const fees = POOL.harvestedFees + POOL.pendingFees;
       const pnlColor = pnl >= 0 ? "#27b38d" : "#e15561";
 
-      const bw = 188;
-      const bh = 86;
+      const bw = 220;
+      const bh = 108;
       let bx = anchorX;
       let by = anchorY - bh / 2;
+      if (bx + bw > w - 8) bx = w - bw - 8;
+      if (bx < 8) bx = 8;
       if (by < 10) by = 10;
       if (by + bh > h - 10) by = h - bh - 10;
 
@@ -529,25 +626,23 @@
       ctx.font = "700 10px IBM Plex Mono, ui-monospace, monospace";
       ctx.textBaseline = "middle";
       ctx.fillStyle = "#f0a13a";
-      ctx.fillText("MINHA POOL", bx + 10, by + 14);
+      ctx.fillText("POOL WBTC/SOL", bx + 10, by + 16);
 
       ctx.font = "600 11px IBM Plex Mono, ui-monospace, monospace";
-      ctx.fillStyle = "#8e98a8";
-      ctx.fillText("Liquidez", bx + 10, by + 34);
-      ctx.fillText("PnL", bx + 10, by + 52);
-      ctx.fillText("% capital", bx + 10, by + 70);
-
-      ctx.textAlign = "right";
-      ctx.fillStyle = "#e8edf4";
-      ctx.fillText(usd(liq), bx + bw - 10, by + 34);
-      ctx.fillStyle = pnlColor;
-      ctx.fillText(usd(pnl), bx + bw - 10, by + 52);
-      ctx.fillText(pct(pnlPct), bx + bw - 10, by + 70);
-
-      ctx.textAlign = "left";
-      ctx.font = "600 9px IBM Plex Mono, ui-monospace, monospace";
-      ctx.fillStyle = "rgba(39,179,141,.9)";
-      ctx.fillText("Fees " + usd(fees), bx + 10, by + bh - 7);
+      [
+        ["Liquidez", usd(liq), "#e8edf4"],
+        ["PnL", usd(pnl), pnlColor],
+        ["Capital", pct(pnlPct), pnlColor],
+        ["Fees", usd(fees), "#27b38d"]
+      ].forEach((row, i) => {
+        const y = by + 39 + i * 18;
+        ctx.textAlign = "left";
+        ctx.fillStyle = "#8e98a8";
+        ctx.fillText(row[0], bx + 10, y);
+        ctx.textAlign = "right";
+        ctx.fillStyle = row[2];
+        ctx.fillText(row[1], bx + bw - 10, y);
+      });
       ctx.restore();
     }
 
@@ -561,6 +656,7 @@
         document.querySelectorAll(".tf button").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         state.tf = btn.dataset.tf;
+        state.firstLoad = true;
         load();
       });
     });
@@ -587,6 +683,7 @@
     window.addEventListener("resize", resize);
     resize();
     load();
+    setInterval(tick, 1000);
     setInterval(load, 30000);
     requestAnimationFrame(function loop() {
       drawOverlay();
