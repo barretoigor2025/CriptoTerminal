@@ -115,6 +115,13 @@
   }
   .hsel:hover{border-color:var(--hair-2)}
   #tfSel{color:var(--btc);font-weight:600}
+  .pool-link{
+    display:inline-flex;align-items:center;justify-content:center;height:28px;
+    padding:0 10px;border-radius:8px;border:1px solid rgba(247,147,26,.55);
+    color:var(--btc);background:rgba(247,147,26,.08);text-decoration:none;
+    font-family:"IBM Plex Mono",monospace;font-size:11.5px;font-weight:700;white-space:nowrap;
+  }
+  .pool-link:hover{border-color:var(--btc);background:rgba(247,147,26,.14);color:var(--btc)}
 
   .icon-btn{
     display:flex;align-items:center;justify-content:center;
@@ -554,6 +561,8 @@
       <option value="1M">1Mês</option>
       <option value="1y">1Ano</option>
     </select>
+
+    <a class="pool-link" href="pool-wbtc-sol.html" title="Pool WBTC/SOL">POOL</a>
 
     <div class="ind-menu-wrap">
       <button class="ind-btn" id="indBtn" title="Indicadores">
