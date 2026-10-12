@@ -1,0 +1,845 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pool WBTC/SOL</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0d10;
+      --panel: #11151b;
+      --panel-soft: #161b22;
+      --line: #2a3038;
+      --line-soft: rgba(255,255,255,.08);
+      --text: #eef1f4;
+      --muted: #8f98a3;
+      --muted-2: #65707d;
+      --green: #39c59a;
+      --red: #e36572;
+      --amber: #d6a73a;
+      --blue: #7ea6d9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input { font: inherit; }
+
+    .app {
+      width: min(1120px, 100%);
+      margin: 0 auto;
+      padding: 18px 14px 28px;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 14px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.35rem, 3vw, 2rem);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--green);
+      font-weight: 800;
+      font-size: .95rem;
+      white-space: nowrap;
+    }
+
+    .status::before {
+      content: "";
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .status.out { color: var(--amber); }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0;
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .summary-item {
+      padding: 16px;
+      border-right: 1px solid var(--line-soft);
+      min-height: 108px;
+    }
+
+    .summary-item:last-child { border-right: 0; }
+
+    .label {
+      color: var(--muted);
+      font-size: .74rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      font-weight: 800;
+    }
+
+    .big {
+      margin-top: 8px;
+      font-size: clamp(1.45rem, 4vw, 2.55rem);
+      font-weight: 850;
+      line-height: 1;
+    }
+
+    .sub {
+      margin-top: 7px;
+      color: var(--muted-2);
+      font-size: .88rem;
+      line-height: 1.35;
+    }
+
+    .positive { color: var(--green); }
+    .negative { color: var(--red); }
+    .amber { color: var(--amber); }
+
+    .main {
+      display: grid;
+      grid-template-columns: minmax(0, 1.8fr) minmax(280px, .9fr);
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    .pair {
+      font-size: 1.05rem;
+      font-weight: 850;
+    }
+
+    .price {
+      text-align: right;
+      font-size: 1.7rem;
+      font-weight: 850;
+      color: var(--green);
+    }
+
+    .chart-wrap {
+      padding: 8px 10px 14px;
+      position: relative;
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: 295px;
+      overflow: visible;
+    }
+
+    .grid-line { stroke: rgba(255, 255, 255, .06); stroke-width: 1; }
+    .range-band { fill: rgba(57, 197, 154, .11); }
+    .range-line { stroke: rgba(57, 197, 154, .9); stroke-width: 2; }
+    .current-line { stroke: rgba(214, 167, 58, .95); stroke-width: 2; stroke-dasharray: 5 5; }
+    .wick { stroke: rgba(220, 225, 232, .55); stroke-width: 1.2; }
+    .candle-up { fill: var(--green); }
+    .candle-down { fill: var(--red); }
+    .axis-text { fill: var(--muted); font-size: 11px; }
+    .tag-text { fill: #07100d; font-size: 12px; font-weight: 850; }
+    .tag-green { fill: var(--green); }
+    .tag-amber { fill: var(--amber); }
+
+    .pool-bubble {
+      position: absolute;
+      right: 76px;
+      top: 28px;
+      min-width: 176px;
+      border: 1px solid rgba(126, 166, 217, .35);
+      background: rgba(12, 15, 19, .88);
+      backdrop-filter: blur(8px);
+      border-radius: 8px;
+      padding: 10px;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, .35);
+    }
+
+    .pool-bubble-title {
+      color: var(--blue);
+      font-size: .72rem;
+      font-weight: 850;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .pool-bubble-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 4px 0;
+      font-size: .86rem;
+    }
+
+    .pool-bubble-row span:first-child {
+      color: var(--muted);
+    }
+
+    .pool-bubble-row strong {
+      font-weight: 850;
+      text-align: right;
+    }
+
+    .range-strip {
+      padding: 0 16px 16px;
+    }
+
+    .range-track {
+      position: relative;
+      height: 10px;
+      border-radius: 999px;
+      background: #242a32;
+      overflow: hidden;
+    }
+
+    .range-track::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(57,197,154,.2), rgba(57,197,154,.9));
+    }
+
+    .marker {
+      position: absolute;
+      top: -5px;
+      width: 4px;
+      height: 20px;
+      border-radius: 999px;
+      background: #f2f4f8;
+      box-shadow: 0 0 0 3px rgba(255,255,255,.12);
+    }
+
+    .range-row {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: .85rem;
+    }
+
+    .side {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding: 10px;
+      background: transparent;
+      border: 0;
+    }
+
+    .mini-card {
+      min-height: 138px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      display: grid;
+      align-content: space-between;
+      gap: 8px;
+    }
+
+    .mini-card .mini-value {
+      font-size: 1.2rem;
+      font-weight: 850;
+      line-height: 1.15;
+    }
+
+    .mini-card.wide {
+      grid-column: 1 / -1;
+    }
+
+    .bar {
+      display: flex;
+      height: 14px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: #242a32;
+      margin: 12px 0;
+    }
+
+    .bar-sol { background: var(--green); }
+    .bar-btc { background: var(--amber); }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    .row:last-child { border-bottom: 0; }
+    .row span { color: var(--muted); }
+    .row strong { text-align: right; }
+
+    details {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    summary {
+      cursor: pointer;
+      padding: 14px 16px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .details-body {
+      padding: 0 16px 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .fields {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: .86rem;
+    }
+
+    input {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #0c0f13;
+      color: var(--text);
+      border-radius: 6px;
+      padding: 10px;
+      outline: none;
+    }
+
+    input:focus { border-color: var(--blue); }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 6px;
+      padding: 10px 12px;
+      background: var(--blue);
+      color: #07111f;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #242a32;
+      color: var(--text);
+      border: 1px solid var(--line);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .88rem;
+    }
+
+    th, td {
+      padding: 9px 7px;
+      border-bottom: 1px solid var(--line-soft);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    th:first-child, td:first-child { text-align: left; }
+    th {
+      color: var(--muted);
+      font-size: .76rem;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    @media (max-width: 900px) {
+      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .summary-item:nth-child(2) { border-right: 0; }
+      .summary-item:nth-child(1), .summary-item:nth-child(2) { border-bottom: 1px solid var(--line-soft); }
+      .main { grid-template-columns: 1fr; }
+      .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 540px) {
+      .app { padding: 10px; }
+      header { align-items: flex-start; }
+      .summary { grid-template-columns: 1fr; }
+      .summary-item { border-right: 0; border-bottom: 1px solid var(--line-soft); }
+      .summary-item:last-child { border-bottom: 0; }
+      .fields, .side { grid-template-columns: 1fr; }
+      .panel-head { display: grid; }
+      .price { text-align: left; }
+      .pool-bubble {
+        position: static;
+        margin: 8px 6px 0;
+      }
+      svg { height: 245px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div>
+        <h1>WBTC / SOL</h1>
+        <div class="subtitle" id="marketStatus">Acompanhamento simples da pool atual com PnL carregado da ETH/SOL</div>
+      </div>
+      <div class="status" id="status">In Range</div>
+    </header>
+
+    <section class="summary" aria-label="Resumo principal">
+      <article class="summary-item">
+        <div class="label">1. Liquidez</div>
+        <div class="big" id="liquidity">--</div>
+        <div class="sub" id="liquiditySub">balance + taxa pendente</div>
+      </article>
+      <article class="summary-item">
+        <div class="label">2. PnL</div>
+        <div class="big" id="pnl">--</div>
+        <div class="sub" id="pnlSub">resultado total</div>
+      </article>
+      <article class="summary-item">
+        <div class="label">3. Taxas arrecadadas</div>
+        <div class="big positive" id="fees">--</div>
+        <div class="sub" id="feesSub">resgatado + pendente</div>
+      </article>
+      <article class="summary-item">
+        <div class="label">4. Queda do capital</div>
+        <div class="big negative" id="capitalDrop">--</div>
+        <div class="sub" id="capitalDropSub">desde o capital colocado</div>
+      </article>
+    </section>
+
+    <section class="main">
+      <article class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="pair">Range WBTC/SOL · 0,05%</div>
+            <div class="sub">SOL por 1 WBTC</div>
+          </div>
+          <div>
+            <div class="price" id="ratio">--</div>
+            <div class="sub" id="rangePct">--</div>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <svg id="chart" role="img" aria-label="Grafico WBTC/SOL dentro do range"></svg>
+          <div class="pool-bubble" aria-label="Dados da pool sobre o grafico">
+            <div class="pool-bubble-title">Minha pool</div>
+            <div class="pool-bubble-row"><span>Liquidez</span><strong id="bubbleLiquidity">--</strong></div>
+            <div class="pool-bubble-row"><span>PnL</span><strong id="bubblePnl">--</strong></div>
+            <div class="pool-bubble-row"><span>Fees</span><strong id="bubbleFees">--</strong></div>
+          </div>
+        </div>
+        <div class="range-strip">
+          <div class="range-track"><div class="marker" id="marker"></div></div>
+          <div class="range-row">
+            <span id="low">--</span>
+            <span id="now">--</span>
+            <span id="high">--</span>
+          </div>
+        </div>
+      </article>
+
+      <aside class="side">
+        <section class="mini-card wide">
+          <div class="label">Composição</div>
+          <div class="bar">
+            <div class="bar-sol" id="solBar"></div>
+            <div class="bar-btc" id="btcBar"></div>
+          </div>
+          <div class="row"><span>SOL</span><strong id="solLine">--</strong></div>
+          <div class="row"><span>WBTC</span><strong id="btcLine">--</strong></div>
+        </section>
+        <section class="mini-card">
+          <div class="label">Perda carregada</div>
+          <div class="mini-value negative" id="carryLoss">--</div>
+          <div class="sub">da ETH/SOL</div>
+        </section>
+        <section class="mini-card">
+          <div class="label">Pool atual</div>
+          <div class="mini-value" id="poolPnl">--</div>
+          <div class="sub">vs cost basis Orca</div>
+        </section>
+        <section class="mini-card">
+          <div class="label">Para zerar</div>
+          <div class="mini-value amber" id="breakEven">--</div>
+          <div class="sub">alta necessária</div>
+        </section>
+        <section class="mini-card">
+          <div class="label">Capital</div>
+          <div class="mini-value" id="capital">--</div>
+          <div class="sub">histórico total</div>
+        </section>
+      </aside>
+    </section>
+
+    <details>
+      <summary>Atualizar dados</summary>
+      <div class="details-body">
+        <div class="fields">
+          <label>Balance US$<input id="balanceInput" type="number" step="0.01" inputmode="decimal"></label>
+          <label>Taxa pendente US$<input id="pendingFeesInput" type="number" step="0.01" inputmode="decimal"></label>
+          <label>Taxa resgatada US$<input id="harvestedFeesInput" type="number" step="0.01" inputmode="decimal"></label>
+          <label>Cost basis Orca US$<input id="poolCostBasisInput" type="number" step="0.01" inputmode="decimal"></label>
+          <label>Preço SOL/WBTC<input id="currentRatioInput" type="number" step="0.000001" inputmode="decimal"></label>
+          <label>Range baixo<input id="lowerInput" type="number" step="0.000001" inputmode="decimal"></label>
+          <label>Range alto<input id="upperInput" type="number" step="0.000001" inputmode="decimal"></label>
+          <label>SOL qtd<input id="solAmountInput" type="number" step="0.0000001" inputmode="decimal"></label>
+          <label>SOL US$<input id="solValueInput" type="number" step="0.01" inputmode="decimal"></label>
+          <label>WBTC qtd<input id="btcAmountInput" type="number" step="0.00000001" inputmode="decimal"></label>
+          <label>WBTC US$<input id="btcValueInput" type="number" step="0.01" inputmode="decimal"></label>
+        </div>
+        <div class="toolbar">
+          <button id="saveSnapshot">Salvar snapshot</button>
+          <button class="secondary" id="resetData">Restaurar dados do print</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Hora</th>
+              <th>Liquidez</th>
+              <th>PnL</th>
+              <th>Taxas</th>
+              <th>Range</th>
+            </tr>
+          </thead>
+          <tbody id="history"></tbody>
+        </table>
+      </div>
+    </details>
+  </main>
+
+  <script>
+    const storageKey = 'WBTC_SOL_sober_dashboard_v1';
+    const defaults = {
+      capital: 3669.971423,
+      poolCostBasis: 3453.90,
+      balance: 3430.59,
+      pendingFees: 0.44,
+      harvestedFees: 12.70,
+      currentRatio: 765.29989,
+      lower: 721.816316,
+      upper: 797.726412,
+      solAmount: 18.6127605,
+      solValue: 2001.68,
+      btcAmount: 0.01735508,
+      btcValue: 1428.91,
+      btcUsd: 82302.97,
+      ethUsd: 2557.03,
+      solUsd: 107.54,
+      autoPrices: true,
+      lastMarketUpdate: null,
+      history: []
+    };
+
+    const candles = [
+      [739, 744, 738, 742], [742, 747, 741, 746], [746, 751, 744, 749],
+      [749, 755, 748, 754], [754, 765, 752, 762], [762, 768, 760, 766],
+      [766, 772, 763, 770], [770, 775, 766, 771], [771, 769, 760, 764],
+      [764, 768, 759, 765.29989]
+    ];
+
+    const $ = (id) => document.getElementById(id);
+    const usd = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(Number(n) || 0);
+    const num = (n, d = 4) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: d });
+    const pct = (n) => `${((Number(n) || 0) * 100).toFixed(2)}%`;
+    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+    let state = load();
+
+    function load() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey));
+        return saved ? { ...defaults, ...saved } : { ...defaults };
+      } catch {
+        return { ...defaults };
+      }
+    }
+
+    function save() {
+      localStorage.setItem(storageKey, JSON.stringify(state));
+    }
+
+    function derivedSolValue() {
+      return state.autoPrices && state.solUsd ? Number(state.solAmount) * Number(state.solUsd) : Number(state.solValue);
+    }
+
+    function derivedBtcValue() {
+      return state.autoPrices && state.btcUsd ? Number(state.btcAmount) * Number(state.btcUsd) : Number(state.btcValue);
+    }
+
+    function currentRatio() {
+      return state.autoPrices && state.btcUsd && state.solUsd ? Number(state.btcUsd) / Number(state.solUsd) : Number(state.currentRatio);
+    }
+
+    function currentLiquidity() {
+      return derivedSolValue() + derivedBtcValue() + Number(state.pendingFees);
+    }
+
+    function rangeInfo() {
+      const low = Number(state.lower);
+      const high = Number(state.upper);
+      const current = currentRatio();
+      const width = Math.max(0.000001, high - low);
+      const raw = (current - low) / width;
+      const position = clamp(raw, 0, 1);
+      const inside = current >= low && current <= high;
+      return {
+        low,
+        high,
+        current,
+        position,
+        inside,
+        label: inside ? 'In Range' : current < low ? 'Abaixo do range' : 'Acima do range'
+      };
+    }
+
+    function render() {
+      const liquidity = currentLiquidity();
+      const pnl = liquidity - state.capital;
+      const pnlPct = state.capital ? pnl / state.capital : 0;
+      const poolPnl = liquidity - state.poolCostBasis;
+      const poolPnlPct = state.poolCostBasis ? poolPnl / state.poolCostBasis : 0;
+      const fees = Number(state.harvestedFees) + Number(state.pendingFees);
+      const capitalDrop = state.capital ? (state.capital - liquidity) / state.capital : 0;
+      const breakEven = liquidity ? Math.max(0, state.capital - liquidity) / liquidity : 0;
+      const carryLoss = state.capital - state.poolCostBasis;
+      const solValue = derivedSolValue();
+      const btcValue = derivedBtcValue();
+      const totalAssets = Math.max(0.000001, solValue + btcValue);
+      const solPct = solValue / totalAssets;
+      const btcPct = btcValue / totalAssets;
+      const range = rangeInfo();
+
+      $('status').className = `status ${range.inside ? '' : 'out'}`;
+      $('status').textContent = range.label;
+      $('liquidity').textContent = usd(liquidity);
+      $('liquiditySub').textContent = `${usd(solValue + btcValue)} ativos + ${usd(state.pendingFees)} pendente`;
+      $('pnl').className = `big ${pnl >= 0 ? 'positive' : 'negative'}`;
+      $('pnl').textContent = usd(pnl);
+      $('pnlSub').textContent = `${pct(pnlPct)} desde ${usd(state.capital)}`;
+      $('fees').textContent = usd(fees);
+      $('feesSub').textContent = `${usd(state.harvestedFees)} resgatado/reinvestido + ${usd(state.pendingFees)} pendente`;
+      $('capitalDrop').textContent = pct(capitalDrop);
+      $('capitalDropSub').textContent = `${usd(Math.max(0, state.capital - liquidity))} abaixo do capital`;
+      $('bubbleLiquidity').textContent = usd(liquidity);
+      $('bubblePnl').className = pnl >= 0 ? 'positive' : 'negative';
+      $('bubblePnl').textContent = `${usd(pnl)} · ${pct(pnlPct)}`;
+      $('bubbleFees').textContent = usd(fees);
+      $('ratio').textContent = num(range.current, 5);
+      $('rangePct').textContent = `${pct(range.position)} da faixa`;
+      $('marker').style.left = `calc(${range.position * 100}% - 2px)`;
+      $('low').textContent = `baixo ${num(state.lower, 3)}`;
+      $('now').textContent = `agora ${num(range.current, 3)}`;
+      $('high').textContent = `alto ${num(state.upper, 3)}`;
+      $('solBar').style.width = `${solPct * 100}%`;
+      $('btcBar').style.width = `${btcPct * 100}%`;
+      $('solLine').textContent = `${num(state.solAmount, 7)} · ${pct(solPct)} · ${usd(solValue)}`;
+      $('btcLine').textContent = `${num(state.btcAmount, 8)} · ${pct(btcPct)} · ${usd(btcValue)}`;
+      $('carryLoss').textContent = usd(-carryLoss);
+      $('poolPnl').className = poolPnl >= 0 ? 'positive' : 'negative';
+      $('poolPnl').textContent = `${usd(poolPnl)} · ${pct(poolPnlPct)}`;
+      $('breakEven').textContent = breakEven > 0 ? pct(breakEven) : 'zerado';
+      $('capital').textContent = usd(state.capital);
+      $('marketStatus').textContent = state.autoPrices
+        ? `Auto: BTC ${usd(state.btcUsd)} · ETH ${usd(state.ethUsd)} · SOL ${usd(state.solUsd)}${state.lastMarketUpdate ? ` · ${new Date(state.lastMarketUpdate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}`
+        : 'Modo manual: use os campos de atualização';
+
+      syncInputs();
+      drawChart(range);
+      drawHistory();
+    }
+
+    function syncInputs() {
+      const map = inputMap();
+      Object.entries(map).forEach(([id, key]) => {
+        if (document.activeElement !== $(id)) $(id).value = state[key];
+      });
+    }
+
+    function inputMap() {
+      return {
+        balanceInput: 'balance',
+        pendingFeesInput: 'pendingFees',
+        harvestedFeesInput: 'harvestedFees',
+        poolCostBasisInput: 'poolCostBasis',
+        currentRatioInput: 'currentRatio',
+        lowerInput: 'lower',
+        upperInput: 'upper',
+        solAmountInput: 'solAmount',
+        solValueInput: 'solValue',
+        btcAmountInput: 'btcAmount',
+        btcValueInput: 'btcValue'
+      };
+    }
+
+    function drawChart(range) {
+      const svg = $('chart');
+      const w = svg.clientWidth || 760;
+      const h = 295;
+      const pad = { l: 36, r: 58, t: 18, b: 26 };
+      const values = candles.flat().concat([range.low, range.high, range.current]);
+      const min = Math.min(...values) - 8;
+      const max = Math.max(...values) + 8;
+      const y = (v) => pad.t + (max - v) / (max - min) * (h - pad.t - pad.b);
+      const x = (i) => pad.l + i * ((w - pad.l - pad.r) / Math.max(1, candles.length - 1));
+      const rangeTop = y(range.high);
+      const rangeBottom = y(range.low);
+
+      const grid = [min, (min + max) / 2, max].map(v =>
+        `<line class="grid-line" x1="${pad.l}" y1="${y(v)}" x2="${w - pad.r}" y2="${y(v)}"></line>`
+      ).join('');
+
+      const candleNodes = candles.map((c, i) => {
+        const [open, high, low, close] = c;
+        const cx = x(i);
+        const up = close >= open;
+        const bodyY = y(Math.max(open, close));
+        const bodyH = Math.max(3, Math.abs(y(open) - y(close)));
+        return `
+          <line class="wick" x1="${cx}" y1="${y(high)}" x2="${cx}" y2="${y(low)}"></line>
+          <rect class="${up ? 'candle-up' : 'candle-down'}" x="${cx - 5}" y="${bodyY}" width="10" height="${bodyH}" rx="2"></rect>
+        `;
+      }).join('');
+
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      svg.innerHTML = `
+        ${grid}
+        <rect class="range-band" x="${pad.l}" y="${rangeTop}" width="${w - pad.l - pad.r}" height="${Math.max(2, rangeBottom - rangeTop)}"></rect>
+        <line class="range-line" x1="${pad.l}" y1="${y(range.low)}" x2="${w - pad.r}" y2="${y(range.low)}"></line>
+        <line class="range-line" x1="${pad.l}" y1="${y(range.high)}" x2="${w - pad.r}" y2="${y(range.high)}"></line>
+        ${candleNodes}
+        <line class="current-line" x1="${pad.l}" y1="${y(range.current)}" x2="${w - pad.r}" y2="${y(range.current)}"></line>
+        <rect class="tag-green" x="${w - pad.r + 6}" y="${y(range.high) - 12}" width="48" height="23" rx="4"></rect>
+        <text class="tag-text" x="${w - pad.r + 30}" y="${y(range.high) + 4}" text-anchor="middle">${num(range.high, 2)}</text>
+        <rect class="tag-amber" x="${w - pad.r + 6}" y="${y(range.current) - 12}" width="48" height="23" rx="4"></rect>
+        <text class="tag-text" x="${w - pad.r + 30}" y="${y(range.current) + 4}" text-anchor="middle">${num(range.current, 2)}</text>
+        <rect class="tag-green" x="${w - pad.r + 6}" y="${y(range.low) - 12}" width="48" height="23" rx="4"></rect>
+        <text class="tag-text" x="${w - pad.r + 30}" y="${y(range.low) + 4}" text-anchor="middle">${num(range.low, 2)}</text>
+        <text class="axis-text" x="${pad.l}" y="${h - 7}">range baixo</text>
+        <text class="axis-text" x="${w - pad.r}" y="${h - 7}" text-anchor="end">range alto</text>
+      `;
+    }
+
+    function snapshot() {
+      const liquidity = currentLiquidity();
+      state.history = [{
+        t: new Date().toISOString(),
+        liquidity,
+        pnl: liquidity - state.capital,
+        fees: Number(state.harvestedFees) + Number(state.pendingFees),
+        range: rangeInfo().label
+      }, ...(state.history || [])].slice(0, 12);
+      save();
+      render();
+    }
+
+    function drawHistory() {
+      const rows = (state.history || []).map(item => `
+        <tr>
+          <td>${new Date(item.t).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td>
+          <td>${usd(item.liquidity)}</td>
+          <td class="${item.pnl >= 0 ? 'positive' : 'negative'}">${usd(item.pnl)}</td>
+          <td class="positive">${usd(item.fees)}</td>
+          <td>${item.range}</td>
+        </tr>
+      `).join('');
+      $('history').innerHTML = rows || '<tr><td colspan="5" style="text-align:left;color:var(--muted)">Sem snapshots ainda.</td></tr>';
+    }
+
+    Object.entries(inputMap()).forEach(([id, key]) => {
+      $(id).addEventListener('input', () => {
+        state[key] = Number($(id).value) || 0;
+        save();
+        render();
+      });
+    });
+
+    $('saveSnapshot').addEventListener('click', snapshot);
+    $('resetData').addEventListener('click', () => {
+      state = { ...defaults, history: [] };
+      save();
+      snapshot();
+    });
+
+    async function fetchMarketPrices() {
+      try {
+        const url = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd';
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) throw new Error('price fetch failed');
+        const data = await res.json();
+        state.btcUsd = Number(data.bitcoin?.usd) || state.btcUsd;
+        state.ethUsd = Number(data.ethereum?.usd) || state.ethUsd;
+        state.solUsd = Number(data.solana?.usd) || state.solUsd;
+        state.currentRatio = currentRatio();
+        state.solValue = derivedSolValue();
+        state.btcValue = derivedBtcValue();
+        state.lastMarketUpdate = new Date().toISOString();
+        save();
+        render();
+      } catch {
+        $('marketStatus').textContent = 'Nao consegui atualizar precos agora; mantendo o ultimo valor salvo.';
+      }
+    }
+
+    if (!state.history?.length) snapshot();
+    render();
+    fetchMarketPrices();
+    setInterval(fetchMarketPrices, 120000);
+    window.addEventListener('resize', () => drawChart(rangeInfo()));
+  </script>
+</body>
+</html>
