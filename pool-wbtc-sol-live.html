@@ -120,6 +120,25 @@
       color: var(--amber);
     }
 
+    .fee-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 30px;
+      border: 1px solid rgba(39, 179, 141, .35);
+      border-radius: 8px;
+      padding: 6px 8px;
+      background: rgba(39, 179, 141, .08);
+      color: var(--green);
+      font: 700 .78rem Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .fee-btn:hover {
+      border-color: rgba(39, 179, 141, .65);
+    }
+
     .back {
       display: inline-flex;
       align-items: center;
@@ -195,6 +214,7 @@
       .tf button { padding: 5px 7px; }
       .price { font-size: .9rem; }
       .back { padding: 5px 7px; font-size: .75rem; }
+      .fee-btn { padding: 5px 7px; font-size: .75rem; }
       main { padding: 6px; }
       .stage { border-radius: 8px; }
     }
@@ -213,6 +233,7 @@
       <button data-tf="4h">4H</button>
       <button data-tf="1d">1D</button>
     </div>
+    <button class="fee-btn" id="addFeesBtn" type="button">+ Taxas</button>
     <button class="back action-btn" id="fullscreenBtn" type="button">Tela cheia</button>
     <a class="back" href="index.html">Terminal</a>
   </header>
@@ -232,10 +253,12 @@
       upper: 797.726412,
       solAmount: 18.6127605,
       btcAmount: 0.01735508,
-      harvestedFees: 12.70,
+      collectedFees: 12.70,
       pendingFees: 0.44
     };
 
+    const STORAGE_KEY = "wbtc_sol_pool_live_v2";
+    const POOL_STARTED_AT = new Date("2026-10-13T01:45:00+09:00").getTime();
     const perMs = { "1h": 3600000, "4h": 14400000, "1d": 86400000 };
     const state = {
       tf: "1h",
@@ -245,13 +268,25 @@
       lastUpdate: null,
       firstLoad: true,
       loading: false,
-      ticking: false
+      ticking: false,
+      collectedFees: POOL.collectedFees
     };
 
     const $ = id => document.getElementById(id);
     const chartEl = $("chart");
     const overlay = $("overlay");
     const ctx = overlay.getContext("2d");
+
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      if (Number.isFinite(Number(saved.collectedFees))) state.collectedFees = Number(saved.collectedFees);
+    } catch (err) {}
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ collectedFees: state.collectedFees }));
+      } catch (err) {}
+    }
 
     const chart = LightweightCharts.createChart(chartEl, {
       layout: {
@@ -321,6 +356,18 @@
     function pct(n) {
       const v = (Number(n) || 0) * 100;
       return (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
+    }
+
+    function poolAge() {
+      const diff = Math.max(0, Date.now() - POOL_STARTED_AT);
+      const totalSeconds = Math.floor(diff / 1000);
+      const days = Math.floor(totalSeconds / 86400);
+      const hours = Math.floor(totalSeconds % 86400 / 3600);
+      const minutes = Math.floor(totalSeconds % 3600 / 60);
+      const seconds = totalSeconds % 60;
+      return days > 0
+        ? days + "d " + String(hours).padStart(2, "0") + "h " + String(minutes).padStart(2, "0") + "m"
+        : String(hours).padStart(2, "0") + ":" + String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
     }
 
     function resize() {
@@ -603,11 +650,11 @@
       const liq = liquidity();
       const pnl = liq - POOL.capital;
       const pnlPct = POOL.capital ? pnl / POOL.capital : 0;
-      const fees = POOL.harvestedFees + POOL.pendingFees;
+      const fees = state.collectedFees;
       const pnlColor = pnl >= 0 ? "#27b38d" : "#e15561";
 
-      const bw = 220;
-      const bh = 108;
+      const bw = 238;
+      const bh = 128;
       let bx = anchorX;
       let by = anchorY - bh / 2;
       if (bx + bw > w - 8) bx = w - bw - 8;
@@ -633,7 +680,8 @@
         ["Liquidez", usd(liq), "#e8edf4"],
         ["PnL", usd(pnl), pnlColor],
         ["Capital", pct(pnlPct), pnlColor],
-        ["Fees", usd(fees), "#27b38d"]
+        ["Taxas Coletadas", usd(fees), "#27b38d"],
+        ["Vida da Pool", poolAge(), "#e8edf4"]
       ].forEach((row, i) => {
         const y = by + 39 + i * 18;
         ctx.textAlign = "left";
@@ -659,6 +707,17 @@
         state.firstLoad = true;
         load();
       });
+    });
+
+    $("addFeesBtn").addEventListener("click", () => {
+      const value = prompt("Valor de taxas coletadas para adicionar em US$", "");
+      if (value == null) return;
+      const amount = Number(String(value).replace(",", "."));
+      if (!Number.isFinite(amount) || amount <= 0) return;
+      state.collectedFees += amount;
+      saveState();
+      renderHeader();
+      drawOverlay();
     });
 
     $("fullscreenBtn").addEventListener("click", async () => {
