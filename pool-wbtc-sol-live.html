@@ -564,13 +564,17 @@
       capital: 3542.14363,
       lower: 721.816316,
       upper: 797.726412,
-      solAmount: 18.6127605,
-      btcAmount: 0.01735508,
+      solAmount: 21.043578264,
+      btcAmount: 0.0142866,
       initialSolBuyUsd: 3484.14363,
       externalAddUsd: 58,
       uncollectedFees: 0,
       collectedFees: 18.07,
-      reinvestedFees: 18.07
+      reinvestedFees: 18.07,
+      whirlpool: "B5EwJVDuAauzUEEdwvbuXzbFFgEYnUqqS37TUM1c4PQA",
+      position: "Dct3DTn9bquGqi7TETpvDy1geYfwSBPfUC12NkYimfD8",
+      positionMint: "6fXZAfCGfgqTeK1NjcBbUU8pG8LJtk7oQnZTmSwR5TQf",
+      rpc: "https://api.mainnet-beta.solana.com"
     };
 
     const STORAGE_KEY = "wbtc_sol_pool_live_v3";
@@ -592,6 +596,19 @@
       firstLoad: true,
       loading: false,
       ticking: false,
+      onchainLoading: false,
+      lastOnchainUpdate: null,
+      onchainError: "",
+      onchain: {
+        solAmount: POOL.solAmount,
+        btcAmount: POOL.btcAmount,
+        lower: POOL.lower,
+        upper: POOL.upper,
+        poolRatio: 0,
+        tickCurrent: 0,
+        liquidityRaw: "0",
+        source: "fallback"
+      },
       uncollectedFees: POOL.uncollectedFees,
       collectedFees: POOL.collectedFees,
       reinvestedFees: POOL.reinvestedFees,
@@ -928,7 +945,20 @@
       try {
         return await hyperSpotPrices();
       } catch (err) {
-        return binanceSpotPrices();
+        try {
+          return await binanceSpotPrices();
+        } catch (err2) {
+          const [btcRes, solRes] = await Promise.all([
+            fetch("https://api.coinbase.com/v2/prices/BTC-USD/spot"),
+            fetch("https://api.coinbase.com/v2/prices/SOL-USD/spot")
+          ]);
+          if (!btcRes.ok || !solRes.ok) throw new Error("ticker indisponivel");
+          const [btcData, solData] = await Promise.all([btcRes.json(), solRes.json()]);
+          return {
+            btc: Number(btcData && btcData.data && btcData.data.amount),
+            sol: Number(solData && solData.data && solData.data.amount)
+          };
+        }
       }
     }
 
@@ -958,6 +988,143 @@
     function bucketTime(nowMs) {
       const step = perMs[state.tf] || perMs["1h"];
       return Math.floor(nowMs / step) * step / 1000;
+    }
+
+    function b64Bytes(value) {
+      const bin = atob(value);
+      const out = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+      return out;
+    }
+
+    function view(bytes) {
+      return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    }
+
+    function u128(bytes, offset) {
+      let n = 0n;
+      for (let i = 15; i >= 0; i--) n = (n << 8n) + BigInt(bytes[offset + i]);
+      return n;
+    }
+
+    function u64(bytes, offset) {
+      let n = 0n;
+      for (let i = 7; i >= 0; i--) n = (n << 8n) + BigInt(bytes[offset + i]);
+      return n;
+    }
+
+    function sqrtPriceX64AtTick(tick) {
+      return BigInt(Math.floor(Math.pow(1.0001, tick / 2) * 2 ** 64));
+    }
+
+    function solPerWbtcFromTick(tick) {
+      const wbtcPerSol = Math.pow(1.0001, tick) * 10;
+      return 1 / wbtcPerSol;
+    }
+
+    function solPerWbtcFromSqrtX64(sqrtPriceX64) {
+      const sqrt = Number(sqrtPriceX64) / 2 ** 64;
+      const wbtcPerSol = sqrt * sqrt * 10;
+      return 1 / wbtcPerSol;
+    }
+
+    function divToken(raw, decimals) {
+      return Number(raw) / 10 ** decimals;
+    }
+
+    function positionAmounts(liquidityRaw, tickLower, tickUpper, sqrtPriceX64) {
+      const q64 = 1n << 64n;
+      const L = liquidityRaw;
+      const sqrtL = sqrtPriceX64AtTick(tickLower);
+      const sqrtU = sqrtPriceX64AtTick(tickUpper);
+      let amountA = 0n;
+      let amountB = 0n;
+
+      if (sqrtPriceX64 <= sqrtL) {
+        amountA = L * (sqrtU - sqrtL) * q64 / (sqrtL * sqrtU);
+      } else if (sqrtPriceX64 >= sqrtU) {
+        amountB = L * (sqrtU - sqrtL) / q64;
+      } else {
+        amountA = L * (sqrtU - sqrtPriceX64) * q64 / (sqrtPriceX64 * sqrtU);
+        amountB = L * (sqrtPriceX64 - sqrtL) / q64;
+      }
+
+      return {
+        solAmount: divToken(amountA, 9),
+        btcAmount: divToken(amountB, 8)
+      };
+    }
+
+    async function solanaRpc(method, params) {
+      const res = await fetch(POOL.rpc, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: Date.now(), method, params })
+      });
+      if (!res.ok) throw new Error("rpc " + res.status);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message || "rpc error");
+      return data.result;
+    }
+
+    function parsePosition(bytes) {
+      const dv = view(bytes);
+      let p = 8 + 32 + 32;
+      const liquidityRaw = u128(bytes, p); p += 16;
+      const tickLower = dv.getInt32(p, true); p += 4;
+      const tickUpper = dv.getInt32(p, true); p += 4;
+      p += 16;
+      const feeOwedSolRaw = u64(bytes, p); p += 8;
+      p += 16;
+      const feeOwedWbtcRaw = u64(bytes, p);
+      return { liquidityRaw, tickLower, tickUpper, feeOwedSolRaw, feeOwedWbtcRaw };
+    }
+
+    function parsePool(bytes) {
+      const dv = view(bytes);
+      let p = 8 + 32 + 1 + 2 + 2 + 2 + 2;
+      const poolLiquidityRaw = u128(bytes, p); p += 16;
+      const sqrtPriceX64 = u128(bytes, p); p += 16;
+      const tickCurrent = dv.getInt32(p, true);
+      return { poolLiquidityRaw, sqrtPriceX64, tickCurrent };
+    }
+
+    async function refreshPoolPosition() {
+      if (state.onchainLoading) return;
+      state.onchainLoading = true;
+      try {
+        const result = await solanaRpc("getMultipleAccounts", [[POOL.position, POOL.whirlpool], { encoding: "base64" }]);
+        const accounts = result && result.value;
+        if (!accounts || !accounts[0] || !accounts[1]) throw new Error("conta da pool nao encontrada");
+        const position = parsePosition(b64Bytes(accounts[0].data[0]));
+        const pool = parsePool(b64Bytes(accounts[1].data[0]));
+        const amounts = positionAmounts(position.liquidityRaw, position.tickLower, position.tickUpper, pool.sqrtPriceX64);
+        const lowerA = solPerWbtcFromTick(position.tickLower);
+        const upperA = solPerWbtcFromTick(position.tickUpper);
+
+        state.onchain = {
+          solAmount: amounts.solAmount,
+          btcAmount: amounts.btcAmount,
+          lower: Math.min(lowerA, upperA),
+          upper: Math.max(lowerA, upperA),
+          poolRatio: solPerWbtcFromSqrtX64(pool.sqrtPriceX64),
+          tickCurrent: pool.tickCurrent,
+          liquidityRaw: position.liquidityRaw.toString(),
+          feeOwedSolRaw: position.feeOwedSolRaw.toString(),
+          feeOwedWbtcRaw: position.feeOwedWbtcRaw.toString(),
+          source: "onchain"
+        };
+        state.lastOnchainUpdate = new Date();
+        state.onchainError = "";
+        rangeTop.applyOptions({ price: state.onchain.upper });
+        rangeBottom.applyOptions({ price: state.onchain.lower });
+        renderHeader();
+        drawOverlay();
+      } catch (err) {
+        state.onchainError = err.message || "falha on-chain";
+      } finally {
+        state.onchainLoading = false;
+      }
     }
 
     function applySpotPrices(btcUsd, solUsd) {
@@ -1021,7 +1188,7 @@
     }
 
     function liquidity() {
-      return POOL.solAmount * state.solUsd + POOL.btcAmount * state.btcUsd + state.reinvestedFees;
+      return state.onchain.solAmount * state.solUsd + state.onchain.btcAmount * state.btcUsd;
     }
 
     function totalPositionValue() {
@@ -1029,8 +1196,8 @@
     }
 
     function composition() {
-      const solValue = POOL.solAmount * state.solUsd;
-      const btcValue = POOL.btcAmount * state.btcUsd;
+      const solValue = state.onchain.solAmount * state.solUsd;
+      const btcValue = state.onchain.btcAmount * state.btcUsd;
       const total = solValue + btcValue;
       return {
         solValue,
@@ -1042,14 +1209,19 @@
 
     function renderHeader() {
       const ratio = currentRatio();
-      const inside = ratio >= POOL.lower && ratio <= POOL.upper;
+      const lower = state.onchain.lower || POOL.lower;
+      const upper = state.onchain.upper || POOL.upper;
+      const inside = ratio >= lower && ratio <= upper;
       $("ratio").textContent = ratio ? ratio.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "--";
-      $("rangeStatus").textContent = inside ? "In Range" : (ratio < POOL.lower ? "Abaixo" : "Acima");
+      $("rangeStatus").textContent = inside ? "In Range" : (ratio < lower ? "Abaixo" : "Acima");
       $("rangeStatus").className = "badge " + (inside ? "ok" : "out");
-      $("rangeText").textContent = POOL.lower.toFixed(2) + " - " + POOL.upper.toFixed(2);
-      $("liveText").textContent = state.lastUpdate
+      $("rangeText").textContent = lower.toFixed(2) + " - " + upper.toFixed(2);
+      const priceText = state.lastUpdate
         ? "tick 1s · " + state.lastUpdate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
         : "tick 1s";
+      $("liveText").textContent = state.lastOnchainUpdate
+        ? priceText + " · chain " + state.lastOnchainUpdate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+        : priceText;
     }
 
     function roundedRect(x, y, w, h, r) {
@@ -1068,8 +1240,8 @@
       ctx.clearRect(0, 0, w, h);
       if (!state.candles.length) return;
 
-      const yHigh = series.priceToCoordinate(POOL.upper);
-      const yLow = series.priceToCoordinate(POOL.lower);
+      const yHigh = series.priceToCoordinate(state.onchain.upper || POOL.upper);
+      const yLow = series.priceToCoordinate(state.onchain.lower || POOL.lower);
       const ratio = currentRatio();
       const yNow = series.priceToCoordinate(ratio);
       const last = state.candles[state.candles.length - 1];
@@ -1232,7 +1404,7 @@
       const liq = liquidity();
       const pnl = totalPositionValue() - investedCapital();
       const comp = composition();
-      addHistory("snapshot", "Snapshot · Liquidez " + usd(liq) + " · PnL " + usd(pnl) + " · Capital " + usd(investedCapital()) + " · Taxas " + usd(state.collectedFees) + " (" + pct(state.collectedFees / POOL.capital) + ") · SOL " + (comp.solPct * 100).toFixed(1) + "% · WBTC " + (comp.btcPct * 100).toFixed(1) + "%");
+      addHistory("snapshot", "Snapshot · Liquidez " + usd(liq) + " · PnL jornada " + usd(pnl) + " · Capital " + usd(investedCapital()) + " · Taxas " + usd(state.collectedFees) + " (" + pct(state.collectedFees / POOL.capital) + ") · SOL " + (comp.solPct * 100).toFixed(1) + "% · WBTC " + (comp.btcPct * 100).toFixed(1) + "% · " + state.onchain.source);
     });
 
     $("fullscreenBtn").addEventListener("click", async () => {
@@ -1290,8 +1462,10 @@
     renderHistory();
     resize();
     loadFx();
+    refreshPoolPosition();
     load();
     setInterval(tick, 1000);
+    setInterval(refreshPoolPosition, 15000);
     setInterval(load, 30000);
     setInterval(loadFx, 300000);
     requestAnimationFrame(function loop() {
