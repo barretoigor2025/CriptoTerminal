@@ -362,14 +362,14 @@
         <div class="metric-row no-btn" id="rowLiquidity"><span class="label">Liquidez</span><span class="value" id="metricLiquidity">--</span><button class="fee-add" type="button">+</button></div>
         <div class="metric-row no-btn" id="rowPnl"><span class="label">PnL</span><span class="value" id="metricPnl">--</span><button class="fee-add" type="button">+</button></div>
         <div class="metric-row no-btn" id="rowCapital"><span class="label">Capital</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div>
-        <div class="metric-row" id="rowUncollected"><span class="label">Taxas Nao Coletadas</span><span class="value" id="metricUncollected">--</span><button class="fee-add" type="button" data-fee="uncollectedFees">+</button></div>
+        <div class="metric-row" id="rowUncollected"><span class="label">Taxas Não Coletadas</span><span class="value" id="metricUncollected">--</span><button class="fee-add" type="button" data-fee="uncollectedFees">+</button></div>
         <div class="metric-row" id="rowCollected"><span class="label">Taxas Coletadas</span><span class="value" id="metricCollected">--</span><button class="fee-add" type="button" data-fee="collectedFees">+</button></div>
         <div class="metric-row" id="rowReinserted"><span class="label">Taxas Reinseridas</span><span class="value" id="metricReinserted">--</span><button class="fee-add" type="button" data-fee="reinsertedFees">+</button></div>
         <div class="metric-row no-btn" id="rowAge"><span class="label">Vida da Pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div>
       </div>
-      <div class="history-card" id="historyCard" aria-label="Historico da pool">
+      <div class="history-card" id="historyCard" aria-label="Histórico da pool">
         <div class="history-head">
-          <div class="card-title">Historico da Pool</div>
+          <div class="card-title">Histórico da Pool</div>
           <button class="history-action" id="snapshotBtn" type="button">Snapshot</button>
         </div>
         <div class="history-list" id="historyList"></div>
@@ -514,7 +514,7 @@
 
     function feeLabel(key) {
       return ({
-        uncollectedFees: "Taxas Nao Coletadas",
+        uncollectedFees: "Taxas Não Coletadas",
         collectedFees: "Taxas Coletadas",
         reinsertedFees: "Taxas Reinseridas"
       })[key] || "Taxas";
@@ -845,8 +845,8 @@
       const pnlTone = pnl >= 0 ? "positive" : "negative";
 
       setMetric("rowLiquidity", "metricLiquidity", usd(liq));
-      setMetric("rowPnl", "metricPnl", usd(pnl), pnlTone);
-      setMetric("rowCapital", "metricCapital", pct(pnlPct), pnlTone);
+      setMetric("rowPnl", "metricPnl", usd(pnl) + " (" + pct(pnlPct) + ")", pnlTone);
+      setMetric("rowCapital", "metricCapital", usd(POOL.capital));
       setMetric("rowUncollected", "metricUncollected", usd(state.uncollectedFees), "positive");
       setMetric("rowCollected", "metricCollected", usd(state.collectedFees), "positive");
       setMetric("rowReinserted", "metricReinserted", usd(state.reinsertedFees), "positive");
