@@ -207,27 +207,27 @@
     }
 
     .pool-card {
-      width: min(326px, calc(100vw - 24px));
-      padding: 10px;
+      width: min(312px, calc(100vw - 16px));
+      padding: 8px;
       pointer-events: auto;
     }
 
     .card-title {
       color: var(--amber);
-      font-size: .72rem;
+      font-size: .66rem;
       font-weight: 800;
-      margin-bottom: 8px;
+      margin-bottom: 5px;
       letter-spacing: .06em;
       text-transform: uppercase;
     }
 
     .metric-row {
       display: grid;
-      grid-template-columns: minmax(74px, 1fr) minmax(118px, auto) 82px;
+      grid-template-columns: minmax(70px, 1fr) minmax(116px, auto) 72px;
       align-items: center;
-      gap: 6px;
-      min-height: 24px;
-      font-size: .7rem;
+      gap: 4px;
+      min-height: 19px;
+      font-size: .62rem;
     }
 
     .metric-row .label {
@@ -242,15 +242,15 @@
       font-weight: 800;
       text-align: right;
       white-space: nowrap;
-      font-size: .68rem;
+      font-size: .6rem;
     }
 
     .metric-row.positive .value { color: var(--green); }
     .metric-row.negative .value { color: var(--red); }
 
     .fee-add {
-      width: 24px;
-      height: 24px;
+      width: 21px;
+      height: 21px;
       border: 1px solid rgba(39, 179, 141, .5);
       border-radius: 6px;
       background: rgba(39, 179, 141, .1);
@@ -268,18 +268,18 @@
       display: inline-flex;
       align-items: center;
       justify-content: flex-end;
-      gap: 5px;
-      width: 82px;
+      gap: 4px;
+      width: 72px;
     }
 
     .fee-withdraw {
-      min-width: 46px;
-      height: 24px;
+      min-width: 43px;
+      height: 21px;
       border: 1px solid rgba(255, 255, 255, .32);
       border-radius: 6px;
       background: rgba(255, 255, 255, .08);
       color: var(--text);
-      font-size: .62rem;
+      font-size: .58rem;
       font-weight: 900;
       line-height: 1;
       cursor: pointer;
@@ -289,8 +289,8 @@
     .fee-withdraw:hover { border-color: rgba(255, 255, 255, .65); }
 
     .allocation-card {
-      width: min(326px, calc(100vw - 24px));
-      padding: 10px;
+      width: min(312px, calc(100vw - 16px));
+      padding: 8px;
       pointer-events: none;
       border-color: rgba(255, 255, 255, .86);
     }
@@ -489,8 +489,8 @@
       .price { font-size: .9rem; }
       .back { padding: 5px 7px; font-size: .75rem; }
       .fee-btn { padding: 5px 7px; font-size: .75rem; }
-      .pool-card { width: min(326px, calc(100vw - 24px)); }
-      .allocation-card { width: min(326px, calc(100vw - 24px)); }
+      .pool-card { width: min(312px, calc(100vw - 16px)); }
+      .allocation-card { width: min(312px, calc(100vw - 16px)); }
       .history-card { max-height: 140px; }
       main { padding: 6px; }
       .stage { border-radius: 8px; }
@@ -569,7 +569,8 @@
       initialSolBuyUsd: 3484.14363,
       externalAddUsd: 58,
       uncollectedFees: 0,
-      collectedFees: 12.70
+      collectedFees: 18.07,
+      reinvestedFees: 18.07
     };
 
     const STORAGE_KEY = "wbtc_sol_pool_live_v3";
@@ -577,6 +578,8 @@
     const ACCIDENTAL_WITHDRAW_KEY = "wbtc_sol_pool_accidental_withdraw_fix";
     const CAPITAL_LOG_KEY = "wbtc_sol_pool_capital_log_v1";
     const CLEAR_DEFAULT_FEES_KEY = "wbtc_sol_pool_clear_default_044_v1";
+    const REINVESTED_FEES_KEY = "wbtc_sol_pool_reinvested_fees_v1";
+    const REINVESTED_LOG_KEY = "wbtc_sol_pool_reinvested_log_v1";
     const POOL_STARTED_AT = new Date("2026-10-13T01:45:00+09:00").getTime();
     const perMs = { "1h": 3600000, "4h": 14400000, "1d": 86400000 };
     const state = {
@@ -591,6 +594,7 @@
       ticking: false,
       uncollectedFees: POOL.uncollectedFees,
       collectedFees: POOL.collectedFees,
+      reinvestedFees: POOL.reinvestedFees,
       history: []
     };
 
@@ -607,7 +611,11 @@
       migratedState = !rawState && !!rawOldState;
       if (Number.isFinite(Number(saved.uncollectedFees))) state.uncollectedFees = Number(saved.uncollectedFees);
       if (Number.isFinite(Number(saved.collectedFees))) state.collectedFees = Number(saved.collectedFees);
-      if (Number.isFinite(Number(saved.reinsertedFees))) state.collectedFees += Number(saved.reinsertedFees);
+      if (Number.isFinite(Number(saved.reinvestedFees))) state.reinvestedFees = Number(saved.reinvestedFees);
+      if (Number.isFinite(Number(saved.reinsertedFees))) {
+        state.collectedFees += Number(saved.reinsertedFees);
+        state.reinvestedFees += Number(saved.reinsertedFees);
+      }
       if (Array.isArray(saved.history)) state.history = saved.history.slice(0, 80);
     } catch (err) {}
 
@@ -617,8 +625,23 @@
       const defaultCollected = Math.abs(state.collectedFees - 12.70) < 0.01 || Math.abs(state.collectedFees - 13.14) < 0.01;
       if (shouldClearDefault && defaultPending && defaultCollected) {
         state.uncollectedFees = 0;
-        state.collectedFees = 12.70;
+        state.collectedFees = Math.max(state.collectedFees, 12.70);
         localStorage.setItem(CLEAR_DEFAULT_FEES_KEY, "1");
+        migratedState = true;
+      }
+    } catch (err) {}
+
+    try {
+      const shouldApplyReinvested = localStorage.getItem(REINVESTED_FEES_KEY) !== "1";
+      if (shouldApplyReinvested && state.collectedFees < 18.07) {
+        state.collectedFees = 18.07;
+        state.reinvestedFees = 18.07;
+        state.uncollectedFees = 0;
+        localStorage.setItem(REINVESTED_FEES_KEY, "1");
+        migratedState = true;
+      } else if (shouldApplyReinvested) {
+        state.reinvestedFees = Math.max(state.reinvestedFees, 18.07);
+        localStorage.setItem(REINVESTED_FEES_KEY, "1");
         migratedState = true;
       }
     } catch (err) {}
@@ -628,6 +651,7 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
           uncollectedFees: state.uncollectedFees,
           collectedFees: state.collectedFees,
+          reinvestedFees: state.reinvestedFees,
           history: state.history.slice(0, 80)
         }));
       } catch (err) {}
@@ -988,12 +1012,20 @@
       return last ? last.close : 0;
     }
 
+    function investedCapital() {
+      return POOL.capital + state.reinvestedFees;
+    }
+
+    function availableCollectedFees() {
+      return Math.max(0, state.collectedFees - state.reinvestedFees);
+    }
+
     function liquidity() {
-      return POOL.solAmount * state.solUsd + POOL.btcAmount * state.btcUsd;
+      return POOL.solAmount * state.solUsd + POOL.btcAmount * state.btcUsd + state.reinvestedFees;
     }
 
     function totalPositionValue() {
-      return liquidity() + state.uncollectedFees + state.collectedFees;
+      return liquidity() + state.uncollectedFees + availableCollectedFees();
     }
 
     function composition() {
@@ -1090,14 +1122,15 @@
       const card = $("poolCard");
       const allocation = $("allocationCard");
       const liq = liquidity();
-      const pnl = totalPositionValue() - POOL.capital;
-      const pnlPct = POOL.capital ? pnl / POOL.capital : 0;
+      const capital = investedCapital();
+      const pnl = totalPositionValue() - capital;
+      const pnlPct = capital ? pnl / capital : 0;
       const pnlTone = pnl >= 0 ? "positive" : "negative";
       const comp = composition();
 
       setMetric("rowLiquidity", "metricLiquidity", liquidityLabel(liq));
       setMetric("rowPnl", "metricPnl", usd(pnl) + " (" + pct(pnlPct) + ")", pnlTone);
-      setMetric("rowCapital", "metricCapital", usd(POOL.capital));
+      setMetric("rowCapital", "metricCapital", usd(capital));
       setMetric("rowUncollected", "metricUncollected", usd(state.uncollectedFees), "positive");
       setMetric("rowCollected", "metricCollected", usd(state.collectedFees) + " (" + pct(state.collectedFees / POOL.capital) + ")", "positive");
       setMetric("rowAge", "metricAge", poolAge());
@@ -1188,17 +1221,18 @@
       }
       state.uncollectedFees = 0;
       state.collectedFees += amount;
+      state.reinvestedFees += amount;
       saveState();
-      addHistory("fee", "Taxas sacadas " + usd(amount) + " · coletadas " + usd(state.collectedFees) + " (" + pct(state.collectedFees / POOL.capital) + ")");
+      addHistory("fee", "Taxas sacadas/reinvestidas " + usd(amount) + " · coletadas " + usd(state.collectedFees) + " (" + pct(state.collectedFees / POOL.capital) + ") · capital " + usd(investedCapital()));
       renderHeader();
       drawOverlay();
     });
 
     $("snapshotBtn").addEventListener("click", () => {
       const liq = liquidity();
-      const pnl = totalPositionValue() - POOL.capital;
+      const pnl = totalPositionValue() - investedCapital();
       const comp = composition();
-      addHistory("snapshot", "Snapshot · Liquidez " + usd(liq) + " · PnL " + usd(pnl) + " · Taxas " + usd(state.collectedFees) + " (" + pct(state.collectedFees / POOL.capital) + ") · SOL " + (comp.solPct * 100).toFixed(1) + "% · WBTC " + (comp.btcPct * 100).toFixed(1) + "%");
+      addHistory("snapshot", "Snapshot · Liquidez " + usd(liq) + " · PnL " + usd(pnl) + " · Capital " + usd(investedCapital()) + " · Taxas " + usd(state.collectedFees) + " (" + pct(state.collectedFees / POOL.capital) + ") · SOL " + (comp.solPct * 100).toFixed(1) + "% · WBTC " + (comp.btcPct * 100).toFixed(1) + "%");
     });
 
     $("fullscreenBtn").addEventListener("click", async () => {
@@ -1234,10 +1268,22 @@
       if (!hasCapitalLog && localStorage.getItem(CAPITAL_LOG_KEY) !== "1") {
         state.history.unshift({
           kind: "capital",
-          text: "Capital investido: compra SOL " + usd(POOL.initialSolBuyUsd) + " + aporte " + usd(POOL.externalAddUsd) + " = " + usd(POOL.capital),
+          text: "Capital investido: compra SOL " + usd(POOL.initialSolBuyUsd) + " + aporte " + usd(POOL.externalAddUsd) + " + taxas reinvestidas " + usd(state.reinvestedFees) + " = " + usd(investedCapital()),
           ts: new Date().toISOString()
         });
         localStorage.setItem(CAPITAL_LOG_KEY, "1");
+        saveState();
+      }
+    } catch (err) {}
+    try {
+      const hasReinvestedLog = state.history.some(item => String(item.text || "").includes("Taxas reinvestidas acumuladas"));
+      if (!hasReinvestedLog && localStorage.getItem(REINVESTED_LOG_KEY) !== "1") {
+        state.history.unshift({
+          kind: "fee",
+          text: "Taxas reinvestidas acumuladas " + usd(state.reinvestedFees) + " · capital atual " + usd(investedCapital()),
+          ts: new Date().toISOString()
+        });
+        localStorage.setItem(REINVESTED_LOG_KEY, "1");
         saveState();
       }
     } catch (err) {}
