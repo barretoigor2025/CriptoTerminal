@@ -207,7 +207,7 @@
     }
 
     .pool-card {
-      width: 292px;
+      width: min(326px, calc(100vw - 24px));
       padding: 10px;
       pointer-events: auto;
     }
@@ -223,11 +223,11 @@
 
     .metric-row {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto auto;
+      grid-template-columns: minmax(74px, 1fr) minmax(118px, auto) 82px;
       align-items: center;
-      gap: 8px;
-      min-height: 21px;
-      font-size: .72rem;
+      gap: 6px;
+      min-height: 24px;
+      font-size: .7rem;
     }
 
     .metric-row .label {
@@ -242,6 +242,7 @@
       font-weight: 800;
       text-align: right;
       white-space: nowrap;
+      font-size: .68rem;
     }
 
     .metric-row.positive .value { color: var(--green); }
@@ -266,7 +267,9 @@
     .fee-actions {
       display: inline-flex;
       align-items: center;
+      justify-content: flex-end;
       gap: 5px;
+      width: 82px;
     }
 
     .fee-withdraw {
@@ -286,7 +289,7 @@
     .fee-withdraw:hover { border-color: rgba(255, 255, 255, .65); }
 
     .allocation-card {
-      width: 292px;
+      width: min(326px, calc(100vw - 24px));
       padding: 10px;
       pointer-events: none;
       border-color: rgba(255, 255, 255, .86);
@@ -486,8 +489,8 @@
       .price { font-size: .9rem; }
       .back { padding: 5px 7px; font-size: .75rem; }
       .fee-btn { padding: 5px 7px; font-size: .75rem; }
-      .pool-card { width: 268px; }
-      .allocation-card { width: 268px; }
+      .pool-card { width: min(326px, calc(100vw - 24px)); }
+      .allocation-card { width: min(326px, calc(100vw - 24px)); }
       .history-card { max-height: 140px; }
       main { padding: 6px; }
       .stage { border-radius: 8px; }
@@ -565,7 +568,7 @@
       btcAmount: 0.01735508,
       initialSolBuyUsd: 3484.14363,
       externalAddUsd: 58,
-      uncollectedFees: 0.44,
+      uncollectedFees: 0,
       collectedFees: 12.70
     };
 
@@ -573,6 +576,7 @@
     const OLD_STORAGE_KEY = "wbtc_sol_pool_live_v2";
     const ACCIDENTAL_WITHDRAW_KEY = "wbtc_sol_pool_accidental_withdraw_fix";
     const CAPITAL_LOG_KEY = "wbtc_sol_pool_capital_log_v1";
+    const CLEAR_DEFAULT_FEES_KEY = "wbtc_sol_pool_clear_default_044_v1";
     const POOL_STARTED_AT = new Date("2026-10-13T01:45:00+09:00").getTime();
     const perMs = { "1h": 3600000, "4h": 14400000, "1d": 86400000 };
     const state = {
@@ -580,6 +584,7 @@
       candles: [],
       btcUsd: 0,
       solUsd: 0,
+      usdJpy: 0,
       lastUpdate: null,
       firstLoad: true,
       loading: false,
@@ -607,18 +612,13 @@
     } catch (err) {}
 
     try {
-      const alreadyFixed = localStorage.getItem(ACCIDENTAL_WITHDRAW_KEY) === "1";
-      const hasAccidentalLog = state.history.some(item => String(item.text || "").includes("Taxas sacadas $0.44"));
-      const looksAccidental = Math.abs(state.uncollectedFees) < 0.0001 && Math.abs(state.collectedFees - 13.14) < 0.01;
-      if (!alreadyFixed && hasAccidentalLog && looksAccidental) {
-        state.uncollectedFees = 0.44;
+      const shouldClearDefault = localStorage.getItem(CLEAR_DEFAULT_FEES_KEY) !== "1";
+      const defaultPending = Math.abs(state.uncollectedFees - 0.44) < 0.01;
+      const defaultCollected = Math.abs(state.collectedFees - 12.70) < 0.01 || Math.abs(state.collectedFees - 13.14) < 0.01;
+      if (shouldClearDefault && defaultPending && defaultCollected) {
+        state.uncollectedFees = 0;
         state.collectedFees = 12.70;
-        state.history.unshift({
-          kind: "fix",
-          text: "Correção automática · saque de $0.44 desfeito",
-          ts: new Date().toISOString()
-        });
-        localStorage.setItem(ACCIDENTAL_WITHDRAW_KEY, "1");
+        localStorage.setItem(CLEAR_DEFAULT_FEES_KEY, "1");
         migratedState = true;
       }
     } catch (err) {}
@@ -698,6 +698,14 @@
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
       });
+    }
+
+    function jpy(n) {
+      return "¥" + Math.round(Number(n) || 0).toLocaleString("ja-JP");
+    }
+
+    function liquidityLabel(value) {
+      return usd(value) + (state.usdJpy ? " (" + jpy(value * state.usdJpy) + ")" : "");
     }
 
     function pct(n) {
@@ -900,6 +908,29 @@
       }
     }
 
+    async function fetchUsdJpy() {
+      try {
+        const res = await fetch("https://api.frankfurter.app/latest?from=USD&to=JPY");
+        if (!res.ok) throw new Error("fx " + res.status);
+        const data = await res.json();
+        const rate = Number(data && data.rates && data.rates.JPY);
+        if (rate) return rate;
+      } catch (err) {}
+      const res = await fetch("https://open.er-api.com/v6/latest/USD");
+      if (!res.ok) throw new Error("fx fallback " + res.status);
+      const data = await res.json();
+      const rate = Number(data && data.rates && data.rates.JPY);
+      if (!rate) throw new Error("fx vazio");
+      return rate;
+    }
+
+    async function loadFx() {
+      try {
+        state.usdJpy = await fetchUsdJpy();
+        drawOverlay();
+      } catch (err) {}
+    }
+
     function bucketTime(nowMs) {
       const step = perMs[state.tf] || perMs["1h"];
       return Math.floor(nowMs / step) * step / 1000;
@@ -1064,7 +1095,7 @@
       const pnlTone = pnl >= 0 ? "positive" : "negative";
       const comp = composition();
 
-      setMetric("rowLiquidity", "metricLiquidity", usd(liq));
+      setMetric("rowLiquidity", "metricLiquidity", liquidityLabel(liq));
       setMetric("rowPnl", "metricPnl", usd(pnl) + " (" + pct(pnlPct) + ")", pnlTone);
       setMetric("rowCapital", "metricCapital", usd(POOL.capital));
       setMetric("rowUncollected", "metricUncollected", usd(state.uncollectedFees), "positive");
@@ -1212,9 +1243,11 @@
     } catch (err) {}
     renderHistory();
     resize();
+    loadFx();
     load();
     setInterval(tick, 1000);
     setInterval(load, 30000);
+    setInterval(loadFx, 300000);
     requestAnimationFrame(function loop() {
       drawOverlay();
       requestAnimationFrame(loop);
