@@ -193,6 +193,120 @@
       z-index: 4;
     }
 
+    .pool-card,
+    .history-card {
+      position: absolute;
+      z-index: 7;
+      border: 1px solid rgba(240, 161, 58, .72);
+      border-radius: 8px;
+      background: rgba(8, 10, 14, .9);
+      box-shadow: 0 14px 28px rgba(0, 0, 0, .35);
+      backdrop-filter: blur(8px);
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .pool-card {
+      width: 292px;
+      padding: 10px;
+      pointer-events: auto;
+    }
+
+    .card-title {
+      color: var(--amber);
+      font-size: .72rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 8px;
+      min-height: 21px;
+      font-size: .72rem;
+    }
+
+    .metric-row .label {
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .metric-row .value {
+      color: var(--text);
+      font-weight: 800;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .metric-row.positive .value { color: var(--green); }
+    .metric-row.negative .value { color: var(--red); }
+
+    .fee-add {
+      width: 19px;
+      height: 19px;
+      border: 1px solid rgba(39, 179, 141, .5);
+      border-radius: 6px;
+      background: rgba(39, 179, 141, .1);
+      color: var(--green);
+      font-weight: 900;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .fee-add:hover { border-color: rgba(39, 179, 141, .8); }
+    .metric-row.no-btn .fee-add { visibility: hidden; pointer-events: none; }
+
+    .history-card {
+      left: 12px;
+      bottom: 12px;
+      width: min(360px, calc(100% - 24px));
+      max-height: 190px;
+      padding: 10px;
+      pointer-events: auto;
+      border-color: rgba(255, 255, 255, .18);
+    }
+
+    .history-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 7px;
+    }
+
+    .history-head .card-title {
+      margin: 0;
+      flex: 1;
+      color: #e8edf4;
+    }
+
+    .history-action {
+      border: 1px solid rgba(255, 255, 255, .2);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .06);
+      color: var(--muted);
+      padding: 4px 7px;
+      font-size: .68rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .history-list {
+      display: grid;
+      gap: 5px;
+      max-height: 138px;
+      overflow: auto;
+      color: var(--muted);
+      font-size: .68rem;
+      line-height: 1.3;
+    }
+
+    .history-item strong { color: var(--text); font-weight: 800; }
+
     .loading {
       position: absolute;
       left: 12px;
@@ -215,6 +329,8 @@
       .price { font-size: .9rem; }
       .back { padding: 5px 7px; font-size: .75rem; }
       .fee-btn { padding: 5px 7px; font-size: .75rem; }
+      .pool-card { width: 268px; }
+      .history-card { max-height: 140px; }
       main { padding: 6px; }
       .stage { border-radius: 8px; }
     }
@@ -233,7 +349,6 @@
       <button data-tf="4h">4H</button>
       <button data-tf="1d">1D</button>
     </div>
-    <button class="fee-btn" id="addFeesBtn" type="button">+ Taxas</button>
     <button class="back action-btn" id="fullscreenBtn" type="button">Tela cheia</button>
     <a class="back" href="index.html">Terminal</a>
   </header>
@@ -242,6 +357,23 @@
     <section class="stage" id="stage" aria-label="Grafico limpo da pool WBTC/SOL">
       <div id="chart"></div>
       <canvas id="overlay"></canvas>
+      <div class="pool-card" id="poolCard" aria-label="Dados da pool">
+        <div class="card-title">Pool WBTC/SOL</div>
+        <div class="metric-row no-btn" id="rowLiquidity"><span class="label">Liquidez</span><span class="value" id="metricLiquidity">--</span><button class="fee-add" type="button">+</button></div>
+        <div class="metric-row no-btn" id="rowPnl"><span class="label">PnL</span><span class="value" id="metricPnl">--</span><button class="fee-add" type="button">+</button></div>
+        <div class="metric-row no-btn" id="rowCapital"><span class="label">Capital</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div>
+        <div class="metric-row" id="rowUncollected"><span class="label">Taxas Nao Coletadas</span><span class="value" id="metricUncollected">--</span><button class="fee-add" type="button" data-fee="uncollectedFees">+</button></div>
+        <div class="metric-row" id="rowCollected"><span class="label">Taxas Coletadas</span><span class="value" id="metricCollected">--</span><button class="fee-add" type="button" data-fee="collectedFees">+</button></div>
+        <div class="metric-row" id="rowReinserted"><span class="label">Taxas Reinseridas</span><span class="value" id="metricReinserted">--</span><button class="fee-add" type="button" data-fee="reinsertedFees">+</button></div>
+        <div class="metric-row no-btn" id="rowAge"><span class="label">Vida da Pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div>
+      </div>
+      <div class="history-card" id="historyCard" aria-label="Historico da pool">
+        <div class="history-head">
+          <div class="card-title">Historico da Pool</div>
+          <button class="history-action" id="snapshotBtn" type="button">Snapshot</button>
+        </div>
+        <div class="history-list" id="historyList"></div>
+      </div>
       <div class="loading" id="loading">carregando BTC/SOL...</div>
     </section>
   </main>
@@ -253,8 +385,9 @@
       upper: 797.726412,
       solAmount: 18.6127605,
       btcAmount: 0.01735508,
-      collectedFees: 12.70,
-      pendingFees: 0.44
+      uncollectedFees: 0.44,
+      collectedFees: 0,
+      reinsertedFees: 12.70
     };
 
     const STORAGE_KEY = "wbtc_sol_pool_live_v2";
@@ -269,7 +402,10 @@
       firstLoad: true,
       loading: false,
       ticking: false,
-      collectedFees: POOL.collectedFees
+      uncollectedFees: POOL.uncollectedFees,
+      collectedFees: POOL.collectedFees,
+      reinsertedFees: POOL.reinsertedFees,
+      history: []
     };
 
     const $ = id => document.getElementById(id);
@@ -279,12 +415,20 @@
 
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      if (Number.isFinite(Number(saved.uncollectedFees))) state.uncollectedFees = Number(saved.uncollectedFees);
       if (Number.isFinite(Number(saved.collectedFees))) state.collectedFees = Number(saved.collectedFees);
+      if (Number.isFinite(Number(saved.reinsertedFees))) state.reinsertedFees = Number(saved.reinsertedFees);
+      if (Array.isArray(saved.history)) state.history = saved.history.slice(0, 80);
     } catch (err) {}
 
     function saveState() {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ collectedFees: state.collectedFees }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          uncollectedFees: state.uncollectedFees,
+          collectedFees: state.collectedFees,
+          reinsertedFees: state.reinsertedFees,
+          history: state.history.slice(0, 80)
+        }));
       } catch (err) {}
     }
 
@@ -365,9 +509,44 @@
       const hours = Math.floor(totalSeconds % 86400 / 3600);
       const minutes = Math.floor(totalSeconds % 3600 / 60);
       const seconds = totalSeconds % 60;
-      return days > 0
-        ? days + "d " + String(hours).padStart(2, "0") + "h " + String(minutes).padStart(2, "0") + "m"
-        : String(hours).padStart(2, "0") + ":" + String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
+      return days + "d " + String(hours).padStart(2, "0") + "h " + String(minutes).padStart(2, "0") + "m " + String(seconds).padStart(2, "0") + "s";
+    }
+
+    function feeLabel(key) {
+      return ({
+        uncollectedFees: "Taxas Nao Coletadas",
+        collectedFees: "Taxas Coletadas",
+        reinsertedFees: "Taxas Reinseridas"
+      })[key] || "Taxas";
+    }
+
+    function addHistory(kind, text) {
+      state.history.unshift({
+        kind,
+        text,
+        ts: new Date().toISOString()
+      });
+      state.history = state.history.slice(0, 80);
+      saveState();
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const list = $("historyList");
+      if (!state.history.length) {
+        list.innerHTML = '<div class="history-item">Sem registros ainda.</div>';
+        return;
+      }
+      list.innerHTML = state.history.slice(0, 10).map(item => {
+        const date = new Date(item.ts).toLocaleString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit"
+        });
+        return '<div class="history-item"><strong>' + date + '</strong> · ' + item.text + '</div>';
+      }).join("");
     }
 
     function resize() {
@@ -577,7 +756,7 @@
     }
 
     function liquidity() {
-      return POOL.solAmount * state.solUsd + POOL.btcAmount * state.btcUsd + POOL.pendingFees;
+      return POOL.solAmount * state.solUsd + POOL.btcAmount * state.btcUsd + state.uncollectedFees;
     }
 
     function renderHeader() {
@@ -647,51 +826,41 @@
         ctx.restore();
       }
 
+      updatePoolCard(anchorX, anchorY, w, h);
+    }
+
+    function setMetric(rowId, valueId, value, tone) {
+      const row = $(rowId);
+      const el = $(valueId);
+      row.classList.remove("positive", "negative");
+      if (tone) row.classList.add(tone);
+      el.textContent = value;
+    }
+
+    function updatePoolCard(anchorX, anchorY, w, h) {
+      const card = $("poolCard");
       const liq = liquidity();
       const pnl = liq - POOL.capital;
       const pnlPct = POOL.capital ? pnl / POOL.capital : 0;
-      const fees = state.collectedFees;
-      const pnlColor = pnl >= 0 ? "#27b38d" : "#e15561";
+      const pnlTone = pnl >= 0 ? "positive" : "negative";
 
-      const bw = 238;
-      const bh = 128;
+      setMetric("rowLiquidity", "metricLiquidity", usd(liq));
+      setMetric("rowPnl", "metricPnl", usd(pnl), pnlTone);
+      setMetric("rowCapital", "metricCapital", pct(pnlPct), pnlTone);
+      setMetric("rowUncollected", "metricUncollected", usd(state.uncollectedFees), "positive");
+      setMetric("rowCollected", "metricCollected", usd(state.collectedFees), "positive");
+      setMetric("rowReinserted", "metricReinserted", usd(state.reinsertedFees), "positive");
+      setMetric("rowAge", "metricAge", poolAge());
+
+      const bw = card.offsetWidth || 292;
+      const bh = card.offsetHeight || 182;
       let bx = anchorX;
       let by = anchorY - bh / 2;
       if (bx + bw > w - 8) bx = w - bw - 8;
       if (bx < 8) bx = 8;
       if (by < 10) by = 10;
       if (by + bh > h - 10) by = h - bh - 10;
-
-      ctx.save();
-      roundedRect(bx, by, bw, bh, 7);
-      ctx.fillStyle = "rgba(8,10,14,.88)";
-      ctx.fill();
-      ctx.strokeStyle = "rgba(240,161,58,.78)";
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      ctx.font = "700 10px IBM Plex Mono, ui-monospace, monospace";
-      ctx.textBaseline = "middle";
-      ctx.fillStyle = "#f0a13a";
-      ctx.fillText("POOL WBTC/SOL", bx + 10, by + 16);
-
-      ctx.font = "600 11px IBM Plex Mono, ui-monospace, monospace";
-      [
-        ["Liquidez", usd(liq), "#e8edf4"],
-        ["PnL", usd(pnl), pnlColor],
-        ["Capital", pct(pnlPct), pnlColor],
-        ["Taxas Coletadas", usd(fees), "#27b38d"],
-        ["Vida da Pool", poolAge(), "#e8edf4"]
-      ].forEach((row, i) => {
-        const y = by + 39 + i * 18;
-        ctx.textAlign = "left";
-        ctx.fillStyle = "#8e98a8";
-        ctx.fillText(row[0], bx + 10, y);
-        ctx.textAlign = "right";
-        ctx.fillStyle = row[2];
-        ctx.fillText(row[1], bx + bw - 10, y);
-      });
-      ctx.restore();
+      card.style.transform = "translate(" + Math.round(bx) + "px, " + Math.round(by) + "px)";
     }
 
     new ResizeObserver(resize).observe($("stage"));
@@ -709,15 +878,26 @@
       });
     });
 
-    $("addFeesBtn").addEventListener("click", () => {
-      const value = prompt("Valor de taxas coletadas para adicionar em US$", "");
+    function addFee(key) {
+      const value = prompt("Adicionar em " + feeLabel(key) + " (US$)", "");
       if (value == null) return;
       const amount = Number(String(value).replace(",", "."));
       if (!Number.isFinite(amount) || amount <= 0) return;
-      state.collectedFees += amount;
+      state[key] += amount;
       saveState();
+      addHistory("fee", feeLabel(key) + " +" + usd(amount) + " · total " + usd(state[key]));
       renderHeader();
       drawOverlay();
+    }
+
+    document.querySelectorAll(".fee-add[data-fee]").forEach(btn => {
+      btn.addEventListener("click", () => addFee(btn.dataset.fee));
+    });
+
+    $("snapshotBtn").addEventListener("click", () => {
+      const liq = liquidity();
+      const pnl = liq - POOL.capital;
+      addHistory("snapshot", "Snapshot · Liquidez " + usd(liq) + " · PnL " + usd(pnl) + " · Vida " + poolAge());
     });
 
     $("fullscreenBtn").addEventListener("click", async () => {
@@ -740,6 +920,15 @@
     });
 
     window.addEventListener("resize", resize);
+    if (!state.history.length) {
+      state.history.push({
+        kind: "start",
+        text: "Pool criada em 13/10/2026 01:45 JST",
+        ts: new Date(POOL_STARTED_AT).toISOString()
+      });
+      saveState();
+    }
+    renderHistory();
     resize();
     load();
     setInterval(tick, 1000);
