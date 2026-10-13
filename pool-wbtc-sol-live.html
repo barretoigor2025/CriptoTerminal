@@ -194,7 +194,8 @@
     }
 
     .pool-card,
-    .history-card {
+    .history-card,
+    .allocation-card {
       position: absolute;
       z-index: 7;
       border: 1px solid rgba(240, 161, 58, .72);
@@ -260,6 +261,82 @@
 
     .fee-add:hover { border-color: rgba(39, 179, 141, .8); }
     .metric-row.no-btn .fee-add { visibility: hidden; pointer-events: none; }
+
+    .fee-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .fee-withdraw {
+      min-width: 46px;
+      height: 19px;
+      border: 1px solid rgba(255, 255, 255, .32);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
+      color: var(--text);
+      font-size: .62rem;
+      font-weight: 900;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .fee-withdraw:hover { border-color: rgba(255, 255, 255, .65); }
+
+    .allocation-card {
+      width: 292px;
+      padding: 10px;
+      pointer-events: none;
+      border-color: rgba(255, 255, 255, .86);
+    }
+
+    .allocation-card .card-title { color: #e8edf4; }
+
+    .alloc-bar {
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, .18);
+      background: rgba(255, 255, 255, .06);
+      display: flex;
+      margin-bottom: 8px;
+    }
+
+    .alloc-fill.sol {
+      width: 50%;
+      background: linear-gradient(90deg, #27b38d, #58d8b5);
+    }
+
+    .alloc-fill.btc {
+      flex: 1;
+      background: linear-gradient(90deg, #f0a13a, #ffd166);
+    }
+
+    .alloc-line {
+      display: grid;
+      grid-template-columns: 34px 1fr auto;
+      align-items: center;
+      gap: 8px;
+      min-height: 20px;
+      font-size: .7rem;
+    }
+
+    .alloc-line span {
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .alloc-line b {
+      color: var(--text);
+      font-weight: 900;
+      text-align: right;
+    }
+
+    .alloc-line em {
+      color: var(--muted);
+      font-style: normal;
+      text-align: right;
+    }
 
     .history-card {
       left: 12px;
@@ -330,6 +407,7 @@
       .back { padding: 5px 7px; font-size: .75rem; }
       .fee-btn { padding: 5px 7px; font-size: .75rem; }
       .pool-card { width: 268px; }
+      .allocation-card { width: 268px; }
       .history-card { max-height: 140px; }
       main { padding: 6px; }
       .stage { border-radius: 8px; }
@@ -362,10 +440,18 @@
         <div class="metric-row no-btn" id="rowLiquidity"><span class="label">Liquidez</span><span class="value" id="metricLiquidity">--</span><button class="fee-add" type="button">+</button></div>
         <div class="metric-row no-btn" id="rowPnl"><span class="label">PnL</span><span class="value" id="metricPnl">--</span><button class="fee-add" type="button">+</button></div>
         <div class="metric-row no-btn" id="rowCapital"><span class="label">Capital</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div>
-        <div class="metric-row" id="rowUncollected"><span class="label">Taxas Não Coletadas</span><span class="value" id="metricUncollected">--</span><button class="fee-add" type="button" data-fee="uncollectedFees">+</button></div>
-        <div class="metric-row" id="rowCollected"><span class="label">Taxas Coletadas</span><span class="value" id="metricCollected">--</span><button class="fee-add" type="button" data-fee="collectedFees">+</button></div>
-        <div class="metric-row" id="rowReinserted"><span class="label">Taxas Reinseridas</span><span class="value" id="metricReinserted">--</span><button class="fee-add" type="button" data-fee="reinsertedFees">+</button></div>
+        <div class="metric-row" id="rowUncollected"><span class="label">Taxas Não Coletadas</span><span class="value" id="metricUncollected">--</span><span class="fee-actions"><button class="fee-add" type="button" data-fee="uncollectedFees">+</button><button class="fee-withdraw" id="collectFeesBtn" type="button">Sacar</button></span></div>
+        <div class="metric-row no-btn" id="rowCollected"><span class="label">Taxas Coletadas</span><span class="value" id="metricCollected">--</span><button class="fee-add" type="button">+</button></div>
         <div class="metric-row no-btn" id="rowAge"><span class="label">Vida da Pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div>
+      </div>
+      <div class="allocation-card" id="allocationCard" aria-label="Composição da pool">
+        <div class="card-title">Composição</div>
+        <div class="alloc-bar" aria-hidden="true">
+          <div class="alloc-fill sol" id="solFill"></div>
+          <div class="alloc-fill btc" id="btcFill"></div>
+        </div>
+        <div class="alloc-line"><span>SOL</span><b id="solShare">--</b><em id="solValue">--</em></div>
+        <div class="alloc-line"><span>WBTC</span><b id="btcShare">--</b><em id="btcValue">--</em></div>
       </div>
       <div class="history-card" id="historyCard" aria-label="Histórico da pool">
         <div class="history-head">
@@ -386,11 +472,11 @@
       solAmount: 18.6127605,
       btcAmount: 0.01735508,
       uncollectedFees: 0.44,
-      collectedFees: 0,
-      reinsertedFees: 12.70
+      collectedFees: 12.70
     };
 
-    const STORAGE_KEY = "wbtc_sol_pool_live_v2";
+    const STORAGE_KEY = "wbtc_sol_pool_live_v3";
+    const OLD_STORAGE_KEY = "wbtc_sol_pool_live_v2";
     const POOL_STARTED_AT = new Date("2026-10-13T01:45:00+09:00").getTime();
     const perMs = { "1h": 3600000, "4h": 14400000, "1d": 86400000 };
     const state = {
@@ -404,7 +490,6 @@
       ticking: false,
       uncollectedFees: POOL.uncollectedFees,
       collectedFees: POOL.collectedFees,
-      reinsertedFees: POOL.reinsertedFees,
       history: []
     };
 
@@ -413,11 +498,15 @@
     const overlay = $("overlay");
     const ctx = overlay.getContext("2d");
 
+    let migratedState = false;
     try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      const rawState = localStorage.getItem(STORAGE_KEY);
+      const rawOldState = localStorage.getItem(OLD_STORAGE_KEY);
+      const saved = JSON.parse(rawState || rawOldState || "{}");
+      migratedState = !rawState && !!rawOldState;
       if (Number.isFinite(Number(saved.uncollectedFees))) state.uncollectedFees = Number(saved.uncollectedFees);
       if (Number.isFinite(Number(saved.collectedFees))) state.collectedFees = Number(saved.collectedFees);
-      if (Number.isFinite(Number(saved.reinsertedFees))) state.reinsertedFees = Number(saved.reinsertedFees);
+      if (Number.isFinite(Number(saved.reinsertedFees))) state.collectedFees += Number(saved.reinsertedFees);
       if (Array.isArray(saved.history)) state.history = saved.history.slice(0, 80);
     } catch (err) {}
 
@@ -426,11 +515,12 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
           uncollectedFees: state.uncollectedFees,
           collectedFees: state.collectedFees,
-          reinsertedFees: state.reinsertedFees,
           history: state.history.slice(0, 80)
         }));
       } catch (err) {}
     }
+
+    if (migratedState) saveState();
 
     const chart = LightweightCharts.createChart(chartEl, {
       layout: {
@@ -515,8 +605,7 @@
     function feeLabel(key) {
       return ({
         uncollectedFees: "Taxas Não Coletadas",
-        collectedFees: "Taxas Coletadas",
-        reinsertedFees: "Taxas Reinseridas"
+        collectedFees: "Taxas Coletadas"
       })[key] || "Taxas";
     }
 
@@ -756,7 +845,23 @@
     }
 
     function liquidity() {
-      return POOL.solAmount * state.solUsd + POOL.btcAmount * state.btcUsd + state.uncollectedFees;
+      return POOL.solAmount * state.solUsd + POOL.btcAmount * state.btcUsd;
+    }
+
+    function totalPositionValue() {
+      return liquidity() + state.uncollectedFees + state.collectedFees;
+    }
+
+    function composition() {
+      const solValue = POOL.solAmount * state.solUsd;
+      const btcValue = POOL.btcAmount * state.btcUsd;
+      const total = solValue + btcValue;
+      return {
+        solValue,
+        btcValue,
+        solPct: total ? solValue / total : 0,
+        btcPct: total ? btcValue / total : 0
+      };
     }
 
     function renderHeader() {
@@ -839,28 +944,36 @@
 
     function updatePoolCard(anchorX, anchorY, w, h) {
       const card = $("poolCard");
+      const allocation = $("allocationCard");
       const liq = liquidity();
-      const pnl = liq - POOL.capital;
+      const pnl = totalPositionValue() - POOL.capital;
       const pnlPct = POOL.capital ? pnl / POOL.capital : 0;
       const pnlTone = pnl >= 0 ? "positive" : "negative";
+      const comp = composition();
 
       setMetric("rowLiquidity", "metricLiquidity", usd(liq));
       setMetric("rowPnl", "metricPnl", usd(pnl) + " (" + pct(pnlPct) + ")", pnlTone);
       setMetric("rowCapital", "metricCapital", usd(POOL.capital));
       setMetric("rowUncollected", "metricUncollected", usd(state.uncollectedFees), "positive");
       setMetric("rowCollected", "metricCollected", usd(state.collectedFees), "positive");
-      setMetric("rowReinserted", "metricReinserted", usd(state.reinsertedFees), "positive");
       setMetric("rowAge", "metricAge", poolAge());
+      $("solFill").style.width = (comp.solPct * 100).toFixed(2) + "%";
+      $("solShare").textContent = (comp.solPct * 100).toFixed(1) + "%";
+      $("btcShare").textContent = (comp.btcPct * 100).toFixed(1) + "%";
+      $("solValue").textContent = usd(comp.solValue);
+      $("btcValue").textContent = usd(comp.btcValue);
 
       const bw = card.offsetWidth || 292;
       const bh = card.offsetHeight || 182;
+      const ah = allocation.offsetHeight || 88;
       let bx = anchorX;
       let by = anchorY - bh / 2;
       if (bx + bw > w - 8) bx = w - bw - 8;
       if (bx < 8) bx = 8;
       if (by < 10) by = 10;
-      if (by + bh > h - 10) by = h - bh - 10;
+      if (by + bh + ah + 8 > h - 10) by = Math.max(10, h - bh - ah - 18);
       card.style.transform = "translate(" + Math.round(bx) + "px, " + Math.round(by) + "px)";
+      allocation.style.transform = "translate(" + Math.round(bx) + "px, " + Math.round(by + bh + 8) + "px)";
     }
 
     new ResizeObserver(resize).observe($("stage"));
@@ -894,10 +1007,25 @@
       btn.addEventListener("click", () => addFee(btn.dataset.fee));
     });
 
+    $("collectFeesBtn").addEventListener("click", () => {
+      const amount = state.uncollectedFees;
+      if (!amount || amount <= 0) {
+        addHistory("fee", "Saque ignorado · sem taxas pendentes");
+        return;
+      }
+      state.uncollectedFees = 0;
+      state.collectedFees += amount;
+      saveState();
+      addHistory("fee", "Taxas sacadas " + usd(amount) + " · coletadas " + usd(state.collectedFees));
+      renderHeader();
+      drawOverlay();
+    });
+
     $("snapshotBtn").addEventListener("click", () => {
       const liq = liquidity();
-      const pnl = liq - POOL.capital;
-      addHistory("snapshot", "Snapshot · Liquidez " + usd(liq) + " · PnL " + usd(pnl) + " · Vida " + poolAge());
+      const pnl = totalPositionValue() - POOL.capital;
+      const comp = composition();
+      addHistory("snapshot", "Snapshot · Liquidez " + usd(liq) + " · PnL " + usd(pnl) + " · SOL " + (comp.solPct * 100).toFixed(1) + "% · WBTC " + (comp.btcPct * 100).toFixed(1) + "%");
     });
 
     $("fullscreenBtn").addEventListener("click", async () => {
