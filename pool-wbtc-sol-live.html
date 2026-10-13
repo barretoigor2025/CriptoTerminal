@@ -519,7 +519,7 @@
         <div class="card-title">Pool WBTC/SOL</div>
         <div class="metric-row no-btn" id="rowLiquidity"><span class="label">Liquidez</span><span class="value" id="metricLiquidity">--</span><button class="fee-add" type="button">+</button></div>
         <div class="metric-row no-btn" id="rowPnl"><span class="label">PnL</span><span class="value" id="metricPnl">--</span><button class="fee-add" type="button">+</button></div>
-        <div class="metric-row no-btn" id="rowCapital"><span class="label">Capital Jornada</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div>
+        <div class="metric-row no-btn" id="rowCapital"><span class="label">Capital Investido</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div>
         <div class="metric-row" id="rowUncollected"><span class="label">Taxas Não Coletadas</span><span class="value" id="metricUncollected">--</span><span class="fee-actions"><button class="fee-add" type="button" data-fee="uncollectedFees">+</button><button class="fee-withdraw" id="collectFeesBtn" type="button">Sacar</button></span></div>
         <div class="metric-row no-btn" id="rowCollected"><span class="label">Taxas Coletadas</span><span class="value" id="metricCollected">--</span><button class="fee-add" type="button">+</button></div>
         <div class="metric-row no-btn" id="rowAge"><span class="label">Vida da Pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div>
@@ -563,6 +563,8 @@
       upper: 797.726412,
       solAmount: 18.6127605,
       btcAmount: 0.01735508,
+      initialSolBuyUsd: 3484.14363,
+      externalAddUsd: 58,
       uncollectedFees: 0.44,
       collectedFees: 12.70
     };
@@ -570,6 +572,7 @@
     const STORAGE_KEY = "wbtc_sol_pool_live_v3";
     const OLD_STORAGE_KEY = "wbtc_sol_pool_live_v2";
     const ACCIDENTAL_WITHDRAW_KEY = "wbtc_sol_pool_accidental_withdraw_fix";
+    const CAPITAL_LOG_KEY = "wbtc_sol_pool_capital_log_v1";
     const POOL_STARTED_AT = new Date("2026-10-13T01:45:00+09:00").getTime();
     const perMs = { "1h": 3600000, "4h": 14400000, "1d": 86400000 };
     const state = {
@@ -1065,7 +1068,7 @@
       setMetric("rowPnl", "metricPnl", usd(pnl) + " (" + pct(pnlPct) + ")", pnlTone);
       setMetric("rowCapital", "metricCapital", usd(POOL.capital));
       setMetric("rowUncollected", "metricUncollected", usd(state.uncollectedFees), "positive");
-      setMetric("rowCollected", "metricCollected", usd(state.collectedFees), "positive");
+      setMetric("rowCollected", "metricCollected", usd(state.collectedFees) + " (" + pct(state.collectedFees / POOL.capital) + ")", "positive");
       setMetric("rowAge", "metricAge", poolAge());
       $("solFill").style.width = (comp.solPct * 100).toFixed(2) + "%";
       $("solShare").textContent = (comp.solPct * 100).toFixed(1) + "%";
@@ -1155,7 +1158,7 @@
       state.uncollectedFees = 0;
       state.collectedFees += amount;
       saveState();
-      addHistory("fee", "Taxas sacadas " + usd(amount) + " · coletadas " + usd(state.collectedFees));
+      addHistory("fee", "Taxas sacadas " + usd(amount) + " · coletadas " + usd(state.collectedFees) + " (" + pct(state.collectedFees / POOL.capital) + ")");
       renderHeader();
       drawOverlay();
     });
@@ -1164,7 +1167,7 @@
       const liq = liquidity();
       const pnl = totalPositionValue() - POOL.capital;
       const comp = composition();
-      addHistory("snapshot", "Snapshot · Liquidez " + usd(liq) + " · PnL " + usd(pnl) + " · SOL " + (comp.solPct * 100).toFixed(1) + "% · WBTC " + (comp.btcPct * 100).toFixed(1) + "%");
+      addHistory("snapshot", "Snapshot · Liquidez " + usd(liq) + " · PnL " + usd(pnl) + " · Taxas " + usd(state.collectedFees) + " (" + pct(state.collectedFees / POOL.capital) + ") · SOL " + (comp.solPct * 100).toFixed(1) + "% · WBTC " + (comp.btcPct * 100).toFixed(1) + "%");
     });
 
     $("fullscreenBtn").addEventListener("click", async () => {
@@ -1195,6 +1198,18 @@
       });
       saveState();
     }
+    try {
+      const hasCapitalLog = state.history.some(item => String(item.text || "").includes("Capital investido: compra SOL"));
+      if (!hasCapitalLog && localStorage.getItem(CAPITAL_LOG_KEY) !== "1") {
+        state.history.unshift({
+          kind: "capital",
+          text: "Capital investido: compra SOL " + usd(POOL.initialSolBuyUsd) + " + aporte " + usd(POOL.externalAddUsd) + " = " + usd(POOL.capital),
+          ts: new Date().toISOString()
+        });
+        localStorage.setItem(CAPITAL_LOG_KEY, "1");
+        saveState();
+      }
+    } catch (err) {}
     renderHistory();
     resize();
     load();
