@@ -248,8 +248,8 @@
     .metric-row.negative .value { color: var(--red); }
 
     .fee-add {
-      width: 19px;
-      height: 19px;
+      width: 24px;
+      height: 24px;
       border: 1px solid rgba(39, 179, 141, .5);
       border-radius: 6px;
       background: rgba(39, 179, 141, .1);
@@ -257,6 +257,7 @@
       font-weight: 900;
       line-height: 1;
       cursor: pointer;
+      touch-action: manipulation;
     }
 
     .fee-add:hover { border-color: rgba(39, 179, 141, .8); }
@@ -270,7 +271,7 @@
 
     .fee-withdraw {
       min-width: 46px;
-      height: 19px;
+      height: 24px;
       border: 1px solid rgba(255, 255, 255, .32);
       border-radius: 6px;
       background: rgba(255, 255, 255, .08);
@@ -279,6 +280,7 @@
       font-weight: 900;
       line-height: 1;
       cursor: pointer;
+      touch-action: manipulation;
     }
 
     .fee-withdraw:hover { border-color: rgba(255, 255, 255, .65); }
@@ -384,6 +386,84 @@
 
     .history-item strong { color: var(--text); font-weight: 800; }
 
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      background: rgba(0, 0, 0, .62);
+      backdrop-filter: blur(7px);
+    }
+
+    .modal-backdrop[hidden] { display: none; }
+
+    .fee-modal {
+      width: min(340px, 100%);
+      border: 1px solid rgba(255, 255, 255, .2);
+      border-radius: 10px;
+      background: #0d1118;
+      box-shadow: 0 22px 50px rgba(0, 0, 0, .48);
+      padding: 14px;
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .fee-modal h2 {
+      margin: 0 0 6px;
+      color: var(--text);
+      font-size: .95rem;
+    }
+
+    .fee-modal p {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: .75rem;
+      line-height: 1.35;
+    }
+
+    .fee-modal input {
+      width: 100%;
+      height: 44px;
+      border: 1px solid rgba(255, 255, 255, .18);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .06);
+      color: var(--text);
+      padding: 0 12px;
+      font: 800 1rem "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      outline: none;
+    }
+
+    .fee-modal input:focus { border-color: rgba(39, 179, 141, .75); }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .modal-actions button {
+      min-height: 36px;
+      border-radius: 8px;
+      padding: 0 12px;
+      font-weight: 900;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .modal-actions .cancel {
+      border: 1px solid rgba(255, 255, 255, .16);
+      background: rgba(255, 255, 255, .06);
+      color: var(--muted);
+    }
+
+    .modal-actions .save {
+      border: 1px solid rgba(39, 179, 141, .7);
+      background: rgba(39, 179, 141, .18);
+      color: var(--green);
+    }
+
     .loading {
       position: absolute;
       left: 12px;
@@ -464,6 +544,18 @@
     </section>
   </main>
 
+  <div class="modal-backdrop" id="feeModal" hidden>
+    <form class="fee-modal" id="feeForm">
+      <h2 id="feeModalTitle">Adicionar taxa</h2>
+      <p>Digite o valor em dólar que ainda está pendente para coletar.</p>
+      <input id="feeInput" inputmode="decimal" autocomplete="off" placeholder="Ex: 1.25">
+      <div class="modal-actions">
+        <button class="cancel" id="feeCancel" type="button">Cancelar</button>
+        <button class="save" type="submit">Salvar</button>
+      </div>
+    </form>
+  </div>
+
   <script>
     const POOL = {
       capital: 3669.971423,
@@ -477,6 +569,7 @@
 
     const STORAGE_KEY = "wbtc_sol_pool_live_v3";
     const OLD_STORAGE_KEY = "wbtc_sol_pool_live_v2";
+    const ACCIDENTAL_WITHDRAW_KEY = "wbtc_sol_pool_accidental_withdraw_fix";
     const POOL_STARTED_AT = new Date("2026-10-13T01:45:00+09:00").getTime();
     const perMs = { "1h": 3600000, "4h": 14400000, "1d": 86400000 };
     const state = {
@@ -508,6 +601,23 @@
       if (Number.isFinite(Number(saved.collectedFees))) state.collectedFees = Number(saved.collectedFees);
       if (Number.isFinite(Number(saved.reinsertedFees))) state.collectedFees += Number(saved.reinsertedFees);
       if (Array.isArray(saved.history)) state.history = saved.history.slice(0, 80);
+    } catch (err) {}
+
+    try {
+      const alreadyFixed = localStorage.getItem(ACCIDENTAL_WITHDRAW_KEY) === "1";
+      const hasAccidentalLog = state.history.some(item => String(item.text || "").includes("Taxas sacadas $0.44"));
+      const looksAccidental = Math.abs(state.uncollectedFees) < 0.0001 && Math.abs(state.collectedFees - 13.14) < 0.01;
+      if (!alreadyFixed && hasAccidentalLog && looksAccidental) {
+        state.uncollectedFees = 0.44;
+        state.collectedFees = 12.70;
+        state.history.unshift({
+          kind: "fix",
+          text: "Correção automática · saque de $0.44 desfeito",
+          ts: new Date().toISOString()
+        });
+        localStorage.setItem(ACCIDENTAL_WITHDRAW_KEY, "1");
+        migratedState = true;
+      }
     } catch (err) {}
 
     function saveState() {
@@ -991,20 +1101,49 @@
       });
     });
 
-    function addFee(key) {
-      const value = prompt("Adicionar em " + feeLabel(key) + " (US$)", "");
-      if (value == null) return;
+    let activeFeeKey = null;
+
+    function openFeeModal(key) {
+      activeFeeKey = key;
+      $("feeModalTitle").textContent = "Adicionar em " + feeLabel(key);
+      $("feeInput").value = "";
+      $("feeModal").hidden = false;
+      setTimeout(() => $("feeInput").focus(), 80);
+    }
+
+    function closeFeeModal() {
+      $("feeModal").hidden = true;
+      activeFeeKey = null;
+    }
+
+    function addFeeValue(key, value) {
       const amount = Number(String(value).replace(",", "."));
-      if (!Number.isFinite(amount) || amount <= 0) return;
+      if (!Number.isFinite(amount) || amount <= 0) return false;
       state[key] += amount;
       saveState();
       addHistory("fee", feeLabel(key) + " +" + usd(amount) + " · total " + usd(state[key]));
       renderHeader();
       drawOverlay();
+      return true;
     }
 
     document.querySelectorAll(".fee-add[data-fee]").forEach(btn => {
-      btn.addEventListener("click", () => addFee(btn.dataset.fee));
+      btn.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        openFeeModal(btn.dataset.fee);
+      });
+    });
+
+    $("feeForm").addEventListener("submit", event => {
+      event.preventDefault();
+      if (!activeFeeKey) return;
+      if (addFeeValue(activeFeeKey, $("feeInput").value)) closeFeeModal();
+    });
+
+    $("feeCancel").addEventListener("click", closeFeeModal);
+    $("feeModal").addEventListener("click", event => {
+      if (event.target === $("feeModal")) closeFeeModal();
     });
 
     $("collectFeesBtn").addEventListener("click", () => {
