@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+  <title>IB · HOODX & MSTRX</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+  <style>
+    :root{
+      --bg:#080b10;--panel:#0e131c;--panel2:#111823;--line:#202a39;--line2:#2c394d;
+      --text:#eef2f7;--muted:#7f8a9d;--green:#21c79a;--red:#ef5d67;--accent:#f0a43c;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:"Space Grotesk",system-ui,sans-serif}
+    body{padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left))}
+    button,select,input{font:inherit}
+    .topbar{height:42px;display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .back{color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:9px;padding:7px 10px;font:600 11px "IBM Plex Mono",monospace}
+    .brand{font-weight:700;letter-spacing:.3px}.brand span{color:var(--accent)}
+    .live{margin-left:auto;display:flex;align-items:center;gap:6px;color:var(--muted);font:500 10px "IBM Plex Mono",monospace}
+    .led{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+    .led.on{background:var(--green);box-shadow:0 0 9px var(--green)}
+    .board{height:calc(100vh - 64px);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .asset{min-width:0;display:grid;grid-template-rows:minmax(250px,1fr) auto;gap:8px}
+    .chart-card,.data-card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:13px;overflow:hidden}
+    .chart-head{height:45px;display:flex;align-items:center;padding:0 12px;border-bottom:1px solid var(--line);gap:8px}
+    .symbol{font-size:15px;font-weight:700;letter-spacing:.5px}
+    .price{font:600 13px "IBM Plex Mono",monospace;margin-left:4px}
+    .change{font:600 10px "IBM Plex Mono",monospace;border-radius:5px;padding:3px 6px}
+    .change.up{color:var(--green);background:rgba(33,199,154,.1)}
+    .change.down{color:var(--red);background:rgba(239,93,103,.1)}
+    .tf{margin-left:auto;color:var(--muted);background:#0b1018;border:1px solid var(--line);border-radius:7px;padding:5px 6px;font:600 10px "IBM Plex Mono",monospace}
+    .chart{height:calc(100% - 45px);min-height:205px;position:relative}
+    .error{display:none;position:absolute;inset:0;place-items:center;text-align:center;color:var(--muted);font:500 11px/1.5 "IBM Plex Mono",monospace;padding:20px;background:rgba(8,11,16,.85);z-index:4}
+    .error.show{display:grid}
+    .data-card{padding:9px 11px 10px}
+    .data-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+    .data-title{color:var(--muted);font:500 9px "IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.8px}
+    .edit{border:1px solid var(--line2);color:var(--text);background:#0b1018;border-radius:7px;padding:4px 8px;cursor:pointer;font:600 9px "IBM Plex Mono",monospace}
+    .metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px}
+    .metric{min-width:0;padding:7px 0;border-top:1px solid rgba(127,138,157,.12)}
+    .metric:nth-child(-n+2){border-top:0}
+    .label{display:block;color:var(--muted);font:500 9px "IBM Plex Mono",monospace;margin-bottom:3px}
+    .value{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:600 12px "IBM Plex Mono",monospace}
+    .sub{display:block;color:var(--muted);font:500 9px "IBM Plex Mono",monospace;margin-top:2px}
+    .pnl.up{color:var(--green)}.pnl.down{color:var(--red)}
+    dialog{width:min(390px,calc(100vw - 28px));border:1px solid var(--line2);border-radius:14px;background:var(--panel2);color:var(--text);padding:0;box-shadow:0 20px 70px rgba(0,0,0,.65)}
+    dialog::backdrop{background:rgba(0,0,0,.72);backdrop-filter:blur(3px)}
+    .modal{padding:17px}.modal h2{font-size:16px;margin:0 0 15px}.fields{display:grid;gap:11px}
+    .field label{display:block;color:var(--muted);font:500 10px "IBM Plex Mono",monospace;margin-bottom:5px}
+    .field input{width:100%;background:#090d14;color:var(--text);border:1px solid var(--line2);border-radius:9px;padding:10px 11px;font:500 13px "IBM Plex Mono",monospace}
+    .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.actions button{border-radius:8px;padding:8px 13px;cursor:pointer;font:600 11px "IBM Plex Mono",monospace}
+    .cancel{background:transparent;color:var(--muted);border:1px solid var(--line)}.save{background:var(--accent);color:#1a1004;border:1px solid var(--accent)}
+    @media(max-width:760px){
+      body{overflow:auto}.board{height:auto;grid-template-columns:1fr}.asset{grid-template-rows:360px auto}.metrics{gap:0 12px}.topbar{position:sticky;top:0;z-index:8;background:var(--bg)}
+    }
+    @media(max-width:420px){.asset{grid-template-rows:325px auto}.metrics{grid-template-columns:1fr 1fr}.value{font-size:11px}.chart-head{padding:0 9px}}
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="back" href="index.html">← Terminal</a>
+    <div class="brand">IB · <span>Ações</span></div>
+    <div class="live"><i class="led" id="globalLed"></i><span id="globalStatus">conectando</span></div>
+  </div>
+
+  <main class="board" id="board"></main>
+
+  <dialog id="editDialog">
+    <form class="modal" id="editForm" method="dialog">
+      <h2 id="modalTitle">Editar compra</h2>
+      <div class="fields">
+        <div class="field"><label for="buyPrice">Preço médio de compra (US$)</label><input id="buyPrice" type="number" min="0" step="any" inputmode="decimal" required></div>
+        <div class="field"><label for="quantity">Quantidade comprada</label><input id="quantity" type="number" min="0" step="any" inputmode="decimal" required></div>
+      </div>
+      <div class="actions"><button class="cancel" value="cancel" type="button" id="cancelBtn">Cancelar</button><button class="save" value="save" type="submit">Salvar</button></div>
+    </form>
+  </dialog>
+
+<script>
+const ASSETS = [
+  {id:'hoodx', label:'HOODX', pair:'HOODX_USDT'},
+  {id:'mstrx', label:'MSTRX', pair:'MSTRX_USDT'}
+];
+const STORE_KEY='ib_xstocks_portfolio_v1';
+const state={fx:152, positions:{hoodx:{buy:0,qty:0},mstrx:{buy:0,qty:0}}, active:null};
+const runtime={};
+const fmtUSD=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtJPY=new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY',maximumFractionDigits:0});
+const nfmt=new Intl.NumberFormat('en-US',{maximumFractionDigits:8});
+
+function loadState(){try{const s=JSON.parse(localStorage.getItem(STORE_KEY)||'{}');if(s.positions)Object.assign(state.positions,s.positions)}catch(e){}}
+function saveState(){try{localStorage.setItem(STORE_KEY,JSON.stringify({positions:state.positions}))}catch(e){}}
+function money(v){if(!Number.isFinite(v))v=0;return {usd:fmtUSD.format(v),jpy:fmtJPY.format(v*state.fx)}}
+function signed(v,formatter){const a=formatter(Math.abs(v));return (v>0?'+':v<0?'−':'')+a}
+function frameHtml(a){return `<section class="asset" data-id="${a.id}">
+  <div class="chart-card">
+    <div class="chart-head"><strong class="symbol">${a.label}</strong><span class="price" data-role="price">—</span><span class="change" data-role="change">—</span><select class="tf" data-role="tf"><option value="15m">15m</option><option value="1h" selected>1h</option><option value="4h">4h</option><option value="1d">1D</option></select></div>
+    <div class="chart" data-role="chart"><div class="error" data-role="error">Carregando gráfico…</div></div>
+  </div>
+  <div class="data-card">
+    <div class="data-top"><span class="data-title">Sua posição</span><button class="edit" data-role="edit">Editar compra</button></div>
+    <div class="metrics">
+      <div class="metric"><span class="label">Compra</span><span class="value" data-role="buyUsd">—</span><span class="sub" data-role="buyJpy">—</span></div>
+      <div class="metric"><span class="label">Quantidade</span><span class="value" data-role="qty">—</span><span class="sub">${a.label}</span></div>
+      <div class="metric"><span class="label">Valor atual</span><span class="value" data-role="currentUsd">—</span><span class="sub" data-role="currentJpy">—</span></div>
+      <div class="metric"><span class="label">PnL</span><span class="value pnl" data-role="pnlUsd">—</span><span class="sub pnl" data-role="pnlJpy">—</span></div>
+    </div>
+  </div>
+</section>`}
+
+document.querySelector('#board').innerHTML=ASSETS.map(frameHtml).join('');
+loadState();
+
+function chartOptions(){return {
+  layout:{background:{color:'transparent'},textColor:'#7f8a9d',fontFamily:"'IBM Plex Mono', monospace",fontSize:10},
+  grid:{vertLines:{color:'rgba(32,42,57,.5)'},horzLines:{color:'rgba(32,42,57,.5)'}},
+  crosshair:{mode:LightweightCharts.CrosshairMode.Normal,vertLine:{color:'#63708966',style:2},horzLine:{color:'#63708966',style:2}},
+  rightPriceScale:{borderColor:'#202a39',scaleMargins:{top:.08,bottom:.18}},
+  timeScale:{borderColor:'#202a39',timeVisible:true,secondsVisible:false,rightOffset:4,barSpacing:7},
+  handleScroll:true,handleScale:true,autoSize:true
+}}
+
+const TF={"15m":"15m","1h":"1h","4h":"4h","1d":"1d"};
+function apiUrl(pair,tf,limit=500){return `https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=${pair}&interval=${TF[tf]}&limit=${limit}`}
+async function getJson(url){
+  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),9000);
+  try{const r=await fetch(url,{signal:ctrl.signal});if(!r.ok)throw Error(String(r.status));return await r.json()}finally{clearTimeout(timer)}
+}
+async function candles(pair,tf){
+  const url=apiUrl(pair,tf);
+  let d;try{d=await getJson(url)}catch(e){d=await getJson('https://api.allorigins.win/raw?url='+encodeURIComponent(url))}
+  if(!Array.isArray(d)||!d.length)throw Error('sem candles');
+  return d.map(k=>({time:+k[0],open:+k[5],high:+k[3],low:+k[4],close:+k[2]})).filter(x=>Number.isFinite(x.close)).sort((a,b)=>a.time-b.time)
+}
+
+function initAsset(a){
+  const root=document.querySelector(`[data-id="${a.id}"]`),chartEl=root.querySelector('[data-role="chart"]');
+  const chart=LightweightCharts.createChart(chartEl,chartOptions());
+  const series=chart.addCandlestickSeries({upColor:'#21c79a',downColor:'#ef5d67',borderVisible:false,wickUpColor:'#21c79a',wickDownColor:'#ef5d67'});
+  runtime[a.id]={root,chart,series,candles:[],price:0,open24:0,tf:'1h',ok:false};
+  root.querySelector('[data-role="tf"]').addEventListener('change',e=>{runtime[a.id].tf=e.target.value;loadChart(a)});
+  root.querySelector('[data-role="edit"]').addEventListener('click',()=>openEditor(a));
+  new ResizeObserver(()=>chart.resize(chartEl.clientWidth,chartEl.clientHeight)).observe(chartEl);
+  loadChart(a);
+}
+
+async function loadChart(a){
+  const r=runtime[a.id],err=r.root.querySelector('[data-role="error"]');err.textContent='Carregando gráfico…';err.classList.add('show');
+  try{r.candles=await candles(a.pair,r.tf);r.series.setData(r.candles);r.chart.timeScale().fitContent();const last=r.candles.at(-1);r.price=last.close;r.ok=true;err.classList.remove('show');renderAsset(a)}
+  catch(e){r.ok=false;err.textContent='Não foi possível carregar os candles agora. O painel tentará novamente.';err.classList.add('show')}
+  updateGlobalStatus();
+}
+
+function applyTick(a,price,changePct){
+  const r=runtime[a.id];if(!Number.isFinite(price)||price<=0)return;r.price=price;r.ok=true;
+  if(Number.isFinite(changePct))r.changePct=changePct;
+  const last=r.candles.at(-1);if(last){const now=Math.floor(Date.now()/1000),unit={"15m":900,"1h":3600,"4h":14400,"1d":86400}[r.tf],time=Math.floor(now/unit)*unit;
+    if(last.time===time){const c={...last,close:price,high:Math.max(last.high,price),low:Math.min(last.low,price)};r.candles[r.candles.length-1]=c;r.series.update(c)}
+    else if(time>last.time){const c={time,open:last.close,high:Math.max(last.close,price),low:Math.min(last.close,price),close:price};r.candles.push(c);r.series.update(c)}
+  }
+  renderAsset(a);updateGlobalStatus();
+}
+
+let socket,reconnectTimer;
+function connectTicker(){
+  clearTimeout(reconnectTimer);try{if(socket)socket.close()}catch(e){}
+  socket=new WebSocket('wss://api.gateio.ws/ws/v4/');
+  socket.onopen=()=>socket.send(JSON.stringify({time:Math.floor(Date.now()/1000),channel:'spot.tickers',event:'subscribe',payload:ASSETS.map(a=>a.pair)}));
+  socket.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.channel!=='spot.tickers'||m.event!=='update')return;const x=m.result||{},a=ASSETS.find(z=>z.pair===x.currency_pair);if(a)applyTick(a,+x.last,+x.change_percentage)}catch(_){} };
+  socket.onerror=()=>{try{socket.close()}catch(e){}};
+  socket.onclose=()=>{reconnectTimer=setTimeout(connectTicker,3500)};
+}
+
+function renderAsset(a){
+  const r=runtime[a.id],p=state.positions[a.id]||{buy:0,qty:0},root=r.root,price=r.price||0;
+  root.querySelector('[data-role="price"]').textContent=price?fmtUSD.format(price):'—';
+  const ch=root.querySelector('[data-role="change"]'),cp=Number.isFinite(r.changePct)?r.changePct:null;
+  ch.textContent=cp===null?'—':`${cp>=0?'+':''}${cp.toFixed(2)}%`;ch.className='change '+(cp!==null&&cp>=0?'up':'down');
+  const buy=money(+p.buy||0),current=money(price*(+p.qty||0)),cost=(+p.buy||0)*(+p.qty||0),pnl=price*(+p.qty||0)-cost,pct=cost?pnl/cost*100:0;
+  root.querySelector('[data-role="buyUsd"]').textContent=buy.usd;root.querySelector('[data-role="buyJpy"]').textContent=buy.jpy;
+  root.querySelector('[data-role="qty"]').textContent=nfmt.format(+p.qty||0);
+  root.querySelector('[data-role="currentUsd"]').textContent=current.usd;root.querySelector('[data-role="currentJpy"]').textContent=current.jpy;
+  const pu=root.querySelector('[data-role="pnlUsd"]'),pj=root.querySelector('[data-role="pnlJpy"]'),cls='pnl '+(pnl>=0?'up':'down');pu.className='value '+cls;pj.className='sub '+cls;
+  pu.textContent=`${signed(pnl,fmtUSD.format.bind(fmtUSD))} · ${pct>=0?'+':''}${pct.toFixed(2)}%`;pj.textContent=signed(pnl*state.fx,fmtJPY.format.bind(fmtJPY));
+}
+
+function renderAll(){ASSETS.forEach(renderAsset)}
+function updateGlobalStatus(){const n=ASSETS.filter(a=>runtime[a.id]?.ok).length,led=document.querySelector('#globalLed'),txt=document.querySelector('#globalStatus');led.classList.toggle('on',n===ASSETS.length);txt.textContent=n===ASSETS.length?'ao vivo · 1s':n?'parcial':'conectando'}
+
+const dialog=document.querySelector('#editDialog'),form=document.querySelector('#editForm');
+function openEditor(a){state.active=a.id;const p=state.positions[a.id];document.querySelector('#modalTitle').textContent=`Editar compra · ${a.label}`;document.querySelector('#buyPrice').value=p.buy||'';document.querySelector('#quantity').value=p.qty||'';dialog.showModal()}
+document.querySelector('#cancelBtn').addEventListener('click',()=>dialog.close());
+form.addEventListener('submit',e=>{e.preventDefault();if(!state.active)return;state.positions[state.active]={buy:Math.max(0,+document.querySelector('#buyPrice').value||0),qty:Math.max(0,+document.querySelector('#quantity').value||0)};saveState();dialog.close();renderAll()});
+
+async function updateFx(){try{const d=await getJson('https://api.frankfurter.app/latest?from=USD&to=JPY');if(d?.rates?.JPY)state.fx=+d.rates.JPY}catch(e){}renderAll()}
+ASSETS.forEach(initAsset);connectTicker();updateFx();
+setInterval(renderAll,1000);
+setInterval(()=>ASSETS.forEach(a=>loadChart(a)),60000);
+</script>
+</body>
+</html>
