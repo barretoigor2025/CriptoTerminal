@@ -555,8 +555,8 @@
       initialSolBuyUsd: 3484.14363,
       externalAddUsd: 58,
       uncollectedFees: 0,
-      collectedFees: 18.07,
-      reinvestedFees: 18.07,
+      collectedFees: 23.95,
+      reinvestedFees: 23.95,
       newExternalCapital: 0,
       whirlpool: "B5EwJVDuAauzUEEdwvbuXzbFFgEYnUqqS37TUM1c4PQA",
       position: "Dct3DTn9bquGqi7TETpvDy1geYfwSBPfUC12NkYimfD8",
@@ -571,6 +571,7 @@
     const CLEAR_DEFAULT_FEES_KEY = "wbtc_sol_pool_clear_default_044_v1";
     const REINVESTED_FEES_KEY = "wbtc_sol_pool_reinvested_fees_v1";
     const REINVESTED_LOG_KEY = "wbtc_sol_pool_reinvested_log_v1";
+    const CORRECT_2595_FEES_KEY = "wbtc_sol_pool_correct_2595_to_2395_v1";
     const POOL_STARTED_AT = new Date("2026-10-13T01:45:00+09:00").getTime();
     const perMs = { "1h": 3600000, "4h": 14400000, "1d": 86400000 };
     const state = {
@@ -633,6 +634,24 @@
         state.reinvestedFees += Number(saved.reinsertedFees);
       }
       if (Array.isArray(saved.history)) state.history = saved.history.slice(0, 80);
+    } catch (err) {}
+
+    try {
+      const shouldCorrect2595 = localStorage.getItem(CORRECT_2595_FEES_KEY) !== "1";
+      const collectedIs2595 = Math.abs(state.collectedFees - 25.95) < 0.01;
+      const reinvestedIs2595 = Math.abs(state.reinvestedFees - 25.95) < 0.01;
+      if (shouldCorrect2595 && (collectedIs2595 || reinvestedIs2595)) {
+        if (collectedIs2595) state.collectedFees = 23.95;
+        if (reinvestedIs2595) state.reinvestedFees = 23.95;
+        state.history.unshift({
+          kind: "fee",
+          text: "Correcao manual: taxas coletadas/reinvestidas ajustadas de $25.95 para $23.95",
+          ts: new Date().toISOString()
+        });
+        state.history = state.history.slice(0, 80);
+        localStorage.setItem(CORRECT_2595_FEES_KEY, "1");
+        migratedState = true;
+      }
     } catch (err) {}
 
     try {
