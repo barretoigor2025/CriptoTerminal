@@ -572,7 +572,7 @@
     const REINVESTED_FEES_KEY = "wbtc_sol_pool_reinvested_fees_v1";
     const REINVESTED_LOG_KEY = "wbtc_sol_pool_reinvested_log_v1";
     const CORRECT_2595_FEES_KEY = "wbtc_sol_pool_correct_2595_to_2395_v1";
-    const POOL_STARTED_AT = new Date("2026-10-13T01:45:00+09:00").getTime();
+    const POOL_STARTED_AT = new Date("2026-10-08T03:40:00+09:00").getTime();
     const perMs = { "1h": 3600000, "4h": 14400000, "1d": 86400000 };
     const state = {
       tf: "1h",
@@ -1513,7 +1513,7 @@
     if (!state.history.length) {
       state.history.push({
         kind: "start",
-        text: "Pool criada em 13/10/2026 01:45 JST",
+        text: "Pool criada em 08/10/2026 03:40 JST",
         ts: new Date(POOL_STARTED_AT).toISOString()
       });
       saveState();
