@@ -24,6 +24,9 @@
     .live{margin-left:auto;display:flex;align-items:center;gap:6px;color:var(--muted);font:500 10px "IBM Plex Mono",monospace}
     .led{width:7px;height:7px;border-radius:50%;background:var(--muted)}
     .led.on{background:var(--green);box-shadow:0 0 9px var(--green)}
+    .screen-btn{height:27px;display:flex;align-items:center;gap:5px;color:var(--text);background:var(--panel);border:1px solid var(--line2);border-radius:7px;padding:0 8px;cursor:pointer;font:600 9px "IBM Plex Mono",monospace}
+    .screen-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8}
+    .screen-btn:hover{border-color:var(--accent);color:var(--accent)}
     .board{height:calc(100dvh - 55px);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;overflow:hidden}
     .asset{min-width:0;min-height:0;display:grid;grid-template-rows:minmax(0,1fr) auto;gap:6px;overflow:hidden}
     .chart-card,.data-card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:10px;overflow:hidden}
@@ -59,7 +62,7 @@
     .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.actions button{border-radius:8px;padding:8px 13px;cursor:pointer;font:600 11px "IBM Plex Mono",monospace}
     .cancel{background:transparent;color:var(--muted);border:1px solid var(--line)}.save{background:var(--accent);color:#1a1004;border:1px solid var(--accent)}
     @media(max-width:760px){
-      .board{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.asset{gap:4px}.chart-head{padding:0 5px;gap:3px}.symbol{font-size:11px}.price{font-size:8px}.price-jpy{display:none}.change{font-size:7px;padding:2px 3px}.tf{font-size:7px;padding:3px 2px}.data-card{padding:4px 5px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 5px}.metric{padding:3px 0}.metric:nth-child(-n+2){border-top:0}.label,.sub{font-size:6.8px}.value{font-size:8px}.data-title{font-size:7px}.edit{font-size:7px;padding:2px 4px}
+      .board{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.asset{gap:4px}.chart-head{padding:0 5px;gap:3px}.symbol{font-size:11px}.price{font-size:8px}.price-jpy{display:none}.change{font-size:7px;padding:2px 3px}.tf{font-size:7px;padding:3px 2px}.data-card{padding:4px 5px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 5px}.metric{padding:3px 0}.metric:nth-child(-n+2){border-top:0}.label,.sub{font-size:6.8px}.value{font-size:8px}.data-title{font-size:7px}.edit{font-size:7px;padding:2px 4px}.screen-btn{width:29px;padding:0;justify-content:center}.screen-btn span{display:none}
     }
     @media(max-height:550px){.topbar{height:28px;margin-bottom:4px}.board{height:calc(100dvh - 43px)}.chart-head{height:32px}.chart{height:calc(100% - 32px)}.metric{padding:2px 0}.data-top{margin-bottom:0}}
   </style>
@@ -69,6 +72,9 @@
     <a class="back" href="index.html">← Terminal</a>
     <div class="brand">IB · <span>Ações</span></div>
     <div class="live"><i class="led" id="globalLed"></i><span id="globalStatus">conectando</span></div>
+    <button class="screen-btn" id="screenBtn" type="button" title="Tela cheia" aria-label="Ativar tela cheia">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg><span>Tela cheia</span>
+    </button>
   </div>
 
   <main class="board" id="board"></main>
@@ -207,6 +213,24 @@ const dialog=document.querySelector('#editDialog'),form=document.querySelector('
 function openEditor(a){state.active=a.id;const p=state.positions[a.id];document.querySelector('#modalTitle').textContent=`Editar compra · ${a.label}`;document.querySelector('#buyPrice').value=p.buy||'';document.querySelector('#quantity').value=p.qty||'';dialog.showModal()}
 document.querySelector('#cancelBtn').addEventListener('click',()=>dialog.close());
 form.addEventListener('submit',e=>{e.preventDefault();if(!state.active)return;const buy=Math.max(0,+document.querySelector('#buyPrice').value||0),qty=Math.max(0,+document.querySelector('#quantity').value||0),old=state.positions[state.active];state.positions[state.active]={...old,buy,qty,paid:buy*qty};saveState();dialog.close();renderAll()});
+
+const screenBtn=document.querySelector('#screenBtn');
+async function toggleFullscreen(){
+  try{
+    if(!document.fullscreenElement&&!document.webkitFullscreenElement){
+      const el=document.documentElement;
+      if(el.requestFullscreen)await el.requestFullscreen();else if(el.webkitRequestFullscreen)el.webkitRequestFullscreen();
+    }else if(document.exitFullscreen)await document.exitFullscreen();else if(document.webkitExitFullscreen)document.webkitExitFullscreen();
+  }catch(e){}
+}
+function syncFullscreenButton(){
+  const active=!!(document.fullscreenElement||document.webkitFullscreenElement),label=screenBtn.querySelector('span');
+  label.textContent=active?'Sair da tela cheia':'Tela cheia';screenBtn.title=label.textContent;screenBtn.setAttribute('aria-label',label.textContent);
+  screenBtn.querySelector('path').setAttribute('d',active?'M9 9H3V3M15 9h6V3M9 15H3v6M15 15h6v6':'M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5');
+  setTimeout(()=>window.dispatchEvent(new Event('resize')),80);
+}
+screenBtn.addEventListener('click',toggleFullscreen);
+document.addEventListener('fullscreenchange',syncFullscreenButton);document.addEventListener('webkitfullscreenchange',syncFullscreenButton);
 
 async function updateFx(){try{const d=await getJson('https://api.frankfurter.app/latest?from=USD&to=JPY');if(d?.rates?.JPY)state.fx=+d.rates.JPY}catch(e){}renderAll()}
 ASSETS.forEach(initAsset);connectTicker();updateFx();
