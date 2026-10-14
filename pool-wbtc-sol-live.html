@@ -514,6 +514,7 @@
         <div class="metric-row no-btn" id="rowPnl"><span class="label">PnL</span><span class="value" id="metricPnl">--</span><button class="fee-add" type="button">+</button></div>
         <div class="metric-row no-btn" id="rowCapital"><span class="label">Capital do Bolso</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div>
         <div class="metric-row" id="rowNewCapital"><span class="label">Aporte Novo</span><span class="value" id="metricNewCapital">--</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div>
+        <div class="metric-row no-btn" id="rowNewCapitalPnl"><span class="label">PnL Aporte Novo</span><span class="value" id="metricNewCapitalPnl">--</span><button class="fee-add" type="button">+</button></div>
         <div class="metric-row no-btn" id="rowReinvested"><span class="label">Taxas Reinvestidas</span><span class="value" id="metricReinvested">--</span><button class="fee-add" type="button">+</button></div>
         <div class="metric-row" id="rowUncollected"><span class="label">Taxas Não Coletadas</span><span class="value" id="metricUncollected">--</span><span class="fee-actions"><button class="fee-add" type="button" data-fee="uncollectedFees">Modificar</button><button class="fee-withdraw" id="collectFeesBtn" type="button">Sacar</button></span></div>
         <div class="metric-row no-btn" id="rowCollected"><span class="label">Taxas Coletadas</span><span class="value" id="metricCollected">--</span><button class="fee-add" type="button">+</button></div>
@@ -599,6 +600,7 @@
       collectedFees: POOL.collectedFees,
       reinvestedFees: POOL.reinvestedFees,
       newExternalCapital: POOL.newExternalCapital,
+      newCapitalLots: [],
       history: []
     };
 
@@ -617,6 +619,15 @@
       if (Number.isFinite(Number(saved.collectedFees))) state.collectedFees = Number(saved.collectedFees);
       if (Number.isFinite(Number(saved.reinvestedFees))) state.reinvestedFees = Number(saved.reinvestedFees);
       if (Number.isFinite(Number(saved.newExternalCapital))) state.newExternalCapital = Number(saved.newExternalCapital);
+      if (Array.isArray(saved.newCapitalLots)) {
+        state.newCapitalLots = saved.newCapitalLots
+          .map(item => ({
+            amount: Number(item.amount) || 0,
+            share: Number(item.share) || 0,
+            ts: item.ts || new Date().toISOString()
+          }))
+          .filter(item => item.amount > 0 && item.share > 0);
+      }
       if (Number.isFinite(Number(saved.reinsertedFees))) {
         state.collectedFees += Number(saved.reinsertedFees);
         state.reinvestedFees += Number(saved.reinsertedFees);
@@ -658,6 +669,7 @@
           collectedFees: state.collectedFees,
           reinvestedFees: state.reinvestedFees,
           newExternalCapital: state.newExternalCapital,
+          newCapitalLots: state.newCapitalLots.slice(0, 40),
           history: state.history.slice(0, 80)
         }));
       } catch (err) {}
@@ -1203,6 +1215,15 @@
       return liquidity() + displayedUncollectedFees() + availableCollectedFees();
     }
 
+    function newCapitalCurrentValue() {
+      const liq = liquidity();
+      return state.newCapitalLots.reduce((total, item) => total + liq * item.share, 0);
+    }
+
+    function newCapitalPnl() {
+      return newCapitalCurrentValue() - state.newExternalCapital;
+    }
+
     function composition() {
       const solValue = state.onchain.solAmount * state.solUsd;
       const btcValue = state.onchain.btcAmount * state.btcUsd;
@@ -1312,6 +1333,8 @@
       setMetric("rowPnl", "metricPnl", usd(pnl) + " (" + pct(pnlPct) + ")", pnlTone);
       setMetric("rowCapital", "metricCapital", usd(capital));
       setMetric("rowNewCapital", "metricNewCapital", usd(state.newExternalCapital), "positive");
+      const newPnl = newCapitalPnl();
+      setMetric("rowNewCapitalPnl", "metricNewCapitalPnl", usd(newPnl) + " (" + pct(state.newExternalCapital ? newPnl / state.newExternalCapital : 0) + ")", newPnl >= 0 ? "positive" : "negative");
       setMetric("rowReinvested", "metricReinvested", usd(state.reinvestedFees), "positive");
       setMetric("rowUncollected", "metricUncollected", pendingLabel, "positive");
       setMetric("rowCollected", "metricCollected", usd(state.collectedFees) + " (" + pct(state.collectedFees / externalCapital()) + ")", "positive");
@@ -1379,6 +1402,13 @@
     function addExternalCapitalValue(key, value) {
       const amount = Number(String(value).replace(",", "."));
       if (!Number.isFinite(amount) || amount <= 0) return false;
+      const liq = Math.max(liquidity(), amount);
+      state.newCapitalLots.unshift({
+        amount,
+        share: Math.min(1, amount / liq),
+        ts: new Date().toISOString()
+      });
+      state.newCapitalLots = state.newCapitalLots.slice(0, 40);
       state[key] += amount;
       saveState();
       addHistory("capital", "Aporte novo +" + usd(amount) + " · capital do bolso " + usd(externalCapital()));
