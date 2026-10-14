@@ -518,6 +518,7 @@
         <div class="metric-row no-btn" id="rowReinvested"><span class="label">Taxas Reinvestidas</span><span class="value" id="metricReinvested">--</span><button class="fee-add" type="button">+</button></div>
         <div class="metric-row" id="rowUncollected"><span class="label">Taxas Não Coletadas</span><span class="value" id="metricUncollected">--</span><span class="fee-actions"><button class="fee-add" type="button" data-fee="uncollectedFees">Modificar</button><button class="fee-withdraw" id="collectFeesBtn" type="button">Sacar</button></span></div>
         <div class="metric-row no-btn" id="rowCollected"><span class="label">Taxas Coletadas</span><span class="value" id="metricCollected">--</span><button class="fee-add" type="button">+</button></div>
+        <div class="metric-row no-btn" id="rowFeeApr"><span class="label">APR Taxas</span><span class="value" id="metricFeeApr">--</span><button class="fee-add" type="button">+</button></div>
         <div class="metric-row no-btn" id="rowAge"><span class="label">Vida da Pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div>
         </div>
         <div class="allocation-card" id="allocationCard" aria-label="Composição da pool">
@@ -782,6 +783,10 @@
       const minutes = Math.floor(totalSeconds % 3600 / 60);
       const seconds = totalSeconds % 60;
       return days + "d " + String(hours).padStart(2, "0") + "h " + String(minutes).padStart(2, "0") + "m " + String(seconds).padStart(2, "0") + "s";
+    }
+
+    function poolAgeDays() {
+      return Math.max(0, Date.now() - POOL_STARTED_AT) / 86400000;
     }
 
     function feeLabel(key) {
@@ -1226,6 +1231,17 @@
       return state.uncollectedFees;
     }
 
+    function generatedFees() {
+      return state.collectedFees + displayedUncollectedFees();
+    }
+
+    function feeApr() {
+      const days = poolAgeDays();
+      const capital = externalCapital();
+      if (!days || !capital) return 0;
+      return generatedFees() / capital * (365 / days);
+    }
+
     function liquidity() {
       return state.onchain.solAmount * state.solUsd + state.onchain.btcAmount * state.btcUsd;
     }
@@ -1357,6 +1373,7 @@
       setMetric("rowReinvested", "metricReinvested", usd(state.reinvestedFees), "positive");
       setMetric("rowUncollected", "metricUncollected", pendingLabel, "positive");
       setMetric("rowCollected", "metricCollected", usd(state.collectedFees) + " (" + pct(state.collectedFees / externalCapital()) + ")", "positive");
+      setMetric("rowFeeApr", "metricFeeApr", pct(feeApr()) + " a.a.", "positive");
       setMetric("rowAge", "metricAge", poolAge());
       $("solFill").style.width = (comp.solPct * 100).toFixed(2) + "%";
       $("solShare").textContent = (comp.solPct * 100).toFixed(1) + "%";
