@@ -235,7 +235,7 @@
 
     .metric-row {
       display: grid;
-      grid-template-columns: minmax(70px, 1fr) minmax(116px, auto) 72px;
+      grid-template-columns: minmax(72px, 1fr) minmax(96px, auto) 112px;
       align-items: center;
       gap: 4px;
       min-height: 19px;
@@ -260,28 +260,33 @@
     .metric-row.positive .value { color: var(--green); }
     .metric-row.negative .value { color: var(--red); }
 
-    .fee-add {
-      width: 21px;
+    .fee-add,
+    .capital-add {
+      min-width: 21px;
       height: 21px;
       border: 1px solid rgba(39, 179, 141, .5);
       border-radius: 6px;
       background: rgba(39, 179, 141, .1);
       color: var(--green);
+      padding: 0 6px;
+      font-size: .56rem;
       font-weight: 900;
       line-height: 1;
       cursor: pointer;
       touch-action: manipulation;
     }
 
-    .fee-add:hover { border-color: rgba(39, 179, 141, .8); }
-    .metric-row.no-btn .fee-add { visibility: hidden; pointer-events: none; }
+    .fee-add:hover,
+    .capital-add:hover { border-color: rgba(39, 179, 141, .8); }
+    .metric-row.no-btn .fee-add,
+    .metric-row.no-btn .capital-add { visibility: hidden; pointer-events: none; }
 
     .fee-actions {
       display: inline-flex;
       align-items: center;
       justify-content: flex-end;
       gap: 4px;
-      width: 72px;
+      width: 112px;
     }
 
     .fee-withdraw {
@@ -507,8 +512,10 @@
         <div class="card-title">Pool WBTC/SOL</div>
         <div class="metric-row no-btn" id="rowLiquidity"><span class="label">Liquidez</span><span class="value" id="metricLiquidity">--</span><button class="fee-add" type="button">+</button></div>
         <div class="metric-row no-btn" id="rowPnl"><span class="label">PnL</span><span class="value" id="metricPnl">--</span><button class="fee-add" type="button">+</button></div>
-        <div class="metric-row no-btn" id="rowCapital"><span class="label">Capital Investido</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div>
-        <div class="metric-row" id="rowUncollected"><span class="label">Taxas Não Coletadas</span><span class="value" id="metricUncollected">--</span><span class="fee-actions"><button class="fee-add" type="button" data-fee="uncollectedFees">+</button><button class="fee-withdraw" id="collectFeesBtn" type="button">Sacar</button></span></div>
+        <div class="metric-row no-btn" id="rowCapital"><span class="label">Capital do Bolso</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div>
+        <div class="metric-row" id="rowNewCapital"><span class="label">Aporte Novo</span><span class="value" id="metricNewCapital">--</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div>
+        <div class="metric-row no-btn" id="rowReinvested"><span class="label">Taxas Reinvestidas</span><span class="value" id="metricReinvested">--</span><button class="fee-add" type="button">+</button></div>
+        <div class="metric-row" id="rowUncollected"><span class="label">Taxas Não Coletadas</span><span class="value" id="metricUncollected">--</span><span class="fee-actions"><button class="fee-add" type="button" data-fee="uncollectedFees">Modificar</button><button class="fee-withdraw" id="collectFeesBtn" type="button">Sacar</button></span></div>
         <div class="metric-row no-btn" id="rowCollected"><span class="label">Taxas Coletadas</span><span class="value" id="metricCollected">--</span><button class="fee-add" type="button">+</button></div>
         <div class="metric-row no-btn" id="rowAge"><span class="label">Vida da Pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div>
         </div>
@@ -527,8 +534,8 @@
 
   <div class="modal-backdrop" id="feeModal" hidden>
     <form class="fee-modal" id="feeForm">
-      <h2 id="feeModalTitle">Adicionar taxa</h2>
-      <p>Digite o valor em dólar que ainda está pendente para coletar.</p>
+      <h2 id="feeModalTitle">Modificar taxa</h2>
+      <p id="feeModalText">Digite o valor em dólar que ainda está pendente para coletar.</p>
       <input id="feeInput" inputmode="decimal" autocomplete="off" placeholder="Ex: 1.25">
       <div class="modal-actions">
         <button class="cancel" id="feeCancel" type="button">Cancelar</button>
@@ -549,6 +556,7 @@
       uncollectedFees: 0,
       collectedFees: 18.07,
       reinvestedFees: 18.07,
+      newExternalCapital: 0,
       whirlpool: "B5EwJVDuAauzUEEdwvbuXzbFFgEYnUqqS37TUM1c4PQA",
       position: "Dct3DTn9bquGqi7TETpvDy1geYfwSBPfUC12NkYimfD8",
       positionMint: "6fXZAfCGfgqTeK1NjcBbUU8pG8LJtk7oQnZTmSwR5TQf",
@@ -590,6 +598,7 @@
       uncollectedFees: POOL.uncollectedFees,
       collectedFees: POOL.collectedFees,
       reinvestedFees: POOL.reinvestedFees,
+      newExternalCapital: POOL.newExternalCapital,
       history: []
     };
 
@@ -607,6 +616,7 @@
       if (Number.isFinite(Number(saved.uncollectedFees))) state.uncollectedFees = Number(saved.uncollectedFees);
       if (Number.isFinite(Number(saved.collectedFees))) state.collectedFees = Number(saved.collectedFees);
       if (Number.isFinite(Number(saved.reinvestedFees))) state.reinvestedFees = Number(saved.reinvestedFees);
+      if (Number.isFinite(Number(saved.newExternalCapital))) state.newExternalCapital = Number(saved.newExternalCapital);
       if (Number.isFinite(Number(saved.reinsertedFees))) {
         state.collectedFees += Number(saved.reinsertedFees);
         state.reinvestedFees += Number(saved.reinsertedFees);
@@ -647,6 +657,7 @@
           uncollectedFees: state.uncollectedFees,
           collectedFees: state.collectedFees,
           reinvestedFees: state.reinvestedFees,
+          newExternalCapital: state.newExternalCapital,
           history: state.history.slice(0, 80)
         }));
       } catch (err) {}
@@ -1158,8 +1169,16 @@
       return last ? last.close : 0;
     }
 
+    function externalCapital() {
+      return POOL.capital + state.newExternalCapital;
+    }
+
+    function workingCapital() {
+      return externalCapital() + state.reinvestedFees;
+    }
+
     function investedCapital() {
-      return POOL.capital + state.reinvestedFees;
+      return externalCapital();
     }
 
     function availableCollectedFees() {
@@ -1173,7 +1192,7 @@
     }
 
     function displayedUncollectedFees() {
-      return Math.max(state.uncollectedFees, onchainUncollectedFees());
+      return state.uncollectedFees;
     }
 
     function liquidity() {
@@ -1286,15 +1305,16 @@
       const pnlPct = capital ? pnl / capital : 0;
       const pnlTone = pnl >= 0 ? "positive" : "negative";
       const comp = composition();
-      const autoFees = onchainUncollectedFees();
       const pendingFees = displayedUncollectedFees();
-      const pendingLabel = usd(pendingFees) + (autoFees > state.uncollectedFees && autoFees > 0 ? " auto" : "");
+      const pendingLabel = usd(pendingFees);
 
       setMetric("rowLiquidity", "metricLiquidity", liquidityLabel(liq));
       setMetric("rowPnl", "metricPnl", usd(pnl) + " (" + pct(pnlPct) + ")", pnlTone);
       setMetric("rowCapital", "metricCapital", usd(capital));
+      setMetric("rowNewCapital", "metricNewCapital", usd(state.newExternalCapital), "positive");
+      setMetric("rowReinvested", "metricReinvested", usd(state.reinvestedFees), "positive");
       setMetric("rowUncollected", "metricUncollected", pendingLabel, "positive");
-      setMetric("rowCollected", "metricCollected", usd(state.collectedFees) + " (" + pct(state.collectedFees / POOL.capital) + ")", "positive");
+      setMetric("rowCollected", "metricCollected", usd(state.collectedFees) + " (" + pct(state.collectedFees / externalCapital()) + ")", "positive");
       setMetric("rowAge", "metricAge", poolAge());
       $("solFill").style.width = (comp.solPct * 100).toFixed(2) + "%";
       $("solShare").textContent = (comp.solPct * 100).toFixed(1) + "%";
@@ -1318,27 +1338,50 @@
       });
     });
 
-    let activeFeeKey = null;
+    let activeModal = null;
 
     function openFeeModal(key) {
-      activeFeeKey = key;
-      $("feeModalTitle").textContent = "Adicionar em " + feeLabel(key);
+      activeModal = { type: "setFee", key };
+      $("feeModalTitle").textContent = "Modificar " + feeLabel(key);
+      $("feeModalText").textContent = "Digite o valor total em dólar que aparece agora como taxa pendente na Orca.";
+      $("feeInput").value = state[key] ? String(state[key].toFixed(2)) : "";
+      $("feeInput").placeholder = "Ex: 7.33";
+      $("feeModal").hidden = false;
+      setTimeout(() => $("feeInput").focus(), 80);
+    }
+
+    function openCapitalModal(key) {
+      activeModal = { type: "addCapital", key };
+      $("feeModalTitle").textContent = "Adicionar aporte novo";
+      $("feeModalText").textContent = "Digite quanto dinheiro novo, vindo de fora da pool, voce colocou na liquidez.";
       $("feeInput").value = "";
+      $("feeInput").placeholder = "Ex: 1000";
       $("feeModal").hidden = false;
       setTimeout(() => $("feeInput").focus(), 80);
     }
 
     function closeFeeModal() {
       $("feeModal").hidden = true;
-      activeFeeKey = null;
+      activeModal = null;
     }
 
-    function addFeeValue(key, value) {
+    function setFeeValue(key, value) {
+      const amount = Number(String(value).replace(",", "."));
+      if (!Number.isFinite(amount) || amount < 0) return false;
+      state[key] = amount;
+      saveState();
+      addHistory("fee", feeLabel(key) + " definida em " + usd(amount));
+      renderHeader();
+      drawOverlay();
+      return true;
+    }
+
+    function addExternalCapitalValue(key, value) {
       const amount = Number(String(value).replace(",", "."));
       if (!Number.isFinite(amount) || amount <= 0) return false;
       state[key] += amount;
       saveState();
-      addHistory("fee", feeLabel(key) + " +" + usd(amount) + " · total " + usd(state[key]));
+      addHistory("capital", "Aporte novo +" + usd(amount) + " · capital do bolso " + usd(externalCapital()));
       renderHeader();
       drawOverlay();
       return true;
@@ -1352,10 +1395,21 @@
       });
     });
 
+    document.querySelectorAll(".capital-add[data-capital]").forEach(btn => {
+      btn.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        openCapitalModal(btn.dataset.capital);
+      });
+    });
+
     $("feeForm").addEventListener("submit", event => {
       event.preventDefault();
-      if (!activeFeeKey) return;
-      if (addFeeValue(activeFeeKey, $("feeInput").value)) closeFeeModal();
+      if (!activeModal) return;
+      const ok = activeModal.type === "setFee"
+        ? setFeeValue(activeModal.key, $("feeInput").value)
+        : addExternalCapitalValue(activeModal.key, $("feeInput").value);
+      if (ok) closeFeeModal();
     });
 
     $("feeCancel").addEventListener("click", closeFeeModal);
@@ -1373,7 +1427,7 @@
       state.collectedFees += amount;
       state.reinvestedFees += amount;
       saveState();
-      addHistory("fee", "Taxas sacadas/reinvestidas " + usd(amount) + " · coletadas " + usd(state.collectedFees) + " (" + pct(state.collectedFees / POOL.capital) + ") · capital " + usd(investedCapital()));
+      addHistory("fee", "Taxas sacadas/reinvestidas " + usd(amount) + " · coletadas " + usd(state.collectedFees) + " (" + pct(state.collectedFees / externalCapital()) + ") · reinvestidas " + usd(state.reinvestedFees) + " · capital em trabalho " + usd(workingCapital()));
       renderHeader();
       drawOverlay();
     });
@@ -1383,7 +1437,7 @@
         const liq = liquidity();
         const pnl = totalPositionValue() - investedCapital();
         const comp = composition();
-        addHistory("snapshot", "Snapshot · Liquidez " + usd(liq) + " · PnL jornada " + usd(pnl) + " · Capital " + usd(investedCapital()) + " · Taxas " + usd(state.collectedFees) + " (" + pct(state.collectedFees / POOL.capital) + ") · SOL " + (comp.solPct * 100).toFixed(1) + "% · WBTC " + (comp.btcPct * 100).toFixed(1) + "% · " + state.onchain.source);
+        addHistory("snapshot", "Snapshot · Liquidez " + usd(liq) + " · PnL jornada " + usd(pnl) + " · Capital do bolso " + usd(externalCapital()) + " · Taxas " + usd(state.collectedFees) + " (" + pct(state.collectedFees / externalCapital()) + ") · SOL " + (comp.solPct * 100).toFixed(1) + "% · WBTC " + (comp.btcPct * 100).toFixed(1) + "% · " + state.onchain.source);
       });
     }
 
@@ -1420,7 +1474,7 @@
       if (!hasCapitalLog && localStorage.getItem(CAPITAL_LOG_KEY) !== "1") {
         state.history.unshift({
           kind: "capital",
-          text: "Capital investido: compra SOL " + usd(POOL.initialSolBuyUsd) + " + aporte " + usd(POOL.externalAddUsd) + " + taxas reinvestidas " + usd(state.reinvestedFees) + " = " + usd(investedCapital()),
+          text: "Capital do bolso: compra SOL " + usd(POOL.initialSolBuyUsd) + " + aporte " + usd(POOL.externalAddUsd) + " + aportes novos " + usd(state.newExternalCapital) + " = " + usd(externalCapital()) + " · taxas reinvestidas " + usd(state.reinvestedFees),
           ts: new Date().toISOString()
         });
         localStorage.setItem(CAPITAL_LOG_KEY, "1");
@@ -1432,7 +1486,7 @@
       if (!hasReinvestedLog && localStorage.getItem(REINVESTED_LOG_KEY) !== "1") {
         state.history.unshift({
           kind: "fee",
-          text: "Taxas reinvestidas acumuladas " + usd(state.reinvestedFees) + " · capital atual " + usd(investedCapital()),
+          text: "Taxas reinvestidas acumuladas " + usd(state.reinvestedFees) + " · capital em trabalho " + usd(workingCapital()),
           ts: new Date().toISOString()
         });
         localStorage.setItem(REINVESTED_LOG_KEY, "1");
