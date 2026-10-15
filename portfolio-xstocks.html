@@ -62,6 +62,8 @@
     .total-label{display:block;color:var(--muted);font:500 7px "IBM Plex Mono",monospace;margin-bottom:2px}
     .total-value{display:block;color:var(--text);font:700 11px "IBM Plex Mono",monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .total-sub{display:block;color:var(--muted);font:500 8px "IBM Plex Mono",monospace;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .total-sol{margin-top:auto;padding-top:5px;color:var(--muted);border-top:1px solid rgba(127,138,158,.12);font:500 7px "IBM Plex Mono",monospace;text-align:center;white-space:nowrap}
+    .total-sol b{color:#8f9aac;font-weight:600}
     dialog{width:min(390px,calc(100vw - 28px));border:1px solid var(--line2);border-radius:14px;background:var(--panel2);color:var(--text);padding:0;box-shadow:0 20px 70px rgba(0,0,0,.65)}
     dialog::backdrop{background:rgba(0,0,0,.72);backdrop-filter:blur(3px)}
     .modal{padding:17px}.modal h2{font-size:16px;margin:0 0 15px}.fields{display:grid;gap:11px}
@@ -70,7 +72,7 @@
     .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.actions button{border-radius:8px;padding:8px 13px;cursor:pointer;font:600 11px "IBM Plex Mono",monospace}
     .cancel{background:transparent;color:var(--muted);border:1px solid var(--line)}.save{background:var(--accent);color:#1a1004;border:1px solid var(--accent)}
     @media(max-width:760px){
-      .board,.charts-row,.summary-row{gap:5px}.summary-row{grid-template-columns:minmax(0,1fr) minmax(86px,104px) minmax(0,1fr)}.chart-head{padding:0 5px;gap:3px}.symbol{font-size:11px}.price{font-size:8px}.price-jpy{display:none}.change{font-size:7px;padding:2px 3px}.tf{font-size:7px;padding:3px 2px}.data-card{padding:4px 5px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 5px}.metric{padding:3px 0}.metric:nth-child(-n+2){border-top:0}.label,.sub{font-size:6.8px}.value{font-size:8px}.data-title{font-size:7px}.edit{font-size:7px;padding:2px 4px}.screen-btn{width:29px;padding:0;justify-content:center}.screen-btn span{display:none}.total-card{padding:4px 5px}.total-title{font-size:6.5px;margin-bottom:3px}.total-value{font-size:8px}.total-sub,.total-label{font-size:6px}.total-block+.total-block{margin-top:3px;padding-top:3px}
+      .board,.charts-row,.summary-row{gap:5px}.summary-row{grid-template-columns:minmax(0,1fr) minmax(86px,104px) minmax(0,1fr)}.chart-head{padding:0 5px;gap:3px}.symbol{font-size:11px}.price{font-size:8px}.price-jpy{display:none}.change{font-size:7px;padding:2px 3px}.tf{font-size:7px;padding:3px 2px}.data-card{padding:4px 5px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 5px}.metric{padding:3px 0}.metric:nth-child(-n+2){border-top:0}.label,.sub{font-size:6.8px}.value{font-size:8px}.data-title{font-size:7px}.edit{font-size:7px;padding:2px 4px}.screen-btn{width:29px;padding:0;justify-content:center}.screen-btn span{display:none}.total-card{padding:4px 5px}.total-title{font-size:6.5px;margin-bottom:3px}.total-value{font-size:8px}.total-sub,.total-label{font-size:6px}.total-block+.total-block{margin-top:3px;padding-top:3px}.total-sol{font-size:5.8px;padding-top:3px}
     }
     @media(max-height:550px){.topbar{height:28px;margin-bottom:4px}.board{height:calc(100dvh - 43px)}.chart-head{height:32px}.chart{height:calc(100% - 32px)}.metric{padding:2px 0}.data-top{margin-bottom:0}}
   </style>
@@ -108,7 +110,7 @@ const DEFAULT_POSITIONS={
   hoodx:{buy:100.96287448076941,qty:16.6765506,paid:1683.712485,date:'15/10/2026 · 03:43–03:44'},
   mstrx:{buy:142.7635536534098,qty:11.72100855,paid:1673.332833,date:'15/10/2026 · 03:43'}
 };
-const state={fx:152,positions:JSON.parse(JSON.stringify(DEFAULT_POSITIONS)),views:{},active:null};
+const state={fx:152,solPrice:0,positions:JSON.parse(JSON.stringify(DEFAULT_POSITIONS)),views:{},active:null};
 const runtime={};
 const fmtUSD=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtJPY=new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY',maximumFractionDigits:0});
@@ -139,6 +141,7 @@ function totalHtml(){return `<div class="total-card" id="totalCard">
   <div class="total-title">Posição Total</div>
   <div class="total-block"><span class="total-label">Valor atual</span><span class="total-value" id="totalCurrentUsd">—</span><span class="total-sub" id="totalCurrentJpy">—</span></div>
   <div class="total-block"><span class="total-label">PnL conjunto</span><span class="total-value pnl" id="totalPnlUsd">—</span><span class="total-sub pnl" id="totalPnlJpy">—</span></div>
+  <div class="total-sol">Equivale a <b id="totalSolEquivalent">— SOL</b></div>
 </div>`}
 
 document.querySelector('#board').innerHTML=`<div class="charts-row">${ASSETS.map(chartHtml).join('')}</div><div class="summary-row">${dataHtml(ASSETS[0])}${totalHtml()}${dataHtml(ASSETS[1])}</div>`;
@@ -209,8 +212,8 @@ let socket,reconnectTimer;
 function connectTicker(){
   clearTimeout(reconnectTimer);try{if(socket)socket.close()}catch(e){}
   socket=new WebSocket('wss://api.gateio.ws/ws/v4/');
-  socket.onopen=()=>socket.send(JSON.stringify({time:Math.floor(Date.now()/1000),channel:'spot.tickers',event:'subscribe',payload:ASSETS.map(a=>a.pair)}));
-  socket.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.channel!=='spot.tickers'||m.event!=='update')return;const x=m.result||{},a=ASSETS.find(z=>z.pair===x.currency_pair);if(a)applyTick(a,+x.last,+x.change_percentage)}catch(_){} };
+  socket.onopen=()=>socket.send(JSON.stringify({time:Math.floor(Date.now()/1000),channel:'spot.tickers',event:'subscribe',payload:[...ASSETS.map(a=>a.pair),'SOL_USDT']}));
+  socket.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.channel!=='spot.tickers'||m.event!=='update')return;const x=m.result||{};if(x.currency_pair==='SOL_USDT'){state.solPrice=+x.last||state.solPrice;renderTotal();return}const a=ASSETS.find(z=>z.pair===x.currency_pair);if(a)applyTick(a,+x.last,+x.change_percentage)}catch(_){} };
   socket.onerror=()=>{try{socket.close()}catch(e){}};
   socket.onclose=()=>{reconnectTimer=setTimeout(connectTicker,3500)};
 }
@@ -245,6 +248,7 @@ function renderTotal(){
   document.querySelector('#totalCurrentUsd').textContent=cur.usd;document.querySelector('#totalCurrentJpy').textContent=cur.jpy;
   const pu=document.querySelector('#totalPnlUsd'),pj=document.querySelector('#totalPnlJpy'),cls='pnl '+(pnl>=0?'up':'down');pu.className='total-value '+cls;pj.className='total-sub '+cls;
   pu.textContent=`${signed(pnl,fmtUSD.format.bind(fmtUSD))} · ${pct>=0?'+':''}${pct.toFixed(2)}%`;pj.textContent=signed(pnl*state.fx,fmtJPY.format.bind(fmtJPY));
+  document.querySelector('#totalSolEquivalent').textContent=state.solPrice&&current?`≈ ${(current/state.solPrice).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} SOL`:'— SOL';
 }
 function renderAll(){ASSETS.forEach(renderAsset);renderTotal()}
 function updateGlobalStatus(){const n=ASSETS.filter(a=>runtime[a.id]?.ok).length,led=document.querySelector('#globalLed'),txt=document.querySelector('#globalStatus');led.classList.toggle('on',n===ASSETS.length);txt.textContent=n===ASSETS.length?'ao vivo · 1s':n?'parcial':'conectando'}
@@ -273,9 +277,11 @@ screenBtn.addEventListener('click',toggleFullscreen);
 document.addEventListener('fullscreenchange',syncFullscreenButton);document.addEventListener('webkitfullscreenchange',syncFullscreenButton);
 
 async function updateFx(){try{const d=await getJson('https://api.frankfurter.app/latest?from=USD&to=JPY');if(d?.rates?.JPY)state.fx=+d.rates.JPY}catch(e){}renderAll()}
-ASSETS.forEach(initAsset);connectTicker();updateFx();
+async function updateSolPrice(){try{const url='https://api.gateio.ws/api/v4/spot/tickers?currency_pair=SOL_USDT';let d;try{d=await getJson(url)}catch(e){d=await getJson('https://api.allorigins.win/raw?url='+encodeURIComponent(url))}if(Array.isArray(d)&&d[0]?.last)state.solPrice=+d[0].last}catch(e){}renderTotal()}
+ASSETS.forEach(initAsset);connectTicker();updateFx();updateSolPrice();
 setInterval(renderAll,1000);
 setInterval(()=>ASSETS.forEach(a=>loadChart(a)),60000);
+setInterval(updateSolPrice,60000);
 </script>
 </body>
 </html>
