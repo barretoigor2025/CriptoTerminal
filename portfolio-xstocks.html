@@ -43,6 +43,10 @@
     .change.down{color:var(--red);background:rgba(239,93,103,.1)}
     .tf{margin-left:auto;color:var(--muted);background:#0b1018;border:1px solid var(--line);border-radius:6px;padding:4px 5px;font:600 9px "IBM Plex Mono",monospace}
     .chart{height:calc(100% - 38px);min-height:0;position:relative}
+    .trade-key{position:absolute;z-index:3;top:6px;left:7px;display:flex;gap:5px;pointer-events:none;font:600 7px "IBM Plex Mono",monospace}
+    .trade-key span{padding:2px 5px;border-radius:4px;background:rgba(10,13,19,.84);white-space:nowrap}
+    .trade-key .buy-key{color:#fff;border:1px solid rgba(255,255,255,.42)}
+    .trade-key .sell-key{color:var(--green);border:1px dashed rgba(38,166,154,.75)}
     .error{display:none;position:absolute;inset:0;place-items:center;text-align:center;color:var(--muted);font:500 11px/1.5 "IBM Plex Mono",monospace;padding:20px;background:rgba(8,11,16,.85);z-index:4}
     .error.show{display:grid}
     .data-card{padding:6px 8px 7px}
@@ -116,14 +120,14 @@ const fmtUSD=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',mini
 const fmtJPY=new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY',maximumFractionDigits:0});
 const nfmt=new Intl.NumberFormat('en-US',{maximumFractionDigits:8});
 
-function loadState(){try{const s=JSON.parse(localStorage.getItem(STORE_KEY)||'{}');for(const id of Object.keys(DEFAULT_POSITIONS)){const p=s.positions?.[id];if(p&&+p.buy>0&&+p.qty>0)state.positions[id]={...DEFAULT_POSITIONS[id],...p}}if(s.views&&typeof s.views==='object')state.views=s.views}catch(e){}}
+function loadState(){try{const s=JSON.parse(localStorage.getItem(STORE_KEY)||'{}');for(const id of Object.keys(DEFAULT_POSITIONS)){const p=s.positions?.[id];if(p&&+p.buy>0&&+p.qty>0)state.positions[id]={...DEFAULT_POSITIONS[id],...p,sold:DEFAULT_POSITIONS[id].sold}}if(s.views&&typeof s.views==='object')state.views=s.views}catch(e){}}
 function saveState(){try{localStorage.setItem(STORE_KEY,JSON.stringify({positions:state.positions,views:state.views}))}catch(e){}}
 function money(v){if(!Number.isFinite(v))v=0;return {usd:fmtUSD.format(v),jpy:fmtJPY.format(v*state.fx)}}
 function signed(v,formatter){const a=formatter(Math.abs(v));return (v>0?'+':v<0?'−':'')+a}
 function chartHtml(a){return `<section class="asset" data-id="${a.id}">
   <div class="chart-card">
     <div class="chart-head"><strong class="symbol">${a.label}</strong><span class="price-wrap"><span class="price" data-role="price">—</span><span class="price-jpy" data-role="priceJpy">—</span></span><span class="change" data-role="change">—</span><select class="tf" data-role="tf"><option value="15m">15m</option><option value="1h" selected>1h</option><option value="4h">4h</option><option value="1d">1D</option></select></div>
-    <div class="chart" data-role="chart"><div class="error" data-role="error">Carregando gráfico…</div></div>
+    <div class="chart" data-role="chart"><div class="trade-key"><span class="buy-key" data-role="buyKey">COMPRA —</span><span class="sell-key" data-role="sellKey">VENDA —</span></div><div class="error" data-role="error">Carregando gráfico…</div></div>
   </div>
 </section>`}
 function dataHtml(a){return `<div class="data-card" data-info-id="${a.id}">
@@ -221,6 +225,8 @@ function connectTicker(){
 function renderAsset(a){
   const r=runtime[a.id],p=state.positions[a.id]||{buy:0,qty:0},root=r.root,info=r.info,price=r.price||0;
   syncEntryMarker(a,p);syncExitMarker(a,p);
+  root.querySelector('[data-role="buyKey"]').textContent=`COMPRA ${fmtUSD.format(+p.buy||0)}`;
+  root.querySelector('[data-role="sellKey"]').textContent=`VENDA ${fmtUSD.format(+p.sold||0)}`;
   root.querySelector('[data-role="price"]').textContent=price?fmtUSD.format(price):'—';root.querySelector('[data-role="priceJpy"]').textContent=price?fmtJPY.format(price*state.fx):'—';
   const ch=root.querySelector('[data-role="change"]'),cp=Number.isFinite(r.changePct)?r.changePct:null;
   ch.textContent=cp===null?'—':`${cp>=0?'+':''}${cp.toFixed(2)}%`;ch.className='change '+(cp!==null&&cp>=0?'up':'down');
@@ -238,14 +244,14 @@ function syncEntryMarker(a,p){
   const r=runtime[a.id],entry=+p.buy||0;if(r.entryPrice===entry)return;
   if(r.entryLine){try{r.series.removePriceLine(r.entryLine)}catch(e){}r.entryLine=null}
   r.entryPrice=entry;if(!entry)return;
-  r.entryLine=r.series.createPriceLine({price:entry,color:'rgba(255,255,255,.88)',lineWidth:1,lineStyle:0,axisLabelVisible:false,title:''});
+  r.entryLine=r.series.createPriceLine({price:entry,color:'rgba(255,255,255,.94)',lineWidth:2,lineStyle:0,axisLabelVisible:true,title:'COMPRA'});
 }
 
 function syncExitMarker(a,p){
   const r=runtime[a.id],exit=+p.sold||0;if(r.exitPrice===exit)return;
   if(r.exitLine){try{r.series.removePriceLine(r.exitLine)}catch(e){}r.exitLine=null}
   r.exitPrice=exit;if(!exit)return;
-  r.exitLine=r.series.createPriceLine({price:exit,color:'rgba(38,166,154,.96)',lineWidth:1,lineStyle:0,axisLabelVisible:true,title:'VENDA'});
+  r.exitLine=r.series.createPriceLine({price:exit,color:'rgba(38,166,154,.98)',lineWidth:2,lineStyle:2,axisLabelVisible:true,title:'VENDA'});
 }
 
 function renderTotal(){
