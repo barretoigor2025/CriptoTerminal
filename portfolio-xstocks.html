@@ -107,8 +107,8 @@ const ASSETS = [
 ];
 const STORE_KEY='ib_xstocks_portfolio_v1';
 const DEFAULT_POSITIONS={
-  hoodx:{buy:100.96287448076941,qty:16.6765506,paid:1683.712485,date:'15/10/2026 · 03:43–03:44'},
-  mstrx:{buy:142.7635536534098,qty:11.72100855,paid:1673.332833,date:'15/10/2026 · 03:43'}
+  hoodx:{buy:100.96287448076941,sold:101.02,qty:16.6765506,paid:1683.712485,date:'15/10/2026 · 03:43–03:44'},
+  mstrx:{buy:142.7635536534098,sold:148.67,qty:11.72100855,paid:1673.332833,date:'15/10/2026 · 03:43'}
 };
 const state={fx:152,solPrice:0,positions:JSON.parse(JSON.stringify(DEFAULT_POSITIONS)),views:{},active:null};
 const runtime={};
@@ -127,20 +127,20 @@ function chartHtml(a){return `<section class="asset" data-id="${a.id}">
   </div>
 </section>`}
 function dataHtml(a){return `<div class="data-card" data-info-id="${a.id}">
-    <div class="data-top"><span class="data-title">${a.label} · posição</span><button class="edit" data-role="edit">Editar</button></div>
+    <div class="data-top"><span class="data-title">${a.label} · encerrada</span><button class="edit" data-role="edit">Editar</button></div>
     <div class="metrics">
       <div class="metric"><span class="label">Preço médio</span><span class="value" data-role="buyUsd">—</span><span class="sub" data-role="buyJpy">—</span></div>
       <div class="metric"><span class="label">Quantidade</span><span class="value" data-role="qty">—</span><span class="sub">${a.label}</span></div>
       <div class="metric"><span class="label">Investido</span><span class="value" data-role="investedUsd">—</span><span class="sub" data-role="investedJpy">—</span></div>
-      <div class="metric"><span class="label">Valor atual</span><span class="value" data-role="currentUsd">—</span><span class="sub" data-role="currentJpy">—</span></div>
-      <div class="metric"><span class="label">PnL</span><span class="value pnl" data-role="pnlUsd">—</span><span class="sub pnl" data-role="pnlJpy">—</span></div>
+      <div class="metric"><span class="label">Valor da venda</span><span class="value" data-role="currentUsd">—</span><span class="sub" data-role="currentJpy">—</span></div>
+      <div class="metric"><span class="label">Resultado realizado</span><span class="value pnl" data-role="pnlUsd">—</span><span class="sub pnl" data-role="pnlJpy">—</span></div>
       <div class="metric"><span class="label">Compra</span><span class="value" data-role="date">—</span><span class="sub">horário do Japão</span></div>
     </div>
   </div>`}
 function totalHtml(){return `<div class="total-card" id="totalCard">
-  <div class="total-title">Posição Total</div>
-  <div class="total-block"><span class="total-label">Valor atual</span><span class="total-value" id="totalCurrentUsd">—</span><span class="total-sub" id="totalCurrentJpy">—</span></div>
-  <div class="total-block"><span class="total-label">PnL conjunto</span><span class="total-value pnl" id="totalPnlUsd">—</span><span class="total-sub pnl" id="totalPnlJpy">—</span></div>
+  <div class="total-title">Resultado Total</div>
+  <div class="total-block"><span class="total-label">Valor das vendas</span><span class="total-value" id="totalCurrentUsd">—</span><span class="total-sub" id="totalCurrentJpy">—</span></div>
+  <div class="total-block"><span class="total-label">Profit total</span><span class="total-value pnl" id="totalPnlUsd">—</span><span class="total-sub pnl" id="totalPnlJpy">—</span></div>
   <div class="total-sol">Equivale a <b id="totalSolEquivalent">— SOL</b></div>
 </div>`}
 
@@ -173,7 +173,7 @@ function initAsset(a){
   const root=document.querySelector(`[data-id="${a.id}"]`),info=document.querySelector(`[data-info-id="${a.id}"]`),chartEl=root.querySelector('[data-role="chart"]');
   const chart=LightweightCharts.createChart(chartEl,chartOptions());
   const series=chart.addCandlestickSeries({upColor:'#26a69a',downColor:'#ef5350',borderVisible:false,wickUpColor:'#26a69a',wickDownColor:'#ef5350'});
-  const rt=runtime[a.id]={root,info,chart,chartEl,series,candles:[],price:0,open24:0,tf:'1h',ok:false,entryLine:null,entryPrice:0,restoring:false,viewTimer:null};
+  const rt=runtime[a.id]={root,info,chart,chartEl,series,candles:[],price:0,open24:0,tf:'1h',ok:false,entryLine:null,entryPrice:0,exitLine:null,exitPrice:0,restoring:false,viewTimer:null};
   root.querySelector('[data-role="tf"]').addEventListener('change',e=>{runtime[a.id].tf=e.target.value;loadChart(a,false)});
   info.querySelector('[data-role="edit"]').addEventListener('click',()=>openEditor(a));
   chart.timeScale().subscribeVisibleLogicalRangeChange(range=>{
@@ -220,11 +220,11 @@ function connectTicker(){
 
 function renderAsset(a){
   const r=runtime[a.id],p=state.positions[a.id]||{buy:0,qty:0},root=r.root,info=r.info,price=r.price||0;
-  syncEntryMarker(a,p);
+  syncEntryMarker(a,p);syncExitMarker(a,p);
   root.querySelector('[data-role="price"]').textContent=price?fmtUSD.format(price):'—';root.querySelector('[data-role="priceJpy"]').textContent=price?fmtJPY.format(price*state.fx):'—';
   const ch=root.querySelector('[data-role="change"]'),cp=Number.isFinite(r.changePct)?r.changePct:null;
   ch.textContent=cp===null?'—':`${cp>=0?'+':''}${cp.toFixed(2)}%`;ch.className='change '+(cp!==null&&cp>=0?'up':'down');
-  const buy=money(+p.buy||0),current=money(price*(+p.qty||0)),cost=(+p.paid||((+p.buy||0)*(+p.qty||0))),invested=money(cost),pnl=price*(+p.qty||0)-cost,pct=cost?pnl/cost*100:0;
+  const buy=money(+p.buy||0),valuationPrice=+p.sold||price,current=money(valuationPrice*(+p.qty||0)),cost=(+p.paid||((+p.buy||0)*(+p.qty||0))),invested=money(cost),pnl=valuationPrice*(+p.qty||0)-cost,pct=cost?pnl/cost*100:0;
   info.querySelector('[data-role="buyUsd"]').textContent=buy.usd;info.querySelector('[data-role="buyJpy"]').textContent=buy.jpy;
   info.querySelector('[data-role="qty"]').textContent=nfmt.format(+p.qty||0);
   info.querySelector('[data-role="investedUsd"]').textContent=invested.usd;info.querySelector('[data-role="investedJpy"]').textContent=invested.jpy;
@@ -241,9 +241,16 @@ function syncEntryMarker(a,p){
   r.entryLine=r.series.createPriceLine({price:entry,color:'rgba(255,255,255,.88)',lineWidth:1,lineStyle:0,axisLabelVisible:false,title:''});
 }
 
+function syncExitMarker(a,p){
+  const r=runtime[a.id],exit=+p.sold||0;if(r.exitPrice===exit)return;
+  if(r.exitLine){try{r.series.removePriceLine(r.exitLine)}catch(e){}r.exitLine=null}
+  r.exitPrice=exit;if(!exit)return;
+  r.exitLine=r.series.createPriceLine({price:exit,color:'rgba(38,166,154,.96)',lineWidth:1,lineStyle:0,axisLabelVisible:true,title:'VENDA'});
+}
+
 function renderTotal(){
   let invested=0,current=0;
-  for(const a of ASSETS){const p=state.positions[a.id],r=runtime[a.id];if(!p)continue;const cost=+p.paid||((+p.buy||0)*(+p.qty||0));invested+=cost;current+=(r?.price||0)*(+p.qty||0)}
+  for(const a of ASSETS){const p=state.positions[a.id],r=runtime[a.id];if(!p)continue;const cost=+p.paid||((+p.buy||0)*(+p.qty||0)),valuationPrice=+p.sold||(r?.price||0);invested+=cost;current+=valuationPrice*(+p.qty||0)}
   const pnl=current-invested,pct=invested?pnl/invested*100:0,cur=money(current);
   document.querySelector('#totalCurrentUsd').textContent=cur.usd;document.querySelector('#totalCurrentJpy').textContent=cur.jpy;
   const pu=document.querySelector('#totalPnlUsd'),pj=document.querySelector('#totalPnlJpy'),cls='pnl '+(pnl>=0?'up':'down');pu.className='total-value '+cls;pj.className='total-sub '+cls;
