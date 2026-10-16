@@ -46,7 +46,7 @@
     .trade-key{position:absolute;z-index:3;top:6px;left:7px;display:flex;gap:5px;pointer-events:none;font:600 7px "IBM Plex Mono",monospace}
     .trade-key span{padding:2px 5px;border-radius:4px;background:rgba(10,13,19,.84);white-space:nowrap}
     .trade-key .buy-key{color:#fff;border:1px solid rgba(255,255,255,.42)}
-    .trade-key .sell-key{color:var(--green);border:1px dashed rgba(38,166,154,.75)}
+    .trade-key .sell-key{color:#ef5d67;border:1px dashed #ef5d67}
     .error{display:none;position:absolute;inset:0;place-items:center;text-align:center;color:var(--muted);font:500 11px/1.5 "IBM Plex Mono",monospace;padding:20px;background:rgba(8,11,16,.85);z-index:4}
     .error.show{display:grid}
     .data-card{padding:6px 8px 7px}
@@ -110,17 +110,17 @@ const ASSETS = [
 ];
 const STORE_KEY='ib_mstrx_buy_20261017_v1';
 const DEFAULT_POSITIONS={
-  mstrx:{buy:136.95,sold:0,qty:24.802173,paid:3400.08,grossQty:24.827,feeQty:0.024827,date:'17/10/2026 · 04:27:59'}
+  mstrx:{buy:136.95,sold:0,target:149,qty:24.802173,paid:3400.08,grossQty:24.827,feeQty:0.024827,date:'17/10/2026 · 04:27:59'}
 };
-const state={fx:152,solPrice:0,positions:JSON.parse(JSON.stringify(DEFAULT_POSITIONS)),views:{},active:null};
+const state={fx:0,fxSource:"",fxAt:"",fxLoading:false,solPrice:0,positions:JSON.parse(JSON.stringify(DEFAULT_POSITIONS)),views:{},active:null};
 const runtime={};
 const fmtUSD=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtJPY=new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY',maximumFractionDigits:0});
 const nfmt=new Intl.NumberFormat('en-US',{maximumFractionDigits:8});
 
-function loadState(){try{const s=JSON.parse(localStorage.getItem(STORE_KEY)||'{}');for(const id of Object.keys(DEFAULT_POSITIONS)){const p=s.positions?.[id];if(p&&+p.buy>0&&+p.qty>0)state.positions[id]={...DEFAULT_POSITIONS[id],...p,sold:DEFAULT_POSITIONS[id].sold}}if(s.views&&typeof s.views==='object')state.views=s.views}catch(e){}}
+function loadState(){try{const s=JSON.parse(localStorage.getItem(STORE_KEY)||'{}');for(const id of Object.keys(DEFAULT_POSITIONS)){const p=s.positions?.[id];if(p&&+p.buy>0&&+p.qty>0)state.positions[id]={...DEFAULT_POSITIONS[id],...p,sold:DEFAULT_POSITIONS[id].sold,target:DEFAULT_POSITIONS[id].target}}if(s.views&&typeof s.views==='object')state.views=s.views}catch(e){}}
 function saveState(){try{localStorage.setItem(STORE_KEY,JSON.stringify({positions:state.positions,views:state.views}))}catch(e){}}
-function money(v){if(!Number.isFinite(v))v=0;return {usd:fmtUSD.format(v),jpy:fmtJPY.format(v*state.fx)}}
+function money(v){if(!Number.isFinite(v))v=0;return {usd:fmtUSD.format(v),jpy:state.fx?fmtJPY.format(v*state.fx):"—"}}
 function signed(v,formatter){const a=formatter(Math.abs(v));return (v>0?'+':v<0?'−':'')+a}
 function chartHtml(a){return `<section class="asset" data-id="${a.id}">
   <div class="chart-card">
@@ -143,6 +143,7 @@ function totalHtml(){return `<div class="total-card" id="totalCard">
   <div class="total-title">Resultado Total</div>
   <div class="total-block"><span class="total-label">Valor atual</span><span class="total-value" id="totalCurrentUsd">—</span><span class="total-sub" id="totalCurrentJpy">—</span></div>
   <div class="total-block"><span class="total-label">Profit total</span><span class="total-value pnl" id="totalPnlUsd">—</span><span class="total-sub pnl" id="totalPnlJpy">—</span></div>
+  <div id="fxStatus" style="font:500 7px monospace;color:var(--muted);margin-top:5px;overflow-wrap:anywhere">Consultando USD/JPY…</div>
   <div class="total-sol">Equivale a <b id="totalSolEquivalent">— SOL</b></div>
 </div>`}
 
@@ -223,9 +224,10 @@ function connectTicker(){
 function renderAsset(a){
   const r=runtime[a.id],p=state.positions[a.id]||{buy:0,qty:0},root=r.root,info=r.info,price=r.price||0;
   syncEntryMarker(a,p);syncExitMarker(a,p);
+  if(!r.orderScaleReady){r.orderScaleReady=true;r.series.applyOptions({autoscaleInfoProvider:original=>{const info=original();if(!info?.priceRange)return info;const pos=state.positions[a.id];info.priceRange.minValue=Math.min(info.priceRange.minValue,pos.buy*.995);info.priceRange.maxValue=Math.max(info.priceRange.maxValue,pos.target*1.005);return info}})}
   root.querySelector('[data-role="buyKey"]').textContent=`COMPRA ${fmtUSD.format(+p.buy||0)}`;
-  root.querySelector('[data-role="sellKey"]').hidden=true;
-  root.querySelector('[data-role="price"]').textContent=price?fmtUSD.format(price):'—';root.querySelector('[data-role="priceJpy"]').textContent=price?fmtJPY.format(price*state.fx):'—';
+  root.querySelector('[data-role="sellKey"]').hidden=false;root.querySelector('[data-role="sellKey"]').textContent=`ORDEM DE VENDA ${fmtUSD.format(p.target)}`;
+  root.querySelector('[data-role="price"]').textContent=price?fmtUSD.format(price):'—';root.querySelector('[data-role="priceJpy"]').textContent=price&&state.fx?fmtJPY.format(price*state.fx):'—';
   const ch=root.querySelector('[data-role="change"]'),cp=Number.isFinite(r.changePct)?r.changePct:null;
   ch.textContent=cp===null?'—':`${cp>=0?'+':''}${cp.toFixed(2)}%`;ch.className='change '+(cp!==null&&cp>=0?'up':'down');
   const buy=money(+p.buy||0),valuationPrice=+p.sold||price||(+p.buy||0),current=money(valuationPrice*(+p.qty||0)),cost=(+p.paid||((+p.buy||0)*(+p.qty||0))),invested=money(cost),pnl=valuationPrice*(+p.qty||0)-cost,pct=cost?pnl/cost*100:0;
@@ -235,21 +237,21 @@ function renderAsset(a){
   info.querySelector('[data-role="currentUsd"]').textContent=current.usd;info.querySelector('[data-role="currentJpy"]').textContent=current.jpy;
   info.querySelector('[data-role="date"]').textContent=p.date||'17/10/2026';
   const pu=info.querySelector('[data-role="pnlUsd"]'),pj=info.querySelector('[data-role="pnlJpy"]'),cls='pnl '+(pnl>=0?'up':'down');pu.className='value '+cls;pj.className='sub '+cls;
-  pu.textContent=`${signed(pnl,fmtUSD.format.bind(fmtUSD))} · ${pct>=0?'+':''}${pct.toFixed(2)}%`;pj.textContent=signed(pnl*state.fx,fmtJPY.format.bind(fmtJPY));
+  pu.textContent=`${signed(pnl,fmtUSD.format.bind(fmtUSD))} · ${pct>=0?'+':''}${pct.toFixed(2)}%`;pj.textContent=(state.fx?signed(pnl*state.fx,fmtJPY.format.bind(fmtJPY)):"—");
 }
 
 function syncEntryMarker(a,p){
   const r=runtime[a.id],entry=+p.buy||0;if(r.entryPrice===entry)return;
   if(r.entryLine){try{r.series.removePriceLine(r.entryLine)}catch(e){}r.entryLine=null}
   r.entryPrice=entry;if(!entry)return;
-  r.entryLine=r.series.createPriceLine({price:entry,color:'rgba(255,255,255,.94)',lineWidth:2,lineStyle:0,axisLabelVisible:true,title:'COMPRA'});
+  r.entryLine=r.series.createPriceLine({price:entry,color:'rgba(255,255,255,.94)',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'COMPRA'});
 }
 
 function syncExitMarker(a,p){
-  const r=runtime[a.id],exit=+p.sold||0;if(r.exitPrice===exit)return;
+  const r=runtime[a.id],exit=+p.target||0;if(r.exitPrice===exit)return;
   if(r.exitLine){try{r.series.removePriceLine(r.exitLine)}catch(e){}r.exitLine=null}
   r.exitPrice=exit;if(!exit)return;
-  r.exitLine=r.series.createPriceLine({price:exit,color:'rgba(38,166,154,.98)',lineWidth:2,lineStyle:2,axisLabelVisible:true,title:'VENDA'});
+  r.exitLine=r.series.createPriceLine({price:exit,color:'#ef5d67',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'ORDEM VENDA'});
 }
 
 function renderTotal(){
@@ -258,7 +260,7 @@ function renderTotal(){
   const pnl=current-invested,pct=invested?pnl/invested*100:0,cur=money(current);
   document.querySelector('#totalCurrentUsd').textContent=cur.usd;document.querySelector('#totalCurrentJpy').textContent=cur.jpy;
   const pu=document.querySelector('#totalPnlUsd'),pj=document.querySelector('#totalPnlJpy'),cls='pnl '+(pnl>=0?'up':'down');pu.className='total-value '+cls;pj.className='total-sub '+cls;
-  pu.textContent=`${signed(pnl,fmtUSD.format.bind(fmtUSD))} · ${pct>=0?'+':''}${pct.toFixed(2)}%`;pj.textContent=signed(pnl*state.fx,fmtJPY.format.bind(fmtJPY));
+  pu.textContent=`${signed(pnl,fmtUSD.format.bind(fmtUSD))} · ${pct>=0?'+':''}${pct.toFixed(2)}%`;pj.textContent=(state.fx?signed(pnl*state.fx,fmtJPY.format.bind(fmtJPY)):"—");
   document.querySelector('#totalSolEquivalent').textContent=state.solPrice&&current?`≈ ${(current/state.solPrice).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} SOL`:'— SOL';
 }
 function renderAll(){ASSETS.forEach(renderAsset);renderTotal()}
@@ -287,13 +289,43 @@ function syncFullscreenButton(){
 screenBtn.addEventListener('click',toggleFullscreen);
 document.addEventListener('fullscreenchange',syncFullscreenButton);document.addEventListener('webkitfullscreenchange',syncFullscreenButton);
 
-async function updateFx(){try{const d=await getJson('https://api.frankfurter.app/latest?from=USD&to=JPY');if(d?.rates?.JPY)state.fx=+d.rates.JPY}catch(e){}renderAll()}
+function renderFxStatus(failed=false){
+  const el=document.querySelector('#fxStatus');
+  el.textContent=state.fx?`USD/JPY ${state.fx.toFixed(3)} · ${state.fxSource} · ${state.fxAt}${failed?' · falha ao renovar':''}`:'Câmbio indisponível · valores em JPY aguardando cotação';
+}
+async function updateFx(){
+  if(state.fxLoading)return;state.fxLoading=true;
+  try{
+    const url='https://query1.finance.yahoo.com/v8/finance/chart/JPY%3DX?interval=1m&range=1d';
+    let d;try{d=await getJson(url)}catch(e){d=await getJson('https://api.allorigins.win/raw?url='+encodeURIComponent(url))}
+    const m=d?.chart?.result?.[0]?.meta;
+    if(!(m?.regularMarketPrice>0)||!m.regularMarketTime)throw Error('invalid FX');
+    state.fx=+m.regularMarketPrice;state.fxSource='Yahoo Finance';
+    state.fxAt=new Date(m.regularMarketTime*1000).toLocaleString('pt-BR',{timeZone:'Asia/Tokyo',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})+' JST';
+    renderFxStatus();
+  }catch(e){
+    // Retain a previous market quote; do not replace it with a daily reference.
+    if(!state.fx){
+      try{
+        const d=await getJson('https://open.er-api.com/v6/latest/USD');
+        if(!(d?.rates?.JPY>0)||!d.time_last_update_unix)throw Error('invalid FX');
+        state.fx=+d.rates.JPY;state.fxSource='ER-API · referência diária';
+        state.fxAt=new Date(d.time_last_update_unix*1000).toLocaleString('pt-BR',{timeZone:'Asia/Tokyo',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})+' JST';
+      }catch(f){
+        try{const d=await getJson('https://api.frankfurter.dev/v1/latest?base=USD&symbols=JPY');if(!(d?.rates?.JPY>0))throw Error('invalid FX');state.fx=+d.rates.JPY;state.fxSource='Frankfurter · referência diária';state.fxAt=d.date}catch(g){}
+      }
+    }
+    renderFxStatus(true);
+  }finally{state.fxLoading=false;renderAll()}
+}
 async function updateSolPrice(){try{const url='https://api.gateio.ws/api/v4/spot/tickers?currency_pair=SOL_USDT';let d;try{d=await getJson(url)}catch(e){d=await getJson('https://api.allorigins.win/raw?url='+encodeURIComponent(url))}if(Array.isArray(d)&&d[0]?.last)state.solPrice=+d[0].last}catch(e){}renderTotal()}
 ASSETS.forEach(initAsset);connectTicker();updateFx();updateSolPrice();
 setInterval(renderAll,1000);
 setInterval(()=>ASSETS.forEach(a=>loadChart(a)),60000);
 setInterval(updateSolPrice,60000);
+setInterval(updateFx,60000);
 </script>
 </body>
 </html>
+
 
