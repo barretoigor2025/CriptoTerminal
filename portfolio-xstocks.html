@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
-  <title>IB · HOODX & MSTRX</title>
+  <title>IB · MSTRX</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -28,8 +28,8 @@
     .screen-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8}
     .screen-btn:hover{border-color:var(--accent);color:var(--accent)}
     .board{height:calc(100dvh - 55px);display:grid;grid-template-rows:minmax(0,1fr) auto;gap:7px;overflow:hidden}
-    .charts-row{min-width:0;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;overflow:hidden}
-    .summary-row{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(126px,170px) minmax(0,1fr);gap:7px;align-items:stretch}
+    .charts-row{min-width:0;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);gap:7px;overflow:hidden}
+    .summary-row{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(126px,170px);gap:7px;align-items:stretch}
     .asset{min-width:0;min-height:0;overflow:hidden}
     .chart-card,.data-card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:10px;overflow:hidden}
     .chart-card{height:100%;min-height:0}
@@ -76,7 +76,7 @@
     .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.actions button{border-radius:8px;padding:8px 13px;cursor:pointer;font:600 11px "IBM Plex Mono",monospace}
     .cancel{background:transparent;color:var(--muted);border:1px solid var(--line)}.save{background:var(--accent);color:#1a1004;border:1px solid var(--accent)}
     @media(max-width:760px){
-      .board,.charts-row,.summary-row{gap:5px}.summary-row{grid-template-columns:minmax(0,1fr) minmax(86px,104px) minmax(0,1fr)}.chart-head{padding:0 5px;gap:3px}.symbol{font-size:11px}.price{font-size:8px}.price-jpy{display:none}.change{font-size:7px;padding:2px 3px}.tf{font-size:7px;padding:3px 2px}.data-card{padding:4px 5px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 5px}.metric{padding:3px 0}.metric:nth-child(-n+2){border-top:0}.label,.sub{font-size:6.8px}.value{font-size:8px}.data-title{font-size:7px}.edit{font-size:7px;padding:2px 4px}.screen-btn{width:29px;padding:0;justify-content:center}.screen-btn span{display:none}.total-card{padding:4px 5px}.total-title{font-size:6.5px;margin-bottom:3px}.total-value{font-size:8px}.total-sub,.total-label{font-size:6px}.total-block+.total-block{margin-top:3px;padding-top:3px}.total-sol{font-size:5.8px;padding-top:3px}
+      .board,.charts-row,.summary-row{gap:5px}.summary-row{grid-template-columns:minmax(0,1fr) minmax(100px,125px)}.chart-head{padding:0 5px;gap:3px}.symbol{font-size:11px}.price{font-size:8px}.price-jpy{display:none}.change{font-size:7px;padding:2px 3px}.tf{font-size:7px;padding:3px 2px}.data-card{padding:4px 5px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 5px}.metric{padding:3px 0}.metric:nth-child(-n+2){border-top:0}.label,.sub{font-size:6.8px}.value{font-size:8px}.data-title{font-size:7px}.edit{font-size:7px;padding:2px 4px}.screen-btn{width:29px;padding:0;justify-content:center}.screen-btn span{display:none}.total-card{padding:4px 5px}.total-title{font-size:6.5px;margin-bottom:3px}.total-value{font-size:8px}.total-sub,.total-label{font-size:6px}.total-block+.total-block{margin-top:3px;padding-top:3px}.total-sol{font-size:5.8px;padding-top:3px}
     }
     @media(max-height:550px){.topbar{height:28px;margin-bottom:4px}.board{height:calc(100dvh - 43px)}.chart-head{height:32px}.chart{height:calc(100% - 32px)}.metric{padding:2px 0}.data-top{margin-bottom:0}}
   </style>
@@ -106,13 +106,11 @@
 
 <script>
 const ASSETS = [
-  {id:'hoodx', label:'HOODX', pair:'HOODX_USDT'},
   {id:'mstrx', label:'MSTRX', pair:'MSTRX_USDT'}
 ];
-const STORE_KEY='ib_xstocks_portfolio_v1';
+const STORE_KEY='ib_mstrx_buy_20261017_v1';
 const DEFAULT_POSITIONS={
-  hoodx:{buy:100.96287448076941,sold:101.02,qty:16.6765506,paid:1683.712485,date:'15/10/2026 · 03:43–03:44'},
-  mstrx:{buy:142.7635536534098,sold:148.67,qty:11.72100855,paid:1673.332833,date:'15/10/2026 · 03:43'}
+  mstrx:{buy:136.95,sold:0,qty:24.802173,paid:3400.08,grossQty:24.827,feeQty:0.024827,date:'17/10/2026 · 04:27:59'}
 };
 const state={fx:152,solPrice:0,positions:JSON.parse(JSON.stringify(DEFAULT_POSITIONS)),views:{},active:null};
 const runtime={};
@@ -131,24 +129,24 @@ function chartHtml(a){return `<section class="asset" data-id="${a.id}">
   </div>
 </section>`}
 function dataHtml(a){return `<div class="data-card" data-info-id="${a.id}">
-    <div class="data-top"><span class="data-title">${a.label} · encerrada</span><button class="edit" data-role="edit">Editar</button></div>
+    <div class="data-top"><span class="data-title">${a.label} · posição aberta</span><button class="edit" data-role="edit">Editar</button></div>
     <div class="metrics">
       <div class="metric"><span class="label">Preço médio</span><span class="value" data-role="buyUsd">—</span><span class="sub" data-role="buyJpy">—</span></div>
-      <div class="metric"><span class="label">Quantidade</span><span class="value" data-role="qty">—</span><span class="sub">${a.label}</span></div>
+      <div class="metric"><span class="label">Quantidade</span><span class="value" data-role="qty">—</span><span class="sub">líquido · taxa 0,024827 MSTRX</span></div>
       <div class="metric"><span class="label">Investido</span><span class="value" data-role="investedUsd">—</span><span class="sub" data-role="investedJpy">—</span></div>
-      <div class="metric"><span class="label">Valor da venda</span><span class="value" data-role="currentUsd">—</span><span class="sub" data-role="currentJpy">—</span></div>
-      <div class="metric"><span class="label">Resultado realizado</span><span class="value pnl" data-role="pnlUsd">—</span><span class="sub pnl" data-role="pnlJpy">—</span></div>
+      <div class="metric"><span class="label">Valor atual</span><span class="value" data-role="currentUsd">—</span><span class="sub" data-role="currentJpy">—</span></div>
+      <div class="metric"><span class="label">PnL em aberto</span><span class="value pnl" data-role="pnlUsd">—</span><span class="sub pnl" data-role="pnlJpy">—</span></div>
       <div class="metric"><span class="label">Compra</span><span class="value" data-role="date">—</span><span class="sub">horário do Japão</span></div>
     </div>
   </div>`}
 function totalHtml(){return `<div class="total-card" id="totalCard">
   <div class="total-title">Resultado Total</div>
-  <div class="total-block"><span class="total-label">Valor das vendas</span><span class="total-value" id="totalCurrentUsd">—</span><span class="total-sub" id="totalCurrentJpy">—</span></div>
+  <div class="total-block"><span class="total-label">Valor atual</span><span class="total-value" id="totalCurrentUsd">—</span><span class="total-sub" id="totalCurrentJpy">—</span></div>
   <div class="total-block"><span class="total-label">Profit total</span><span class="total-value pnl" id="totalPnlUsd">—</span><span class="total-sub pnl" id="totalPnlJpy">—</span></div>
   <div class="total-sol">Equivale a <b id="totalSolEquivalent">— SOL</b></div>
 </div>`}
 
-document.querySelector('#board').innerHTML=`<div class="charts-row">${ASSETS.map(chartHtml).join('')}</div><div class="summary-row">${dataHtml(ASSETS[0])}${totalHtml()}${dataHtml(ASSETS[1])}</div>`;
+document.querySelector('#board').innerHTML=`<div class="charts-row">${ASSETS.map(chartHtml).join('')}</div><div class="summary-row">${ASSETS.map(dataHtml).join('')}${totalHtml()}</div>`;
 loadState();
 
 function chartOptions(){return {
@@ -226,16 +224,16 @@ function renderAsset(a){
   const r=runtime[a.id],p=state.positions[a.id]||{buy:0,qty:0},root=r.root,info=r.info,price=r.price||0;
   syncEntryMarker(a,p);syncExitMarker(a,p);
   root.querySelector('[data-role="buyKey"]').textContent=`COMPRA ${fmtUSD.format(+p.buy||0)}`;
-  root.querySelector('[data-role="sellKey"]').textContent=`VENDA ${fmtUSD.format(+p.sold||0)}`;
+  root.querySelector('[data-role="sellKey"]').hidden=true;
   root.querySelector('[data-role="price"]').textContent=price?fmtUSD.format(price):'—';root.querySelector('[data-role="priceJpy"]').textContent=price?fmtJPY.format(price*state.fx):'—';
   const ch=root.querySelector('[data-role="change"]'),cp=Number.isFinite(r.changePct)?r.changePct:null;
   ch.textContent=cp===null?'—':`${cp>=0?'+':''}${cp.toFixed(2)}%`;ch.className='change '+(cp!==null&&cp>=0?'up':'down');
-  const buy=money(+p.buy||0),valuationPrice=+p.sold||price,current=money(valuationPrice*(+p.qty||0)),cost=(+p.paid||((+p.buy||0)*(+p.qty||0))),invested=money(cost),pnl=valuationPrice*(+p.qty||0)-cost,pct=cost?pnl/cost*100:0;
+  const buy=money(+p.buy||0),valuationPrice=+p.sold||price||(+p.buy||0),current=money(valuationPrice*(+p.qty||0)),cost=(+p.paid||((+p.buy||0)*(+p.qty||0))),invested=money(cost),pnl=valuationPrice*(+p.qty||0)-cost,pct=cost?pnl/cost*100:0;
   info.querySelector('[data-role="buyUsd"]').textContent=buy.usd;info.querySelector('[data-role="buyJpy"]').textContent=buy.jpy;
   info.querySelector('[data-role="qty"]').textContent=nfmt.format(+p.qty||0);
   info.querySelector('[data-role="investedUsd"]').textContent=invested.usd;info.querySelector('[data-role="investedJpy"]').textContent=invested.jpy;
   info.querySelector('[data-role="currentUsd"]').textContent=current.usd;info.querySelector('[data-role="currentJpy"]').textContent=current.jpy;
-  info.querySelector('[data-role="date"]').textContent=p.date||'15/10/2026';
+  info.querySelector('[data-role="date"]').textContent=p.date||'17/10/2026';
   const pu=info.querySelector('[data-role="pnlUsd"]'),pj=info.querySelector('[data-role="pnlJpy"]'),cls='pnl '+(pnl>=0?'up':'down');pu.className='value '+cls;pj.className='sub '+cls;
   pu.textContent=`${signed(pnl,fmtUSD.format.bind(fmtUSD))} · ${pct>=0?'+':''}${pct.toFixed(2)}%`;pj.textContent=signed(pnl*state.fx,fmtJPY.format.bind(fmtJPY));
 }
@@ -256,7 +254,7 @@ function syncExitMarker(a,p){
 
 function renderTotal(){
   let invested=0,current=0;
-  for(const a of ASSETS){const p=state.positions[a.id],r=runtime[a.id];if(!p)continue;const cost=+p.paid||((+p.buy||0)*(+p.qty||0)),valuationPrice=+p.sold||(r?.price||0);invested+=cost;current+=valuationPrice*(+p.qty||0)}
+  for(const a of ASSETS){const p=state.positions[a.id],r=runtime[a.id];if(!p)continue;const cost=+p.paid||((+p.buy||0)*(+p.qty||0)),valuationPrice=+p.sold||(r?.price||0)||(+p.buy||0);invested+=cost;current+=valuationPrice*(+p.qty||0)}
   const pnl=current-invested,pct=invested?pnl/invested*100:0,cur=money(current);
   document.querySelector('#totalCurrentUsd').textContent=cur.usd;document.querySelector('#totalCurrentJpy').textContent=cur.jpy;
   const pu=document.querySelector('#totalPnlUsd'),pj=document.querySelector('#totalPnlJpy'),cls='pnl '+(pnl>=0?'up':'down');pu.className='total-value '+cls;pj.className='total-sub '+cls;
@@ -298,3 +296,4 @@ setInterval(updateSolPrice,60000);
 </script>
 </body>
 </html>
+
