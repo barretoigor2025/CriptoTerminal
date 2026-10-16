@@ -79,6 +79,7 @@
       .board,.charts-row,.summary-row{gap:5px}.summary-row{grid-template-columns:minmax(0,1fr) minmax(100px,125px)}.chart-head{padding:0 5px;gap:3px}.symbol{font-size:11px}.price{font-size:8px}.price-jpy{display:none}.change{font-size:7px;padding:2px 3px}.tf{font-size:7px;padding:3px 2px}.data-card{padding:4px 5px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 5px}.metric{padding:3px 0}.metric:nth-child(-n+2){border-top:0}.label,.sub{font-size:6.8px}.value{font-size:8px}.data-title{font-size:7px}.edit{font-size:7px;padding:2px 4px}.screen-btn{width:29px;padding:0;justify-content:center}.screen-btn span{display:none}.total-card{padding:4px 5px}.total-title{font-size:6.5px;margin-bottom:3px}.total-value{font-size:8px}.total-sub,.total-label{font-size:6px}.total-block+.total-block{margin-top:3px;padding-top:3px}.total-sol{font-size:5.8px;padding-top:3px}
     }
     @media(max-height:550px){.topbar{height:28px;margin-bottom:4px}.board{height:calc(100dvh - 43px)}.chart-head{height:32px}.chart{height:calc(100% - 32px)}.metric{padding:2px 0}.data-top{margin-bottom:0}}
+    .sale-note{position:absolute;left:8px;z-index:4;font:500 8px "IBM Plex Mono",monospace;color:#ef9299;background:rgba(8,11,18,.85);padding:3px 5px;border-radius:3px;pointer-events:none;max-width:calc(100% - 85px);line-height:1.5}
   </style>
 </head>
 <body>
@@ -106,8 +107,9 @@
 
 <script>
 const ASSETS = [
-  {id:'mstrx', label:'MSTRX', pair:'MSTRX_USDT'}
+  {id:'mstrx', label:'MSTRX', pair:'MSTRX-USDT'}
 ];
+// USDT market shown as approximate USD; JPY uses current USD/JPY mid-rate.
 const STORE_KEY='ib_mstrx_buy_20261017_v1';
 const DEFAULT_POSITIONS={
   mstrx:{buy:136.95,sold:0,target:149,qty:24.802173,paid:3400.08,grossQty:24.827,feeQty:0.024827,date:'17/10/2026 · 04:27:59'}
@@ -124,8 +126,8 @@ function money(v){if(!Number.isFinite(v))v=0;return {usd:fmtUSD.format(v),jpy:st
 function signed(v,formatter){const a=formatter(Math.abs(v));return (v>0?'+':v<0?'−':'')+a}
 function chartHtml(a){return `<section class="asset" data-id="${a.id}">
   <div class="chart-card">
-    <div class="chart-head"><strong class="symbol">${a.label}</strong><span class="price-wrap"><span class="price" data-role="price">—</span><span class="price-jpy" data-role="priceJpy">—</span></span><span class="change" data-role="change">—</span><select class="tf" data-role="tf"><option value="15m">15m</option><option value="1h" selected>1h</option><option value="4h">4h</option><option value="1d">1D</option></select></div>
-    <div class="chart" data-role="chart"><div class="trade-key"><span class="buy-key" data-role="buyKey">COMPRA —</span><span class="sell-key" data-role="sellKey">VENDA —</span></div><div class="error" data-role="error">Carregando gráfico…</div></div>
+    <div class="chart-head"><strong class="symbol">${a.label}</strong><span class="price-wrap"><span class="price" data-role="price">—</span><span class="price-jpy" data-role="priceJpy">—</span></span><span class="change" data-role="change">—</span><select class="tf" data-role="tf"><option value="1m">1m</option><option value="15m">15m</option><option value="1h" selected>1h</option><option value="4h">4h</option><option value="1d">1D</option></select></div>
+    <div class="chart" data-role="chart"><div class="trade-key"><span class="buy-key" data-role="buyKey">COMPRA —</span><span class="sell-key" data-role="sellKey">VENDA —</span></div><div class="sale-note" data-role="saleNote"></div><div class="error" data-role="error">Carregando gráfico…</div></div>
   </div>
 </section>`}
 function dataHtml(a){return `<div class="data-card" data-info-id="${a.id}">
@@ -140,7 +142,7 @@ function dataHtml(a){return `<div class="data-card" data-info-id="${a.id}">
     </div>
   </div>`}
 function totalHtml(){return `<div class="total-card" id="totalCard">
-  <div class="total-title">Resultado Total</div>
+  <div class="total-title">Resultado Total</div><div style="font:500 6px monospace;color:var(--muted)">USDT ≈ USD · JPY estimado</div>
   <div class="total-block"><span class="total-label">Valor atual</span><span class="total-value" id="totalCurrentUsd">—</span><span class="total-sub" id="totalCurrentJpy">—</span></div>
   <div class="total-block"><span class="total-label">Profit total</span><span class="total-value pnl" id="totalPnlUsd">—</span><span class="total-sub pnl" id="totalPnlJpy">—</span></div>
   <div id="fxStatus" style="font:500 7px monospace;color:var(--muted);margin-top:5px;overflow-wrap:anywhere">Consultando USD/JPY…</div>
@@ -159,18 +161,15 @@ function chartOptions(){return {
   handleScroll:true,handleScale:true,autoSize:true
 }}
 
-const TF={"15m":"15m","1h":"1h","4h":"4h","1d":"1d"};
-function apiUrl(pair,tf,limit=500){return `https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=${pair}&interval=${TF[tf]}&limit=${limit}`}
+const TF={"1m":"1m","15m":"15m","1h":"1h","4h":"4h","1d":"1d"};
+function apiUrl(pair,tf,limit=500){return `https://open-api.bingx.com/openApi/spot/v2/market/kline?symbol=${encodeURIComponent(pair)}&interval=${TF[tf]}&limit=${limit}&timestamp=${Date.now()}`}
 async function getJson(url){
   const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),9000);
   try{const r=await fetch(url,{signal:ctrl.signal});if(!r.ok)throw Error(String(r.status));return await r.json()}finally{clearTimeout(timer)}
 }
-async function candles(pair,tf){
-  const url=apiUrl(pair,tf);
-  let d;try{d=await getJson(url)}catch(e){d=await getJson('https://api.allorigins.win/raw?url='+encodeURIComponent(url))}
-  if(!Array.isArray(d)||!d.length)throw Error('sem candles');
-  return d.map(k=>({time:+k[0],open:+k[5],high:+k[3],low:+k[4],close:+k[2]})).filter(x=>Number.isFinite(x.close)).sort((a,b)=>a.time-b.time)
-}
+async function bingJson(url){let d;try{d=await getJson(url)}catch(e){d=await getJson('https://api.allorigins.win/raw?url='+encodeURIComponent(url))}if(d.code!==0)throw Error(d.msg||'BingX indisponível');return d.data}
+function parseBingCandles(d){if(!Array.isArray(d)||!d.length)throw Error('sem candles BingX');return d.map(k=>({time:Math.floor(+k[0]/1000),open:+k[1],high:+k[2],low:+k[3],close:+k[4]})).filter(x=>Number.isFinite(x.close)).sort((a,b)=>a.time-b.time)}
+async function candles(pair,tf){return parseBingCandles(await bingJson(apiUrl(pair,tf)))}
 
 function initAsset(a){
   const root=document.querySelector(`[data-id="${a.id}"]`),info=document.querySelector(`[data-info-id="${a.id}"]`),chartEl=root.querySelector('[data-role="chart"]');
@@ -184,6 +183,8 @@ function initAsset(a){
     rt.viewTimer=setTimeout(()=>{state.views[a.id]=state.views[a.id]||{};state.views[a.id][rt.tf]={from:range.from,to:range.to};saveState()},250);
   });
   new ResizeObserver(()=>chart.resize(chartEl.clientWidth,chartEl.clientHeight)).observe(chartEl);
+  chart.timeScale().subscribeVisibleTimeRangeChange(()=>renderSaleNote(a));
+  chart.subscribeCrosshairMove(()=>renderSaleNote(a));
   loadChart(a,false);
 }
 
@@ -191,39 +192,64 @@ async function loadChart(a,preserveCurrent=true){
   const r=runtime[a.id],err=r.root.querySelector('[data-role="error"]'),firstLoad=!r.candles.length;if(firstLoad){err.textContent='Carregando gráfico…';err.classList.add('show')}
   const currentRange=preserveCurrent?r.chart.timeScale().getVisibleLogicalRange():null;
   try{
-    r.candles=await candles(a.pair,r.tf);r.restoring=true;r.series.setData(r.candles);
+    const tf=r.tf,data=await candles(a.pair,tf);if(tf!==r.tf)return;
+    const streamed=r.candles.at(-1),latest=data.at(-1);
+    if(r.loadedTf===tf&&streamed&&latest&&streamed.time===latest.time){latest.high=Math.max(latest.high,streamed.high);latest.low=Math.min(latest.low,streamed.low);if(Date.now()-(r.lastTickAt||0)<10000)latest.close=streamed.close}
+    r.loadedTf=tf;r.candles=data;r.restoring=true;r.series.setData(r.candles);
     const saved=state.views[a.id]?.[r.tf],wanted=currentRange||saved;
     if(wanted&&Number.isFinite(wanted.from)&&Number.isFinite(wanted.to))r.chart.timeScale().setVisibleLogicalRange(wanted);else r.chart.timeScale().fitContent();
     setTimeout(()=>{r.restoring=false},120);
-    const last=r.candles.at(-1);r.price=last.close;r.ok=true;err.classList.remove('show');renderAsset(a);renderTotal();
+    const last=r.candles.at(-1);r.price=last.close;r.ok=true;r.lastTickAt=Date.now();r.feedMode='REST';err.classList.remove('show');renderAsset(a);renderTotal();
   }
   catch(e){if(firstLoad){r.ok=false;err.textContent='Não foi possível carregar os candles agora. O painel tentará novamente.';err.classList.add('show')}}
   updateGlobalStatus();
 }
 
-function applyTick(a,price,changePct){
-  const r=runtime[a.id];if(!Number.isFinite(price)||price<=0)return;r.price=price;r.ok=true;
+function applyTick(a,price,changePct,eventTime=Date.now(),mode="WS"){
+  const r=runtime[a.id];if(!Number.isFinite(price)||price<=0)return;r.price=price;r.ok=true;r.lastTickAt=Date.now();r.feedMode=mode;
   if(Number.isFinite(changePct))r.changePct=changePct;
-  const last=r.candles.at(-1);if(last){const now=Math.floor(Date.now()/1000),unit={"15m":900,"1h":3600,"4h":14400,"1d":86400}[r.tf],time=Math.floor(now/unit)*unit;
+  const last=r.candles.at(-1);if(last&&r.loadedTf===r.tf){const now=Math.floor(eventTime/1000),unit={"1m":60,"15m":900,"1h":3600,"4h":14400,"1d":86400}[r.tf],time=Math.floor(now/unit)*unit;
     if(last.time===time){const c={...last,close:price,high:Math.max(last.high,price),low:Math.min(last.low,price)};r.candles[r.candles.length-1]=c;r.series.update(c)}
+    else if(time<last.time){const old=r.candles.find(c=>c.time===time);if(old){old.high=Math.max(old.high,price);old.low=Math.min(old.low,price);r.series.setData(r.candles)}}
     else if(time>last.time){const c={time,open:last.close,high:Math.max(last.close,price),low:Math.min(last.close,price),close:price};r.candles.push(c);r.series.update(c)}
   }
   renderAsset(a);renderTotal();updateGlobalStatus();
 }
 
-let socket,reconnectTimer;
+let socket,reconnectTimer,wsQueue=Promise.resolve();
+async function decodeBingMessage(data){
+ if(typeof data==='string')return data;
+ const bytes=data instanceof Blob?await data.arrayBuffer():data;
+ const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+ return await new Response(stream).text();
+}
 function connectTicker(){
-  clearTimeout(reconnectTimer);try{if(socket)socket.close()}catch(e){}
-  socket=new WebSocket('wss://api.gateio.ws/ws/v4/');
-  socket.onopen=()=>socket.send(JSON.stringify({time:Math.floor(Date.now()/1000),channel:'spot.tickers',event:'subscribe',payload:[...ASSETS.map(a=>a.pair),'SOL_USDT']}));
-  socket.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.channel!=='spot.tickers'||m.event!=='update')return;const x=m.result||{};if(x.currency_pair==='SOL_USDT'){state.solPrice=+x.last||state.solPrice;renderTotal();return}const a=ASSETS.find(z=>z.pair===x.currency_pair);if(a)applyTick(a,+x.last,+x.change_percentage)}catch(_){} };
-  socket.onerror=()=>{try{socket.close()}catch(e){}};
-  socket.onclose=()=>{reconnectTimer=setTimeout(connectTicker,3500)};
+ clearTimeout(reconnectTimer);if(socket){socket.onclose=null;socket.close()}
+ const ws=socket=new WebSocket('wss://open-api-ws.bingx.com/market');ws.binaryType='arraybuffer';
+ ws.onopen=()=>{for(const type of ['MSTRX-USDT@trade','MSTRX-USDT@ticker','SOL-USDT@lastPrice'])ws.send(JSON.stringify({id:crypto.randomUUID(),reqType:'sub',dataType:type}))};
+ ws.onmessage=e=>{wsQueue=wsQueue.then(async()=>{
+  if(ws!==socket)return;const text=await decodeBingMessage(e.data);if(text.toLowerCase().includes('ping')){ws.send('Pong');return}
+  const m=JSON.parse(text),d=m.data,type=m.dataType||'';
+  if(type==='SOL-USDT@lastPrice'){state.solPrice=+d.c||state.solPrice;renderTotal();return}
+  const a=ASSETS[0];
+  if(type==='MSTRX-USDT@trade'&&Array.isArray(d)){for(const t of [...d].sort((a,b)=>a.T-b.T))applyTick(a,+t.p,undefined,+t.T)}
+  else if(type==='MSTRX-USDT@ticker'&&d)applyTick(a,+d.c,parseFloat(d.P));
+ }).catch(()=>{})};
+ ws.onerror=()=>ws.close();ws.onclose=()=>{for(const a of ASSETS)runtime[a.id].ok=false;updateGlobalStatus();reconnectTimer=setTimeout(connectTicker,3500)};
+}
+async function pollBingTicker(){
+ try{const d=await bingJson('https://open-api.bingx.com/openApi/spot/v1/ticker/24hr?symbol=MSTRX-USDT&timestamp='+Date.now());const t=Array.isArray(d)?d[0]:d;if(t?.lastPrice)applyTick(ASSETS[0],+t.lastPrice,parseFloat(t.priceChangePercent),Date.now(),'REST')}catch(e){}
 }
 
+function renderSaleNote(a){
+ const r=runtime[a.id];if(!r)return;const p=state.positions[a.id],el=r.root.querySelector('[data-role="saleNote"]');
+ const amount=p.qty*p.target,y=r.series.priceToCoordinate(p.target),h=r.chartEl.clientHeight;
+ el.textContent=`${nfmt.format(p.qty)} MSTRx × $${p.target} = ${fmtUSD.format(amount)} / ${state.fx?fmtJPY.format(amount*state.fx):'¥ —'} · bruto`;
+ el.style.display=y===null||y<0||y>h?'none':'block';el.style.top=Math.max(25,Math.min(h-35,y-32))+'px';
+}
 function renderAsset(a){
   const r=runtime[a.id],p=state.positions[a.id]||{buy:0,qty:0},root=r.root,info=r.info,price=r.price||0;
-  syncEntryMarker(a,p);syncExitMarker(a,p);
+  renderSaleNote(a);syncEntryMarker(a,p);syncExitMarker(a,p);
   if(!r.orderScaleReady){r.orderScaleReady=true;r.series.applyOptions({autoscaleInfoProvider:original=>{const info=original();if(!info?.priceRange)return info;const pos=state.positions[a.id];info.priceRange.minValue=Math.min(info.priceRange.minValue,pos.buy*.995);info.priceRange.maxValue=Math.max(info.priceRange.maxValue,pos.target*1.005);return info}})}
   root.querySelector('[data-role="buyKey"]').textContent=`COMPRA ${fmtUSD.format(+p.buy||0)}`;
   root.querySelector('[data-role="sellKey"]').hidden=false;root.querySelector('[data-role="sellKey"]').textContent=`ORDEM DE VENDA ${fmtUSD.format(p.target)}`;
@@ -264,7 +290,7 @@ function renderTotal(){
   document.querySelector('#totalSolEquivalent').textContent=state.solPrice&&current?`≈ ${(current/state.solPrice).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} SOL`:'— SOL';
 }
 function renderAll(){ASSETS.forEach(renderAsset);renderTotal()}
-function updateGlobalStatus(){const n=ASSETS.filter(a=>runtime[a.id]?.ok).length,led=document.querySelector('#globalLed'),txt=document.querySelector('#globalStatus');led.classList.toggle('on',n===ASSETS.length);txt.textContent=n===ASSETS.length?'ao vivo · 1s':n?'parcial':'conectando'}
+function updateGlobalStatus(){const r=runtime.mstrx,fresh=r?.ok&&Date.now()-(r.lastTickAt||0)<15000;document.querySelector('#globalLed').classList.toggle('on',!!fresh);document.querySelector('#globalStatus').textContent=fresh?`BingX · ${r.feedMode||'REST'} · MSTRX/USDT`:'BingX · reconectando'}
 
 const dialog=document.querySelector('#editDialog'),form=document.querySelector('#editForm');
 function openEditor(a){state.active=a.id;const p=state.positions[a.id];document.querySelector('#modalTitle').textContent=`Editar compra · ${a.label}`;document.querySelector('#buyPrice').value=p.buy||'';document.querySelector('#quantity').value=p.qty||'';dialog.showModal()}
@@ -293,7 +319,7 @@ function renderFxStatus(failed=false){
   const el=document.querySelector('#fxStatus');
   el.textContent=state.fx?`USD/JPY ${state.fx.toFixed(3)} · ${state.fxSource} · ${state.fxAt}${failed?' · falha ao renovar':''}`:'Câmbio indisponível · valores em JPY aguardando cotação';
 }
-async function updateFx(){
+async function fallbackFx(){
   if(state.fxLoading)return;state.fxLoading=true;
   try{
     const url='https://query1.finance.yahoo.com/v8/finance/chart/JPY%3DX?interval=1m&range=1d';
@@ -318,14 +344,34 @@ async function updateFx(){
     renderFxStatus(true);
   }finally{state.fxLoading=false;renderAll()}
 }
-async function updateSolPrice(){try{const url='https://api.gateio.ws/api/v4/spot/tickers?currency_pair=SOL_USDT';let d;try{d=await getJson(url)}catch(e){d=await getJson('https://api.allorigins.win/raw?url='+encodeURIComponent(url))}if(Array.isArray(d)&&d[0]?.last)state.solPrice=+d[0].last}catch(e){}renderTotal()}
-ASSETS.forEach(initAsset);connectTicker();updateFx();updateSolPrice();
+function acceptGmoFx(d){
+ if(d?.symbol!=='USD_JPY'||!(+d.bid>0)||!(+d.ask>0))return false;
+ state.fx=(+d.bid + +d.ask)/2;state.fxSource='GMO Coin · média bid/ask'+(d.status&&d.status!=='OPEN'?' · mercado fechado':'');
+ state.fxAt=new Date(d.timestamp).toLocaleString('pt-BR',{timeZone:'Asia/Tokyo',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'})+' JST';state.gmoAt=Date.now();renderFxStatus();renderAll();return true;
+}
+let fxSocket,fxReconnect;
+function connectFx(){
+ clearTimeout(fxReconnect);fxSocket=new WebSocket('wss://forex-api.coin.z.com/ws/public/v1');
+ fxSocket.onopen=()=>fxSocket.send(JSON.stringify({command:'subscribe',channel:'ticker',symbol:'USD_JPY'}));
+ fxSocket.onmessage=e=>{try{acceptGmoFx(JSON.parse(e.data))}catch(_){} };fxSocket.onerror=()=>fxSocket.close();fxSocket.onclose=()=>{renderFxStatus(true);fxReconnect=setTimeout(connectFx,5000)};
+}
+async function updateFx(){
+ if(Date.now()-(state.gmoAt||0)<10000)return;
+ try{const url='https://forex-api.coin.z.com/public/v1/ticker';let d;try{d=await getJson(url)}catch(e){d=await getJson('https://api.allorigins.win/raw?url='+encodeURIComponent(url))}if(!acceptGmoFx(d.data?.find(x=>x.symbol==='USD_JPY')))throw Error('FX indisponível')}
+ catch(e){if(!state.fx)await fallbackFx();else renderFxStatus(true)}
+}
+async function updateSolPrice(){try{const d=await bingJson('https://open-api.bingx.com/openApi/spot/v1/ticker/24hr?symbol=SOL-USDT&timestamp='+Date.now());const t=Array.isArray(d)?d[0]:d;state.solPrice=+t.lastPrice||state.solPrice}catch(e){}renderTotal()}
+
+ASSETS.forEach(initAsset);connectTicker();connectFx();pollBingTicker();updateFx();updateSolPrice();
 setInterval(renderAll,1000);
 setInterval(()=>ASSETS.forEach(a=>loadChart(a)),60000);
 setInterval(updateSolPrice,60000);
-setInterval(updateFx,60000);
+setInterval(updateFx,15000);
+setInterval(pollBingTicker,5000);
+setInterval(()=>{ASSETS.forEach(renderSaleNote);updateGlobalStatus()},1000);
 </script>
 </body>
 </html>
+
 
 
