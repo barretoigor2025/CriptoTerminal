@@ -110,9 +110,9 @@ const ASSETS = [
   {id:'mstrx', label:'MSTRX', pair:'MSTRX_USDT'}
 ];
 // USDT market shown as approximate USD; JPY uses current USD/JPY mid-rate.
-const STORE_KEY='ib_mstrx_buy_20261017_v1';
+const STORE_KEY='ib_mstrx_closed_20261019_v2';
 const DEFAULT_POSITIONS={
-  mstrx:{buy:136.95,sold:0,target:155,qty:24.802173,paid:3400.08,grossQty:24.827,feeQty:0.024827,date:'17/10/2026 · 04:27:59'}
+  mstrx:{buy:136.95,sold:140.0667764151282,target:0,saleTotal:3473.96,soldQty:24.80217,saleDate:'19/10/2026 · 10:44:47',saleFeeRateEstimate:0.001,qty:24.802173,paid:3400.08,grossQty:24.827,feeQty:0.024827,date:'17/10/2026 · 04:27:59'}
 };
 const state={fx:0,fxSource:"",fxAt:"",fxLoading:false,solPrice:0,positions:JSON.parse(JSON.stringify(DEFAULT_POSITIONS)),views:{},active:null};
 const runtime={};
@@ -131,20 +131,23 @@ function chartHtml(a){return `<section class="asset" data-id="${a.id}">
   </div>
 </section>`}
 function dataHtml(a){return `<div class="data-card" data-info-id="${a.id}">
-    <div class="data-top"><span class="data-title">${a.label} · posição aberta</span><button class="edit" data-role="edit">Editar</button></div>
+    <div class="data-top"><span class="data-title">${a.label} · posição encerrada</span><button class="edit" data-role="edit">Editar</button></div>
     <div class="metrics">
       <div class="metric"><span class="label">Preço médio</span><span class="value" data-role="buyUsd">—</span><span class="sub" data-role="buyJpy">—</span></div>
       <div class="metric"><span class="label">Quantidade</span><span class="value" data-role="qty">—</span><span class="sub">líquido · taxa 0,024827 MSTRX</span></div>
       <div class="metric"><span class="label">Investido</span><span class="value" data-role="investedUsd">—</span><span class="sub" data-role="investedJpy">—</span></div>
-      <div class="metric"><span class="label">Valor atual</span><span class="value" data-role="currentUsd">—</span><span class="sub" data-role="currentJpy">—</span></div>
-      <div class="metric"><span class="label">PnL em aberto</span><span class="value pnl" data-role="pnlUsd">—</span><span class="sub pnl" data-role="pnlJpy">—</span></div>
+      <div class="metric"><span class="label">Total das vendas</span><span class="value" data-role="currentUsd">—</span><span class="sub" data-role="currentJpy">—</span></div>
+      <div class="metric"><span class="label">Lucro antes da taxa de venda</span><span class="value pnl" data-role="pnlUsd">—</span><span class="sub pnl" data-role="pnlJpy">—</span></div>
       <div class="metric"><span class="label">Compra</span><span class="value" data-role="date">—</span><span class="sub">horário do Japão</span></div>
+      <div class="metric"><span class="label">Venda média · 19/10/2026</span><span class="value">$140.0668</span><span class="sub">21,41784 + 3,38433 MSTRX</span></div>
+      <div class="metric"><span class="label">Taxas · compra + venda estimada</span><span class="value" data-role="fees">—</span><span class="sub">Compra 0,1% · venda 0,1% estimada</span></div>
     </div>
   </div>`}
 function totalHtml(){return `<div class="total-card" id="totalCard">
-  <div class="total-title">Resultado Total</div><div style="font:500 6px monospace;color:var(--muted)">USDT ≈ USD · JPY estimado</div>
+  <div class="total-title">Resultado Total</div><div style="font:500 6px monospace;color:var(--muted)">USDT ≈ USD · JPY ao câmbio atual</div>
   <div class="total-block"><span class="total-label">Valor atual</span><span class="total-value" id="totalCurrentUsd">—</span><span class="total-sub" id="totalCurrentJpy">—</span></div>
-  <div class="total-block"><span class="total-label">Profit total</span><span class="total-value pnl" id="totalPnlUsd">—</span><span class="total-sub pnl" id="totalPnlJpy">—</span></div>
+  <div class="total-block"><span class="total-label">Lucro realizado*</span><span class="total-value pnl" id="totalPnlUsd">—</span><span class="total-sub pnl" id="totalPnlJpy">—</span></div>
+  <div style="font:500 7px monospace;color:var(--muted);margin-top:4px">*Antes da taxa de venda<br>Taxa de venda não informada no print</div>
   <div id="fxStatus" style="font:500 7px monospace;color:var(--muted);margin-top:5px;overflow-wrap:anywhere">Consultando USD/JPY…</div>
   <div class="total-sol">Equivale a <b id="totalSolEquivalent">— SOL</b></div>
 </div>`}
@@ -185,7 +188,7 @@ function initAsset(a){
     if(!range||rt.restoring)return;clearTimeout(rt.viewTimer);
     rt.viewTimer=setTimeout(()=>{state.views[a.id]=state.views[a.id]||{};state.views[a.id][rt.tf]={from:range.from,to:range.to};saveState()},250);
   });
-  new ResizeObserver(()=>chart.resize(chartEl.clientWidth,chartEl.clientHeight)).observe(chartEl);
+  new ResizeObserver(()=>{chart.resize(chartEl.clientWidth,chartEl.clientHeight);renderSaleNote(a)}).observe(chartEl);
   chart.timeScale().subscribeVisibleTimeRangeChange(()=>renderSaleNote(a));
   chart.subscribeCrosshairMove(()=>renderSaleNote(a));
   loadChart(a,false);
@@ -231,24 +234,29 @@ function connectTicker(){
 
 function renderSaleNote(a){
  const r=runtime[a.id];if(!r)return;const p=state.positions[a.id],el=r.root.querySelector('[data-role="saleNote"]');
- const amount=p.qty*p.target,y=r.series.priceToCoordinate(p.target),h=r.chartEl.clientHeight;
- el.textContent=`${nfmt.format(p.qty)} MSTRx × $${p.target} = ${fmtUSD.format(amount)} / ${state.fx?fmtJPY.format(amount*state.fx):'¥ —'} · bruto`;
- el.style.display=y===null||y<0||y>h?'none':'block';el.style.top=Math.max(25,Math.min(h-35,y-32))+'px';
+ const y=r.series.priceToCoordinate(p.sold),h=r.chartEl.clientHeight;
+ const profit=p.saleTotal-p.paid;
+ el.textContent=`VENDA MÉDIA ${fmtUSD.format(p.sold)} · LUCRO +${fmtUSD.format(profit)} / ${state.fx?fmtJPY.format(profit*state.fx):'¥ —'} · antes da taxa de venda`;
+ el.style.display=y===null||y<0||y>h?'none':'block';el.style.top=Math.max(25,Math.min(h-el.offsetHeight-4,y-el.offsetHeight-6))+'px';
+
 }
 function renderAsset(a){
   const r=runtime[a.id],p=state.positions[a.id]||{buy:0,qty:0},root=r.root,info=r.info,price=r.price||0;
   renderSaleNote(a);syncEntryMarker(a,p);syncExitMarker(a,p);
-  if(!r.orderScaleReady){r.orderScaleReady=true;r.series.applyOptions({autoscaleInfoProvider:original=>{const info=original();if(!info?.priceRange)return info;const pos=state.positions[a.id];info.priceRange.minValue=Math.min(info.priceRange.minValue,pos.buy*.995);info.priceRange.maxValue=Math.max(info.priceRange.maxValue,pos.target*1.005);return info}})}
+  if(!r.orderScaleReady){r.orderScaleReady=true;r.series.applyOptions({autoscaleInfoProvider:original=>{const info=original();if(!info?.priceRange)return info;const pos=state.positions[a.id];info.priceRange.minValue=Math.min(info.priceRange.minValue,pos.buy*.995);info.priceRange.maxValue=Math.max(info.priceRange.maxValue,(pos.sold||pos.target)*1.005);return info}})}
   root.querySelector('[data-role="buyKey"]').textContent=`COMPRA ${fmtUSD.format(+p.buy||0)}`;
-  root.querySelector('[data-role="sellKey"]').hidden=false;root.querySelector('[data-role="sellKey"]').textContent=`ORDEM DE VENDA ${fmtUSD.format(p.target)}`;
+  root.querySelector('[data-role="sellKey"]').hidden=false;root.querySelector('[data-role="sellKey"]').textContent=`VENDA REALIZADA ${fmtUSD.format(p.sold)}`;
   root.querySelector('[data-role="price"]').textContent=price?fmtUSD.format(price):'—';root.querySelector('[data-role="priceJpy"]').textContent=price&&state.fx?fmtJPY.format(price*state.fx):'—';
   const ch=root.querySelector('[data-role="change"]'),cp=Number.isFinite(r.changePct)?r.changePct:null;
   ch.textContent=cp===null?'—':`${cp>=0?'+':''}${cp.toFixed(2)}%`;ch.className='change '+(cp!==null&&cp>=0?'up':'down');
-  const buy=money(+p.buy||0),valuationPrice=+p.sold||price||(+p.buy||0),current=money(valuationPrice*(+p.qty||0)),cost=(+p.paid||((+p.buy||0)*(+p.qty||0))),invested=money(cost),pnl=valuationPrice*(+p.qty||0)-cost,pct=cost?pnl/cost*100:0;
+  const buy=money(+p.buy||0),valuationPrice=+p.sold||price||(+p.buy||0),current=money(p.saleTotal??valuationPrice*(+p.qty||0)),cost=(+p.paid||((+p.buy||0)*(+p.qty||0))),invested=money(cost),pnl=(p.saleTotal??valuationPrice*(+p.qty||0))-cost,pct=cost?pnl/cost*100:0;
   info.querySelector('[data-role="buyUsd"]').textContent=buy.usd;info.querySelector('[data-role="buyJpy"]').textContent=buy.jpy;
   info.querySelector('[data-role="qty"]').textContent=nfmt.format(+p.qty||0);
   info.querySelector('[data-role="investedUsd"]').textContent=invested.usd;info.querySelector('[data-role="investedJpy"]').textContent=invested.jpy;
   info.querySelector('[data-role="currentUsd"]').textContent=current.usd;info.querySelector('[data-role="currentJpy"]').textContent=current.jpy;
+  const buyFee=p.feeQty*p.buy,saleFee=p.saleTotal*p.saleFeeRateEstimate;
+  info.querySelector('[data-role="fees"]').textContent=`${fmtUSD.format(buyFee+saleFee)} ≈ · ${((buyFee+saleFee)/p.paid*100).toFixed(3)}%`;
+  info.querySelector('[data-role="fees"]').title=`Compra: ${fmtUSD.format(buyFee)} (já incluída no custo). Venda: ${fmtUSD.format(saleFee)} se a taxa for 0,1%, não confirmada. Lucro após essa estimativa: ${fmtUSD.format(p.saleTotal-p.paid-saleFee)}. Total das ordens pode ser bruto; centavos de arredondamento não comprovam comissão.`;
   info.querySelector('[data-role="date"]').textContent=p.date||'17/10/2026';
   const pu=info.querySelector('[data-role="pnlUsd"]'),pj=info.querySelector('[data-role="pnlJpy"]'),cls='pnl '+(pnl>=0?'up':'down');pu.className='value '+cls;pj.className='sub '+cls;
   pu.textContent=`${signed(pnl,fmtUSD.format.bind(fmtUSD))} · ${pct>=0?'+':''}${pct.toFixed(2)}%`;pj.textContent=(state.fx?signed(pnl*state.fx,fmtJPY.format.bind(fmtJPY)):"—");
@@ -262,15 +270,15 @@ function syncEntryMarker(a,p){
 }
 
 function syncExitMarker(a,p){
-  const r=runtime[a.id],exit=+p.target||0;if(r.exitPrice===exit)return;
+  const r=runtime[a.id],exit=+p.sold||0;if(r.exitPrice===exit)return;
   if(r.exitLine){try{r.series.removePriceLine(r.exitLine)}catch(e){}r.exitLine=null}
   r.exitPrice=exit;if(!exit)return;
-  r.exitLine=r.series.createPriceLine({price:exit,color:'#ef5d67',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'ORDEM VENDA'});
+  r.exitLine=r.series.createPriceLine({price:exit,color:'#ef5d67',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'VENDA MÉDIA'});
 }
 
 function renderTotal(){
   let invested=0,current=0;
-  for(const a of ASSETS){const p=state.positions[a.id],r=runtime[a.id];if(!p)continue;const cost=+p.paid||((+p.buy||0)*(+p.qty||0)),valuationPrice=+p.sold||(r?.price||0)||(+p.buy||0);invested+=cost;current+=valuationPrice*(+p.qty||0)}
+  for(const a of ASSETS){const p=state.positions[a.id],r=runtime[a.id];if(!p)continue;const cost=+p.paid||((+p.buy||0)*(+p.qty||0)),valuationPrice=+p.sold||(r?.price||0)||(+p.buy||0);invested+=cost;current+=p.saleTotal??valuationPrice*(+p.qty||0)}
   const pnl=current-invested,pct=invested?pnl/invested*100:0,cur=money(current);
   document.querySelector('#totalCurrentUsd').textContent=cur.usd;document.querySelector('#totalCurrentJpy').textContent=cur.jpy;
   const pu=document.querySelector('#totalPnlUsd'),pj=document.querySelector('#totalPnlJpy'),cls='pnl '+(pnl>=0?'up':'down');pu.className='total-value '+cls;pj.className='total-sub '+cls;
