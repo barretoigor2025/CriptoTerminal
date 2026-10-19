@@ -79,7 +79,7 @@
       .board,.charts-row,.summary-row{gap:5px}.summary-row{grid-template-columns:minmax(0,1fr) minmax(100px,125px)}.chart-head{padding:0 5px;gap:3px}.symbol{font-size:11px}.price{font-size:8px}.price-jpy{display:none}.change{font-size:7px;padding:2px 3px}.tf{font-size:7px;padding:3px 2px}.data-card{padding:4px 5px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 5px}.metric{padding:3px 0}.metric:nth-child(-n+2){border-top:0}.label,.sub{font-size:6.8px}.value{font-size:8px}.data-title{font-size:7px}.edit{font-size:7px;padding:2px 4px}.screen-btn{width:29px;padding:0;justify-content:center}.screen-btn span{display:none}.total-card{padding:4px 5px}.total-title{font-size:6.5px;margin-bottom:3px}.total-value{font-size:8px}.total-sub,.total-label{font-size:6px}.total-block+.total-block{margin-top:3px;padding-top:3px}.total-sol{font-size:5.8px;padding-top:3px}
     }
     @media(max-height:550px){.topbar{height:28px;margin-bottom:4px}.board{height:calc(100dvh - 43px)}.chart-head{height:32px}.chart{height:calc(100% - 32px)}.metric{padding:2px 0}.data-top{margin-bottom:0}}
-    .sale-note{position:absolute;left:8px;z-index:4;font:500 8px "IBM Plex Mono",monospace;color:#52d5a6;background:rgba(8,11,18,.85);padding:3px 5px;border-radius:3px;pointer-events:none;max-width:calc(100% - 85px);line-height:1.5}
+    .sale-note{position:absolute;left:8px;z-index:4;font:500 8px "IBM Plex Mono",monospace;color:#52d5a6;background:rgba(8,11,18,.85);padding:3px 5px;border-radius:3px;pointer-events:none;max-width:min(320px,calc(100% - 85px));line-height:1.5}
   </style>
 </head>
 <body>
@@ -162,7 +162,7 @@ function chartOptions(){return {
   layout:{background:{color:'transparent'},textColor:'#7f8a9e',fontFamily:"'IBM Plex Mono', monospace",fontSize:10},
   grid:{vertLines:{color:'rgba(29,37,52,.55)'},horzLines:{color:'rgba(29,37,52,.55)'}},
   crosshair:{mode:LightweightCharts.CrosshairMode.Normal,vertLine:{color:'#41b3ff66',style:2},horzLine:{color:'#41b3ff66',style:2}},
-  rightPriceScale:{borderColor:'#1d2534',scaleMargins:{top:.08,bottom:.18}},
+  rightPriceScale:{borderColor:'#1d2534',scaleMargins:{top:.20,bottom:.18}},
   timeScale:{borderColor:'#1d2534',timeVisible:true,secondsVisible:false,rightOffset:4,barSpacing:7},
   handleScroll:true,handleScale:true,autoSize:true
 }}
@@ -192,6 +192,7 @@ function initAsset(a){
     rt.viewTimer=setTimeout(()=>{state.views[a.id]=state.views[a.id]||{};state.views[a.id][rt.tf]={from:range.from,to:range.to};saveState()},250);
   });
   new ResizeObserver(()=>{chart.resize(chartEl.clientWidth,chartEl.clientHeight);renderSaleNote(a)}).observe(chartEl);
+  chart.timeScale().subscribeVisibleLogicalRangeChange(()=>renderSaleNote(a));
   chart.timeScale().subscribeVisibleTimeRangeChange(()=>renderSaleNote(a));
   chart.subscribeCrosshairMove(()=>renderSaleNote(a));
   loadChart(a,false);
@@ -235,14 +236,31 @@ function connectTicker(){
   socket.onclose=()=>{reconnectTimer=setTimeout(connectTicker,3500)};
 }
 
+function saleCandle(r,p){
+ const match=(p.saleDate||'').match(/(\d{2})\/(\d{2})\/(\d{4})\s*·\s*(\d{2}):(\d{2}):(\d{2})/);
+ if(!match)return null;
+ const [,day,month,year,hour,minute,second]=match;
+ const time=Date.parse(`${year}-${month}-${day}T${hour}:${minute}:${second}+09:00`)/1000;
+ const unit={"1m":60,"15m":900,"1h":3600,"4h":14400,"1d":86400}[r.loadedTf||r.tf];
+ return r.candles.find(c=>time>=c.time&&time<c.time+unit)||null;
+}
 function renderSaleNote(a){
  const r=runtime[a.id];if(!r)return;const p=state.positions[a.id],el=r.root.querySelector('[data-role="saleNote"]');
- const y=r.series.priceToCoordinate(p.sold),h=r.chartEl.clientHeight;
+ const candle=saleCandle(r,p);
+ if(!candle){el.style.display='none';return}
+ const x=r.chart.timeScale().timeToCoordinate(candle.time),y=r.series.priceToCoordinate(Math.max(candle.high,p.sold));
+ const w=r.chartEl.clientWidth,h=r.chartEl.clientHeight,plotWidth=w-r.chart.priceScale('right').width();
+ if(x===null||y===null||x<0||x>plotWidth||y<0||y>h){el.style.display='none';return}
  const profit=p.saleTotal-p.paid;
  el.textContent=`VENDA MÉDIA ${fmtUSD.format(p.sold)} · LUCRO +${fmtUSD.format(profit)} / ${fmtJPY.format(profit*CLOSED_FX)} · antes da taxa de venda`;
- el.style.display=y===null||y<0||y>h?'none':'block';el.style.top=Math.max(25,Math.min(h-el.offsetHeight-4,y-el.offsetHeight-6))+'px';
-
+ el.style.display='block';
+ const top=y-el.offsetHeight-10;
+ // Never clamp downward over the wick when there is no space above it.
+ if(top<0){el.style.display='none';return}
+ el.style.top=top+'px';
+ el.style.left=Math.max(4,Math.min(plotWidth-el.offsetWidth-4,x-el.offsetWidth/2))+'px';
 }
+
 function renderAsset(a){
   const r=runtime[a.id],p=state.positions[a.id]||{buy:0,qty:0},root=r.root,info=r.info,price=r.price||0;
   renderSaleNote(a);syncEntryMarker(a,p);syncExitMarker(a,p);
@@ -366,10 +384,13 @@ setInterval(()=>ASSETS.forEach(a=>loadChart(a)),60000);
 
 
 
-setInterval(()=>{ASSETS.forEach(renderSaleNote);updateGlobalStatus()},1000);
+setInterval(updateGlobalStatus,1000);
+function followSaleCandle(){if(!document.hidden)ASSETS.forEach(renderSaleNote);requestAnimationFrame(followSaleCandle)}
+requestAnimationFrame(followSaleCandle);
 </script>
 </body>
 </html>
+
 
 
 
