@@ -46,7 +46,7 @@
     .trade-key{position:absolute;z-index:3;top:6px;left:7px;display:flex;gap:5px;pointer-events:none;font:600 7px "IBM Plex Mono",monospace}
     .trade-key span{padding:2px 5px;border-radius:4px;background:rgba(10,13,19,.84);white-space:nowrap}
     .trade-key .buy-key{color:#fff;border:1px solid rgba(255,255,255,.42)}
-    .trade-key .sell-key{color:#ef5d67;border:1px dashed #ef5d67}
+    .trade-key .sell-key{color:#26a69a;border:1px dashed #26a69a}
     .error{display:none;position:absolute;inset:0;place-items:center;text-align:center;color:var(--muted);font:500 11px/1.5 "IBM Plex Mono",monospace;padding:20px;background:rgba(8,11,16,.85);z-index:4}
     .error.show{display:grid}
     .data-card{padding:6px 8px 7px}
@@ -79,7 +79,7 @@
       .board,.charts-row,.summary-row{gap:5px}.summary-row{grid-template-columns:minmax(0,1fr) minmax(100px,125px)}.chart-head{padding:0 5px;gap:3px}.symbol{font-size:11px}.price{font-size:8px}.price-jpy{display:none}.change{font-size:7px;padding:2px 3px}.tf{font-size:7px;padding:3px 2px}.data-card{padding:4px 5px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 5px}.metric{padding:3px 0}.metric:nth-child(-n+2){border-top:0}.label,.sub{font-size:6.8px}.value{font-size:8px}.data-title{font-size:7px}.edit{font-size:7px;padding:2px 4px}.screen-btn{width:29px;padding:0;justify-content:center}.screen-btn span{display:none}.total-card{padding:4px 5px}.total-title{font-size:6.5px;margin-bottom:3px}.total-value{font-size:8px}.total-sub,.total-label{font-size:6px}.total-block+.total-block{margin-top:3px;padding-top:3px}.total-sol{font-size:5.8px;padding-top:3px}
     }
     @media(max-height:550px){.topbar{height:28px;margin-bottom:4px}.board{height:calc(100dvh - 43px)}.chart-head{height:32px}.chart{height:calc(100% - 32px)}.metric{padding:2px 0}.data-top{margin-bottom:0}}
-    .sale-note{position:absolute;left:8px;z-index:4;font:500 8px "IBM Plex Mono",monospace;color:#ef9299;background:rgba(8,11,18,.85);padding:3px 5px;border-radius:3px;pointer-events:none;max-width:calc(100% - 85px);line-height:1.5}
+    .sale-note{position:absolute;left:8px;z-index:4;font:500 8px "IBM Plex Mono",monospace;color:#52d5a6;background:rgba(8,11,18,.85);padding:3px 5px;border-radius:3px;pointer-events:none;max-width:calc(100% - 85px);line-height:1.5}
   </style>
 </head>
 <body>
@@ -110,6 +110,8 @@ const ASSETS = [
   {id:'mstrx', label:'MSTRX', pair:'MSTRX_USDT'}
 ];
 // USDT market shown as approximate USD; JPY uses current USD/JPY mid-rate.
+// Fixed reporting reference from the supplied 19/10 screenshot, not an executed JPY conversion.
+const CLOSED_FX=158.028;
 const STORE_KEY='ib_mstrx_closed_20261019_v2';
 const DEFAULT_POSITIONS={
   mstrx:{buy:136.95,sold:140.0667764151282,target:0,saleTotal:3473.96,soldQty:24.80217,saleDate:'19/10/2026 · 10:44:47',saleFeeRateEstimate:0.001,qty:24.802173,paid:3400.08,grossQty:24.827,feeQty:0.024827,date:'17/10/2026 · 04:27:59'}
@@ -120,9 +122,10 @@ const fmtUSD=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',mini
 const fmtJPY=new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY',maximumFractionDigits:0});
 const nfmt=new Intl.NumberFormat('en-US',{maximumFractionDigits:8});
 
-function loadState(){try{const s=JSON.parse(localStorage.getItem(STORE_KEY)||'{}');for(const id of Object.keys(DEFAULT_POSITIONS)){const p=s.positions?.[id];if(p&&+p.buy>0&&+p.qty>0)state.positions[id]={...DEFAULT_POSITIONS[id],...p,sold:DEFAULT_POSITIONS[id].sold,target:DEFAULT_POSITIONS[id].target}}if(s.views&&typeof s.views==='object')state.views=s.views}catch(e){}}
+function loadState(){try{const s=JSON.parse(localStorage.getItem(STORE_KEY)||'{}');if(s.views&&typeof s.views==='object')state.views=s.views}catch(e){}}
+
 function saveState(){try{localStorage.setItem(STORE_KEY,JSON.stringify({positions:state.positions,views:state.views}))}catch(e){}}
-function money(v){if(!Number.isFinite(v))v=0;return {usd:fmtUSD.format(v),jpy:state.fx?fmtJPY.format(v*state.fx):"—"}}
+function money(v){if(!Number.isFinite(v))v=0;return {usd:fmtUSD.format(v),jpy:fmtJPY.format(v*CLOSED_FX)}}
 function signed(v,formatter){const a=formatter(Math.abs(v));return (v>0?'+':v<0?'−':'')+a}
 function chartHtml(a){return `<section class="asset" data-id="${a.id}">
   <div class="chart-card">
@@ -131,11 +134,11 @@ function chartHtml(a){return `<section class="asset" data-id="${a.id}">
   </div>
 </section>`}
 function dataHtml(a){return `<div class="data-card" data-info-id="${a.id}">
-    <div class="data-top"><span class="data-title">${a.label} · posição encerrada</span><button class="edit" data-role="edit">Editar</button></div>
+    <div class="data-top"><span class="data-title" style="color:var(--green)">${a.label} · encerrada com lucro</span><button class="edit" data-role="edit" hidden>Editar</button></div>
     <div class="metrics">
-      <div class="metric"><span class="label">Preço médio</span><span class="value" data-role="buyUsd">—</span><span class="sub" data-role="buyJpy">—</span></div>
-      <div class="metric"><span class="label">Quantidade</span><span class="value" data-role="qty">—</span><span class="sub">líquido · taxa 0,024827 MSTRX</span></div>
-      <div class="metric"><span class="label">Investido</span><span class="value" data-role="investedUsd">—</span><span class="sub" data-role="investedJpy">—</span></div>
+      <div class="metric"><span class="label">Entrada · preço médio</span><span class="value" data-role="buyUsd">—</span><span class="sub" data-role="buyJpy">—</span></div>
+      <div class="metric"><span class="label">Quantidade comprada</span><span class="value" data-role="qty">—</span><span class="sub">líquido · taxa 0,024827 MSTRX</span></div>
+      <div class="metric"><span class="label">Capital investido</span><span class="value" data-role="investedUsd">—</span><span class="sub" data-role="investedJpy">—</span></div>
       <div class="metric"><span class="label">Total das vendas</span><span class="value" data-role="currentUsd">—</span><span class="sub" data-role="currentJpy">—</span></div>
       <div class="metric"><span class="label">Lucro antes da taxa de venda</span><span class="value pnl" data-role="pnlUsd">—</span><span class="sub pnl" data-role="pnlJpy">—</span></div>
       <div class="metric"><span class="label">Compra</span><span class="value" data-role="date">—</span><span class="sub">horário do Japão</span></div>
@@ -144,12 +147,12 @@ function dataHtml(a){return `<div class="data-card" data-info-id="${a.id}">
     </div>
   </div>`}
 function totalHtml(){return `<div class="total-card" id="totalCard">
-  <div class="total-title">Resultado Total</div><div style="font:500 6px monospace;color:var(--muted)">USDT ≈ USD · JPY ao câmbio atual</div>
-  <div class="total-block"><span class="total-label">Valor atual</span><span class="total-value" id="totalCurrentUsd">—</span><span class="total-sub" id="totalCurrentJpy">—</span></div>
+  <div class="total-title" style="color:var(--green)">Operação encerrada · lucro</div><div style="font:500 6px monospace;color:var(--muted)">USDT ≈ USD · valores registrados</div>
+  <div class="total-block"><span class="total-label">Total vendido</span><span class="total-value" id="totalCurrentUsd">—</span><span class="total-sub" id="totalCurrentJpy">—</span></div>
   <div class="total-block"><span class="total-label">Lucro realizado*</span><span class="total-value pnl" id="totalPnlUsd">—</span><span class="total-sub pnl" id="totalPnlJpy">—</span></div>
   <div style="font:500 7px monospace;color:var(--muted);margin-top:4px">*Antes da taxa de venda<br>Taxa de venda não informada no print</div>
-  <div id="fxStatus" style="font:500 7px monospace;color:var(--muted);margin-top:5px;overflow-wrap:anywhere">Consultando USD/JPY…</div>
-  <div class="total-sol">Equivale a <b id="totalSolEquivalent">— SOL</b></div>
+  <div id="fxStatus" style="font:500 7px monospace;color:var(--muted);margin-top:5px;overflow-wrap:anywhere">JPY estimado · câmbio fixado em ¥158,028/US$ (referência do print)</div>
+  <div class="total-sol"><b id="totalSolEquivalent">Finalizada em 19/10/2026 · 10:44 JST</b></div>
 </div>`}
 
 document.querySelector('#board').innerHTML=`<div class="charts-row">${ASSETS.map(chartHtml).join('')}</div><div class="summary-row">${ASSETS.map(dataHtml).join('')}${totalHtml()}</div>`;
@@ -236,7 +239,7 @@ function renderSaleNote(a){
  const r=runtime[a.id];if(!r)return;const p=state.positions[a.id],el=r.root.querySelector('[data-role="saleNote"]');
  const y=r.series.priceToCoordinate(p.sold),h=r.chartEl.clientHeight;
  const profit=p.saleTotal-p.paid;
- el.textContent=`VENDA MÉDIA ${fmtUSD.format(p.sold)} · LUCRO +${fmtUSD.format(profit)} / ${state.fx?fmtJPY.format(profit*state.fx):'¥ —'} · antes da taxa de venda`;
+ el.textContent=`VENDA MÉDIA ${fmtUSD.format(p.sold)} · LUCRO +${fmtUSD.format(profit)} / ${fmtJPY.format(profit*CLOSED_FX)} · antes da taxa de venda`;
  el.style.display=y===null||y<0||y>h?'none':'block';el.style.top=Math.max(25,Math.min(h-el.offsetHeight-4,y-el.offsetHeight-6))+'px';
 
 }
@@ -259,7 +262,7 @@ function renderAsset(a){
   info.querySelector('[data-role="fees"]').title=`Compra: ${fmtUSD.format(buyFee)} (já incluída no custo). Venda: ${fmtUSD.format(saleFee)} se a taxa for 0,1%, não confirmada. Lucro após essa estimativa: ${fmtUSD.format(p.saleTotal-p.paid-saleFee)}. Total das ordens pode ser bruto; centavos de arredondamento não comprovam comissão.`;
   info.querySelector('[data-role="date"]').textContent=p.date||'17/10/2026';
   const pu=info.querySelector('[data-role="pnlUsd"]'),pj=info.querySelector('[data-role="pnlJpy"]'),cls='pnl '+(pnl>=0?'up':'down');pu.className='value '+cls;pj.className='sub '+cls;
-  pu.textContent=`${signed(pnl,fmtUSD.format.bind(fmtUSD))} · ${pct>=0?'+':''}${pct.toFixed(2)}%`;pj.textContent=(state.fx?signed(pnl*state.fx,fmtJPY.format.bind(fmtJPY)):"—");
+  pu.textContent=`${signed(pnl,fmtUSD.format.bind(fmtUSD))} · ${pct>=0?'+':''}${pct.toFixed(2)}%`;pj.textContent=signed(pnl*CLOSED_FX,fmtJPY.format.bind(fmtJPY));
 }
 
 function syncEntryMarker(a,p){
@@ -273,7 +276,7 @@ function syncExitMarker(a,p){
   const r=runtime[a.id],exit=+p.sold||0;if(r.exitPrice===exit)return;
   if(r.exitLine){try{r.series.removePriceLine(r.exitLine)}catch(e){}r.exitLine=null}
   r.exitPrice=exit;if(!exit)return;
-  r.exitLine=r.series.createPriceLine({price:exit,color:'#ef5d67',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'VENDA MÉDIA'});
+  r.exitLine=r.series.createPriceLine({price:exit,color:'#26a69a',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'VENDA MÉDIA'});
 }
 
 function renderTotal(){
@@ -282,8 +285,8 @@ function renderTotal(){
   const pnl=current-invested,pct=invested?pnl/invested*100:0,cur=money(current);
   document.querySelector('#totalCurrentUsd').textContent=cur.usd;document.querySelector('#totalCurrentJpy').textContent=cur.jpy;
   const pu=document.querySelector('#totalPnlUsd'),pj=document.querySelector('#totalPnlJpy'),cls='pnl '+(pnl>=0?'up':'down');pu.className='total-value '+cls;pj.className='total-sub '+cls;
-  pu.textContent=`${signed(pnl,fmtUSD.format.bind(fmtUSD))} · ${pct>=0?'+':''}${pct.toFixed(2)}%`;pj.textContent=(state.fx?signed(pnl*state.fx,fmtJPY.format.bind(fmtJPY)):"—");
-  document.querySelector('#totalSolEquivalent').textContent=state.solPrice&&current?`≈ ${(current/state.solPrice).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} SOL`:'— SOL';
+  pu.textContent=`${signed(pnl,fmtUSD.format.bind(fmtUSD))} · ${pct>=0?'+':''}${pct.toFixed(2)}%`;pj.textContent=signed(pnl*CLOSED_FX,fmtJPY.format.bind(fmtJPY));
+  document.querySelector('#totalSolEquivalent').textContent='Finalizada em 19/10/2026 · 10:44 JST';
 }
 function renderAll(){ASSETS.forEach(renderAsset);renderTotal()}
 function updateGlobalStatus(){const r=runtime.mstrx,fresh=r?.ok&&Date.now()-(r.lastTickAt||0)<15000;document.querySelector('#globalLed').classList.toggle('on',!!fresh);document.querySelector('#globalStatus').textContent=fresh?`Gate · ${r.feedMode||'REST'} · MSTRX/USDT`:'Gate · reconectando'}
@@ -311,10 +314,10 @@ function syncFullscreenButton(){
 screenBtn.addEventListener('click',toggleFullscreen);
 document.addEventListener('fullscreenchange',syncFullscreenButton);document.addEventListener('webkitfullscreenchange',syncFullscreenButton);
 
-function renderFxStatus(failed=false){
-  const el=document.querySelector('#fxStatus');
-  el.textContent=state.fx?`USD/JPY ${state.fx.toFixed(3)} · ${state.fxSource} · ${state.fxAt}${failed?' · falha ao renovar':''}`:'Câmbio indisponível · valores em JPY aguardando cotação';
+function renderFxStatus(){
+ document.querySelector('#fxStatus').textContent='JPY estimado · câmbio fixado em ¥158,028/US$ (referência do print de 19/10)';
 }
+
 async function fallbackFx(){
   if(state.fxLoading)return;state.fxLoading=true;
   try{
@@ -357,11 +360,11 @@ async function updateFx(){
  catch(e){if(!state.fx)await fallbackFx();else renderFxStatus(true)}
 }
 async function updateSolPrice(){try{const url='https://api.gateio.ws/api/v4/spot/tickers?currency_pair=SOL_USDT';let d;try{d=await getJson(url)}catch(e){d=await getJson('https://api.allorigins.win/raw?url='+encodeURIComponent(url))}if(Array.isArray(d)&&d[0]?.last)state.solPrice=+d[0].last}catch(e){}renderTotal()}
-ASSETS.forEach(initAsset);connectTicker();connectFx();updateFx();updateSolPrice();
+ASSETS.forEach(initAsset);renderAll();renderFxStatus();connectTicker();
 setInterval(renderAll,1000);
 setInterval(()=>ASSETS.forEach(a=>loadChart(a)),60000);
-setInterval(updateSolPrice,60000);
-setInterval(updateFx,15000);
+
+
 
 setInterval(()=>{ASSETS.forEach(renderSaleNote);updateGlobalStatus()},1000);
 </script>
