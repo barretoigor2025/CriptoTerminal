@@ -487,7 +487,7 @@
     <div class="pair"><span class="dot"></span><span>WBTC/SOL</span></div>
     <div class="price" id="ratio">--</div>
     <div class="badge ok" id="rangeStatus">In Range</div>
-    <div class="badge" id="rangeText">737.58 - 815.14</div>
+    <div class="badge" id="rangeText">754.28 - 833.61</div>
     <div class="badge" id="liveText">tick 1s</div>
     <div class="spacer"></div>
     <div class="tf" aria-label="Timeframe">
@@ -509,9 +509,11 @@
 
       <aside class="side-panel" aria-label="Dados da pool">
         <div class="pool-card" id="poolCard" aria-label="Dados da pool">
-        <div class="card-title">Pool WBTC/SOL · 16/10</div>
-        <div style="font-size:10px;color:#8e98a8;margin-bottom:10px">Estimativa pelo range e cotações · saldo Orca 05:16 JST: $3.405,27 · aguardando endereço da nova posição</div>
-        <div class="metric-row no-btn"><span class="label">Base pool nova</span><span class="value">$3,412.07</span></div>
+        <div class="card-title">Pool WBTC/SOL · 27/10</div>
+        <div style="font-size:10px;color:#8e98a8;margin-bottom:10px">Estimativa pelo range e cotações · saldo Orca 04:26 JST: $4.084,89 · aguardando endereço da nova posição</div>
+        <div style="font-size:10px;color:#8e98a8;margin-bottom:8px">Compra 27/10 04:16:54 JST: 40,684 SOL − 0,040684 SOL de taxa = 40,643316 SOL líquidos; total $4.100,52. Capital histórico registrado preservado; PnL da jornada aguarda confirmação de aportes.</div>
+        <div class="metric-row no-btn"><span class="label">Reserva para taxas</span><span class="value" id="reserveValue">--</span></div>
+        <div class="metric-row no-btn"><span class="label">Base pool nova</span><span class="value">$4,083.28</span></div>
         <div class="metric-row no-btn"><span class="label">PnL pool nova</span><span class="value" id="currentPoolPnl">--</span></div>
         <div class="metric-row no-btn" id="rowLiquidity"><span class="label">Liquidez</span><span class="value" id="metricLiquidity">--</span><button class="fee-add" type="button">+</button></div>
         <div class="metric-row no-btn" id="rowPnl"><span class="label">PnL</span><span class="value" id="metricPnl">--</span><button class="fee-add" type="button">+</button></div>
@@ -553,10 +555,10 @@
   <script>
     const POOL = {
       capital: 3542.14363,
-      lower: 737.576356,
-      upper: 815.143863,
-      solAmount: 16.3641067,
-      btcAmount: 0.02038762,
+      lower: 754.283654,
+      upper: 833.608191,
+      solAmount: 20.6453713,
+      btcAmount: 0.02512657,
       initialSolBuyUsd: 3484.14363,
       externalAddUsd: 58,
       uncollectedFees: 0,
@@ -566,12 +568,13 @@
       whirlpool: "B5EwJVDuAauzUEEdwvbuXzbFFgEYnUqqS37TUM1c4PQA",
       position: "",
       positionMint: "",
-      snapshotBalance: 3405.27,
-      snapshotRatio: 776.0889,
-      snapshotSolUsd: 1731.48 / 16.3641067,
-      currentCostBasis: 3412.07,
-      currentBuyUsd: 3426.97,
-      currentBuySol: 32.263,
+      snapshotBalance: 4084.89,
+      snapshotRatio: 793.66857,
+      snapshotSolUsd: 2075.72 / 20.6453713,
+      currentCostBasis: 4083.28,
+      currentBuyUsd: 4100.52,
+      currentBuySol: 40.643316,
+      reserveSol: 0.05384,
       rpc: "https://api.mainnet-beta.solana.com"
     };
 
@@ -692,6 +695,18 @@
         localStorage.setItem(resetKey, "1");
       }
     } catch (err) {}
+    try {
+      const key = "wbtc_sol_reentry_20261027_v1";
+      if (localStorage.getItem(key) !== "1") {
+        state.history.unshift({kind:"reentry",ts:"2026-10-27T04:26:00+09:00",text:"Nova pool 27/10: compra $4.100,52; 40,643316 SOL líquidos. Base Orca $4.083,28; saldo $4.084,89; pendente $0,01. Reserva 0,05384 SOL (carteira total $5,42 no print). Range 754,283654–833,608191. Taxas do ciclo anterior arquivadas; capital histórico preservado, aportes a confirmar."});
+        state.uncollectedFees = .01;
+        state.collectedFees = 0;
+        state.reinvestedFees = 0;
+        state.feePnlCarry = 0;
+        state.feeStartedAt = "2026-10-27T04:21:00+09:00";
+        saveState();localStorage.setItem(key,"1");
+      }
+    } catch(err) {}
     if (migratedState) saveState();
 
     const chart = LightweightCharts.createChart(chartEl, {
@@ -1379,12 +1394,13 @@
       const pnlPct = capital ? pnl / capital : 0;
       const pnlTone = pnl >= 0 ? "positive" : "negative";
       const comp = composition();
-      $("currentPoolPnl").textContent = usd(liq + displayedUncollectedFees() + state.feePnlCarry - POOL.currentCostBasis);
+      $("currentPoolPnl").textContent = usd(liq + displayedUncollectedFees() - POOL.currentCostBasis);
+      $("reserveValue").textContent = "0.05384 SOL · " + usd(POOL.reserveSol * (state.solUsd || POOL.snapshotSolUsd));
       const pendingFees = displayedUncollectedFees();
       const pendingLabel = usd(pendingFees);
 
       setMetric("rowLiquidity", "metricLiquidity", liquidityLabel(liq));
-      setMetric("rowPnl", "metricPnl", usd(pnl) + " (" + pct(pnlPct) + ")", pnlTone);
+      setMetric("rowPnl", "metricPnl", "Confirmar aportes");
       setMetric("rowCapital", "metricCapital", usd(capital));
       setMetric("rowNewCapital", "metricNewCapital", usd(state.newExternalCapital), "positive");
       const newPnl = newCapitalPnl();
@@ -1595,3 +1611,4 @@
   </script>
 </body>
 </html>
+
