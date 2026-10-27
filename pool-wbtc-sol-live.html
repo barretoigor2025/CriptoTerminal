@@ -1540,6 +1540,8 @@
       $("solEquivalent").textContent = "≈ " + (liq / (state.solUsd || POOL.snapshotSolUsd)).toFixed(4) + " SOL";
       $("solValue").textContent = usd(comp.solValue);
       $("btcValue").textContent = usd(comp.btcValue);
+      const sizes = [...$('sideContent').querySelectorAll('.value,.yen-value,.hero-percent')].map(el => el.textContent.length).join(',');
+      if(fitDataPanel.textSizes !== sizes){fitDataPanel.textSizes = sizes;requestAnimationFrame(fitDataPanel);}
     }
 
     new ResizeObserver(resize).observe($("stage"));
