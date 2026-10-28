@@ -167,6 +167,14 @@
     .conversion-note{display:block;color:#748196;font-size:6px;margin-top:4px}
     @media(max-width:760px) and (orientation:portrait){.conversion-grid{grid-template-columns:1fr}.conversion-grid b{font-size:12px;padding:5px}.conversion-label{font-size:6px}}
     @media(orientation:landscape) and (max-height:550px){.conversion-grid b{font-size:10px;padding:4px}.conversion-label{margin-bottom:3px;font-size:6px}.sol-equivalent{padding-top:5px}}
+
+    .target-edit{margin-left:6px;vertical-align:middle;font-size:8px;padding:3px 5px;touch-action:manipulation}
+    #targetDialog .field span{display:block;margin-bottom:6px;color:var(--muted);font-size:11px}
+    .target-preview{font:500 12px/1.7 monospace;background:#ffffff05;border:1px solid #ffffff12;padding:10px;border-radius:8px;white-space:pre-line}
+    .target-error{color:#ef5d67;font-size:11px;min-height:16px;margin:5px 0}
+    .target-help{font-size:10px;color:#8b98aa;line-height:1.5;margin-top:12px}
+    #targetPrice[readonly]{opacity:.65}
+    #targetDialog .actions{flex-wrap:wrap}
   </style>
 </head>
 <body>
@@ -192,6 +200,17 @@
     </form>
   </dialog>
 
+<dialog id="targetDialog" aria-labelledby="targetTitle">
+ <form class="modal" id="targetForm">
+  <h2 id="targetTitle">Alterar alvo de venda</h2>
+  <label class="field" for="targetPrice"><span>Novo preço por HOODX · US$</span><input id="targetPrice" type="text" inputmode="decimal" autocomplete="off" required aria-describedby="targetError"></label>
+  <p id="targetError" class="target-error" role="alert"></p>
+  <div class="target-preview" id="targetPreview" aria-live="polite"></div>
+  <p class="target-help">Estimativa antes das taxas. Esta alteração muda apenas o dashboard; a ordem na BingX deve ser ajustada na corretora.</p>
+  <div class="actions"><button class="cancel" id="targetCancel" type="button">Cancelar</button><button class="cancel" id="targetBack" type="button" hidden>Voltar</button><button class="save" id="targetSubmit" type="submit">Revisar alteração</button></div>
+ </form>
+</dialog>
+
 <script>
 const ASSETS = [
   {id:'hoodx', label:'HOODX', pair:'HOODX-USDT'}
@@ -207,8 +226,8 @@ const fmtUSD=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',mini
 const fmtJPY=new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY',maximumFractionDigits:0});
 const nfmt=new Intl.NumberFormat('en-US',{maximumFractionDigits:8});
 
-function loadState(){try{const s=JSON.parse(localStorage.getItem(STORE_KEY)||'{}');for(const id of Object.keys(DEFAULT_POSITIONS)){const p=s.positions?.[id];if(p&&+p.buy>0&&+p.qty>0)state.positions[id]={...DEFAULT_POSITIONS[id],...p,sold:DEFAULT_POSITIONS[id].sold,target:DEFAULT_POSITIONS[id].target}}if(s.views&&typeof s.views==='object')state.views=s.views}catch(e){}}
-function saveState(){try{localStorage.setItem(STORE_KEY,JSON.stringify({positions:state.positions,views:state.views}))}catch(e){}}
+function loadState(){try{const s=JSON.parse(localStorage.getItem(STORE_KEY)||'{}');for(const id of Object.keys(DEFAULT_POSITIONS)){const p=s.positions?.[id];if(p&&+p.buy>0&&+p.qty>0)state.positions[id]={...DEFAULT_POSITIONS[id],...p,sold:DEFAULT_POSITIONS[id].sold,target:Number.isFinite(Number(p.target))&&Number(p.target)>0?Number(p.target):DEFAULT_POSITIONS[id].target}}if(s.views&&typeof s.views==='object')state.views=s.views}catch(e){}}
+function saveState(){try{localStorage.setItem(STORE_KEY,JSON.stringify({positions:state.positions,views:state.views}));return true}catch(e){return false}}
 function money(v){if(!Number.isFinite(v))v=0;return {usd:fmtUSD.format(v),jpy:state.fx?fmtJPY.format(v*state.fx):"—"}}
 function signed(v,formatter){const a=formatter(Math.abs(v));return (v>0?'+':v<0?'−':'')+a}
 function chartHtml(a){return `<section class="asset" data-id="${a.id}">
@@ -240,7 +259,7 @@ function dataHtml(a){return `<div class="data-card" data-info-id="${a.id}">
   </div>
 </div>`}
 function totalHtml(){return `<section class="total-card stock-subcard" id="totalCard">
- <div class="total-title">ORDEM DE VENDA <b id="saleTarget">—</b><span class="pending-badge">PENDENTE</span></div>
+ <div class="total-title">ORDEM DE VENDA <b id="saleTarget">—</b><button type="button" class="edit target-edit" id="editSaleTarget" aria-label="Alterar alvo de venda">Editar alvo</button><span class="pending-badge">PENDENTE</span></div>
  <div class="sale-grid">
   <div class="total-block"><span class="total-label">Total previsto</span><span class="total-value" id="totalCurrentUsd">—</span><span class="total-sub" id="totalCurrentJpy">—</span></div>
   <div class="total-block"><span class="total-label">Lucro previsto</span><span class="total-value pnl" id="totalPnlUsd">—</span><span class="total-sub pnl" id="totalPnlJpy">—</span></div>
@@ -439,6 +458,44 @@ function openEditor(a){state.active=a.id;const p=state.positions[a.id];document.
 document.querySelector('#cancelBtn').addEventListener('click',()=>dialog.close());
 form.addEventListener('submit',e=>{e.preventDefault();if(!state.active)return;const buy=Math.max(0,+document.querySelector('#buyPrice').value||0),qty=Math.max(0,+document.querySelector('#quantity').value||0),old=state.positions[state.active];state.positions[state.active]={...old,buy,qty,paid:buy*qty};saveState();dialog.close();renderAll()});
 
+function parseTarget(value){
+ const raw=String(value).trim();
+ if(!/^\d+(?:[.,]\d{1,2})?$/.test(raw))return null;
+ const n=Number(raw.replace(',','.'));return Number.isFinite(n)&&n>0?n:null;
+}
+function targetEstimate(target){const p=state.positions.hoodx,total=p.qty*target,profit=total-p.paid;return {total,profit,percent:profit/p.paid*100};}
+const targetDialog=document.querySelector('#targetDialog'),targetForm=document.querySelector('#targetForm'),targetInput=document.querySelector('#targetPrice'),targetError=document.querySelector('#targetError'),targetPreview=document.querySelector('#targetPreview'),targetSubmit=document.querySelector('#targetSubmit'),targetBack=document.querySelector('#targetBack');
+let pendingTarget=null;
+function resetTargetReview(){
+ pendingTarget=null;targetInput.readOnly=false;targetSubmit.textContent='Revisar alteração';targetBack.hidden=true;targetError.textContent='';
+}
+function showTargetPreview(){
+ const value=parseTarget(targetInput.value);
+ if(value===null){targetPreview.textContent='Digite um preço positivo com até duas casas decimais.';return}
+ const e=targetEstimate(value);
+ targetPreview.textContent='Total previsto: '+fmtUSD.format(e.total)+(state.fx?' / '+fmtJPY.format(e.total*state.fx):'')+'\n'+(e.profit>=0?'Lucro':'Resultado')+' previsto: '+signed(e.profit,fmtUSD.format.bind(fmtUSD))+' ('+(e.percent>=0?'+':'')+e.percent.toFixed(2)+'%)';
+ targetPreview.style.color=e.profit>0?'#26a69a':e.profit<0?'#ef5d67':'#ffffff';
+}
+document.querySelector('#editSaleTarget').addEventListener('click',()=>{
+ resetTargetReview();targetInput.value=Number(state.positions.hoodx.target).toFixed(2);showTargetPreview();targetDialog.showModal();targetInput.focus();targetInput.select();
+});
+targetInput.addEventListener('input',()=>{targetError.textContent='';showTargetPreview()});
+document.querySelector('#targetCancel').addEventListener('click',()=>{targetDialog.close();resetTargetReview()});
+targetBack.addEventListener('click',()=>{resetTargetReview();showTargetPreview();targetInput.focus()});
+targetForm.addEventListener('submit',e=>{
+ e.preventDefault();
+ if(pendingTarget===null){
+  const value=parseTarget(targetInput.value);
+  if(value===null){targetError.textContent='Informe um preço válido, por exemplo 96,50.';targetInput.focus();return}
+  pendingTarget=value;targetInput.readOnly=true;targetBack.hidden=false;targetSubmit.textContent='Confirmar novo alvo';
+  targetError.textContent='Confirmar mudança de '+fmtUSD.format(state.positions.hoodx.target)+' para '+fmtUSD.format(value)+'?';
+  targetSubmit.focus();return;
+ }
+ state.positions.hoodx.target=pendingTarget;
+ const saved=saveState();targetDialog.close();resetTargetReview();renderAll();
+ runtime.hoodx.chart.priceScale?.('right')?.applyOptions({autoScale:true});
+ document.querySelector('#editSaleTarget').title=saved?'Alvo salvo neste navegador':'Aplicado nesta sessão; o navegador não permitiu salvar';
+});
 const screenBtn=document.querySelector('#screenBtn');
 async function toggleFullscreen(){
   try{
