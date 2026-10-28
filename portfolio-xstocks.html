@@ -149,6 +149,16 @@
       .total-value{font-size:12px;line-height:16px}.total-sub{line-height:11px}
       .micro-note{font-size:6px;line-height:1.3;margin-top:3px}
     }
+
+    .chart-card{display:grid;grid-template-rows:auto auto minmax(0,1fr);overflow:hidden}
+    .chart-head{height:auto;min-height:34px;flex-wrap:wrap;padding-top:4px;padding-bottom:4px}
+    .chart{height:100%;min-height:0}
+    .chart-meta{padding:4px 8px 6px;border-bottom:1px solid var(--line);background:#101620;min-width:0}
+    .chart-meta .trade-key{position:static;display:flex;flex-wrap:wrap;gap:4px;font-size:7px}
+    .chart-meta .sale-note{position:static;max-width:100%;background:none;border:0;padding:5px 0 0;font:500 9px/1.5 "IBM Plex Mono",monospace;overflow-wrap:anywhere}
+    .symbol{font-size:12px}
+    @media(max-width:760px){.symbol{font-size:10px}.chart-meta{padding:3px 6px 4px}.chart-meta .sale-note{font-size:8px}}
+    @media(max-height:550px){.chart-head{height:auto;min-height:28px}.chart{height:100%}.chart-meta .sale-note{padding-top:2px;font-size:8px}.chart-meta{padding-top:2px;padding-bottom:3px}}
   </style>
 </head>
 <body>
@@ -195,8 +205,9 @@ function money(v){if(!Number.isFinite(v))v=0;return {usd:fmtUSD.format(v),jpy:st
 function signed(v,formatter){const a=formatter(Math.abs(v));return (v>0?'+':v<0?'−':'')+a}
 function chartHtml(a){return `<section class="asset" data-id="${a.id}">
   <div class="chart-card">
-    <div class="chart-head"><strong class="symbol">${a.label}</strong><span class="price-wrap"><span class="price" data-role="price">—</span><span class="price-jpy" data-role="priceJpy">—</span></span><span class="change" data-role="change">—</span><select class="tf" data-role="tf"><option value="1m">1m</option><option value="15m">15m</option><option value="1h" selected>1h</option><option value="4h">4h</option><option value="1d">1D</option></select></div>
-    <div class="chart" data-role="chart"><div data-role="historyStatus" style="position:absolute;z-index:3;left:8px;bottom:24px;font:500 7px monospace;color:#7e8b9d;pointer-events:none"></div><div class="trade-key"><span class="buy-key" data-role="buyKey">COMPRA —</span><span class="sell-key" data-role="sellKey">VENDA —</span></div><div class="sale-note" data-role="saleNote"></div><div class="error" data-role="error">Carregando gráfico…</div></div>
+    <div class="chart-head"><strong class="symbol">Robinhood · ${a.label}</strong><span class="price-wrap"><span class="price" data-role="price">—</span><span class="price-jpy" data-role="priceJpy">—</span></span><span class="change" data-role="change">—</span><select class="tf" data-role="tf"><option value="1m">1m</option><option value="15m">15m</option><option value="1h" selected>1h</option><option value="4h">4h</option><option value="1d">1D</option></select></div>
+    <div class="chart-meta"><div class="trade-key"><span class="buy-key" data-role="buyKey">COMPRA —</span><span class="sell-key" data-role="sellKey">VENDA —</span></div><div class="sale-note" data-role="saleNote"></div></div>
+    <div class="chart" data-role="chart"><div data-role="historyStatus" style="position:absolute;z-index:3;left:8px;bottom:24px;font:500 7px monospace;color:#7e8b9d;pointer-events:none"></div><div class="error" data-role="error">Carregando gráfico…</div></div>
   </div>
 </section>`}
 function dataHtml(a){return `<div class="data-card" data-info-id="${a.id}">
@@ -346,10 +357,11 @@ async function pollBingTicker(){
 function renderSaleNote(a){
  const r=runtime[a.id];if(!r)return;const p=state.positions[a.id],el=r.root.querySelector('[data-role="saleNote"]');
  if(!p.target){el.style.display='none';return}
- const amount=p.qty*p.target,y=r.series.priceToCoordinate(p.target),h=r.chartEl.clientHeight;
- el.textContent=`${nfmt.format(p.qty)} MSTRx × $${p.target} = ${fmtUSD.format(amount)} / ${state.fx?fmtJPY.format(amount*state.fx):'¥ —'} · bruto`;
- el.style.display=y===null||y<0||y>h?'none':'block';el.style.top=Math.max(25,Math.min(h-35,y-32))+'px';
+ const amount=p.qty*p.target,price=r.price||p.buy,pnlCents=Math.round((price*p.qty-p.paid)*100);
+ el.textContent=`${nfmt.format(p.qty)} ${a.label} × $${p.target} = ${fmtUSD.format(amount)} / ${state.fx?fmtJPY.format(amount*state.fx):'¥ —'} · bruto`;
+ el.style.display='block';el.style.color=pnlCents>0?'#26a69a':pnlCents<0?'#ef5d67':'#ffffff';
 }
+
 function renderAsset(a){
   const r=runtime[a.id],p=state.positions[a.id]||{buy:0,qty:0},root=r.root,info=r.info,price=r.price||0;
   renderSaleNote(a);syncEntryMarker(a,p);syncExitMarker(a,p);
