@@ -159,6 +159,14 @@
     .symbol{font-size:12px}
     @media(max-width:760px){.symbol{font-size:10px}.chart-meta{padding:3px 6px 4px}.chart-meta .sale-note{font-size:8px}}
     @media(max-height:550px){.chart-head{height:auto;min-height:28px}.chart{height:100%}.chart-meta .sale-note{padding-top:2px;font-size:8px}.chart-meta{padding-top:2px;padding-bottom:3px}}
+
+    .sol-equivalent{text-align:left;color:#f4cf55;padding-top:8px}
+    .conversion-label{display:block;color:#93a0b3;font-size:7px;letter-spacing:.04em;margin-bottom:5px}
+    .conversion-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+    .conversion-grid b{display:block;min-width:0;color:#f4cf55;background:#f4cf5509;border:1px solid #f4cf5520;border-radius:6px;padding:6px 5px;font-size:12px;font-weight:600;overflow-wrap:anywhere}
+    .conversion-note{display:block;color:#748196;font-size:6px;margin-top:4px}
+    @media(max-width:760px) and (orientation:portrait){.conversion-grid{grid-template-columns:1fr}.conversion-grid b{font-size:12px;padding:5px}.conversion-label{font-size:6px}}
+    @media(orientation:landscape) and (max-height:550px){.conversion-grid b{font-size:10px;padding:4px}.conversion-label{margin-bottom:3px;font-size:6px}.sol-equivalent{padding-top:5px}}
   </style>
 </head>
 <body>
@@ -193,7 +201,7 @@ const STORE_KEY='ib_hoodx_exact_20261028_v2';
 const DEFAULT_POSITIONS={
   hoodx:{buy:4100.128679/46.7035312,sold:0,target:96,qty:46.7035312,paid:4100.128679,date:'28/10/2026'}
 };
-const state={fx:0,fxSource:"",fxAt:"",fxLoading:false,solPrice:0,positions:JSON.parse(JSON.stringify(DEFAULT_POSITIONS)),views:{},active:null};
+const state={fx:0,fxSource:"",fxAt:"",fxLoading:false,solPrice:0,ethPrice:0,solAt:0,ethAt:0,positions:JSON.parse(JSON.stringify(DEFAULT_POSITIONS)),views:{},active:null};
 const runtime={};
 const fmtUSD=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtJPY=new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY',maximumFractionDigits:0});
@@ -217,7 +225,7 @@ function dataHtml(a){return `<div class="data-card" data-info-id="${a.id}">
       <div class="metric"><span class="label">Valor atual</span><span class="value hero-value" data-role="currentUsd">—</span><span class="sub" data-role="currentJpy">—</span></div>
       <div class="metric"><span class="label">PnL em aberto</span><span class="value hero-value pnl" data-role="pnlUsd">—</span><span class="sub pnl" data-role="pnlJpy">—</span><span class="pnl-percent" data-role="pnlPct">—</span></div>
     </div>
-    <div class="sol-equivalent"><b id="totalSolEquivalent">— SOL</b></div>
+    <div class="sol-equivalent"><span class="conversion-label">SE TROCAR O VALOR ATUAL</span><div class="conversion-grid"><b id="totalSolEquivalent">SOL · aguardando cotação</b><b id="totalEthEquivalent">ETH · aguardando cotação</b></div><span class="conversion-note">Estimativa antes das taxas</span></div>
   </section>
   <div class="detail-grid">
     <section class="stock-subcard"><h2>CAPITAL & COMPRA</h2>
@@ -338,14 +346,17 @@ async function decodeBingMessage(data){
 }
 function handleBingData(m){
  const type=m.dataType||'',d=m.data,a=ASSETS[0];
- if(type==='SOL-USDT@lastPrice'){state.solPrice=+d.c||state.solPrice;renderTotal();return}
+ if(type==='SOL-USDT@ticker'||type==='ETH-USDT@ticker'){
+  const key=type.startsWith('SOL-')?'sol':'eth';
+  if(+d?.c>0){state[key+'Price']=+d.c;state[key+'At']=+d.E||Date.now();renderTotal()}return
+ }
  if(type==='HOODX-USDT@trade'&&Array.isArray(d)){for(const t of [...d].sort((a,b)=>a.T-b.T))applyTick(a,+t.p,undefined,+t.T);return}
  if(type==='HOODX-USDT@ticker'&&d){applyTick(a,+d.c,parseFloat(d.P),+d.E||Date.now());return}
 }
 function connectTicker(){
  clearTimeout(reconnectTimer);if(socket){socket.onclose=null;socket.close()}
  const ws=socket=new WebSocket('wss://open-api-ws.bingx.com/market');ws.binaryType='arraybuffer';
- ws.onopen=()=>{for(const type of ['HOODX-USDT@trade','HOODX-USDT@ticker','SOL-USDT@lastPrice'])ws.send(JSON.stringify({id:crypto.randomUUID(),reqType:'sub',dataType:type}))};
+ ws.onopen=()=>{for(const type of ['HOODX-USDT@trade','HOODX-USDT@ticker','SOL-USDT@ticker','ETH-USDT@ticker'])ws.send(JSON.stringify({id:crypto.randomUUID(),reqType:'sub',dataType:type}))};
  ws.onmessage=e=>{wsQueue=wsQueue.then(async()=>{if(ws!==socket)return;const text=await decodeBingMessage(e.data);if(text.toLowerCase().includes('ping')){ws.send('Pong');return}handleBingData(JSON.parse(text))}).catch(()=>{})};
  ws.onerror=()=>ws.close();ws.onclose=()=>{runtime.hoodx.ok=false;updateGlobalStatus();reconnectTimer=setTimeout(connectTicker,3500)};
 }
@@ -405,8 +416,13 @@ function renderTotal(){
  pu.textContent=signed(profit,fmtUSD.format.bind(fmtUSD))+' · '+(profit>=0?'+':'')+(profit/cost*100).toFixed(2)+'%';
  pj.textContent=state.fx?signed(profit*state.fx,fmtJPY.format.bind(fmtJPY)):'¥ —';
  const current=(r?.price||p.buy)*p.qty;
- document.querySelector('#totalSolEquivalent').textContent=state.solPrice?'≈ '+(current/state.solPrice).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' SOL':'— SOL';
- const size=[...document.querySelectorAll('#stockPanel .value,#stockPanel .sub,#stockPanel .total-value')].map(el=>el.textContent.length).join(',');
+ for(const key of ['sol','eth']){
+  const el=document.querySelector(key==='sol'?'#totalSolEquivalent':'#totalEthEquivalent'),symbol=key.toUpperCase(),price=state[key+'Price'],at=state[key+'At'];
+  const fresh=price>0&&Date.now()-at<120000;
+  el.textContent=price>0?'≈ '+(current/price).toLocaleString('pt-BR',{minimumFractionDigits:key==='sol'?3:5,maximumFractionDigits:key==='sol'?3:5})+' '+symbol+(fresh?'':' · última cotação'):symbol+' · aguardando cotação';
+  el.title=price>0?'Valor atual da posição ÷ preço '+symbol+'/USDT: '+price+' · '+new Date(at).toLocaleTimeString('pt-BR',{timeZone:'Asia/Tokyo'})+' JST':'Aguardando cotação da BingX';
+ }
+ const size=[...document.querySelectorAll('#stockPanel .value,#stockPanel .sub,#stockPanel .total-value,.conversion-grid b')].map(el=>el.textContent.length).join(',');
  if(fitStockPanel.sizes!==size){fitStockPanel.sizes=size;requestAnimationFrame(fitStockPanel)}
 }
 function fitStockPanel(){
@@ -486,7 +502,15 @@ async function updateFx(){
  try{const url='https://forex-api.coin.z.com/public/v1/ticker';let d;try{d=await getJson(url)}catch(e){d=await getJson('https://api.allorigins.win/raw?url='+encodeURIComponent(url))}if(!acceptGmoFx(d.data?.find(x=>x.symbol==='USD_JPY')))throw Error('FX indisponível')}
  catch(e){if(!state.fx)await fallbackFx();else renderFxStatus(true)}
 }
-async function updateSolPrice(){try{const d=await bingJson('https://open-api.bingx.com/openApi/spot/v1/ticker/24hr?symbol=SOL-USDT&timestamp='+Date.now()),t=Array.isArray(d.data)?d.data[0]:d.data;state.solPrice=+t.lastPrice||state.solPrice}catch(e){}renderTotal()}
+async function updateSolPrice(){
+ await Promise.allSettled(['sol','eth'].map(async key=>{
+  if(Date.now()-state[key+'At']<15000)return;
+  try{
+   const d=await bingJson('https://open-api.bingx.com/openApi/spot/v1/ticker/24hr?symbol='+key.toUpperCase()+'-USDT&timestamp='+Date.now()),t=Array.isArray(d.data)?d.data[0]:d.data;
+   if(+t?.lastPrice>0){state[key+'Price']=+t.lastPrice;state[key+'At']=+t.closeTime||d.timestamp||Date.now()}
+  }catch(e){}
+ }));renderTotal()
+}
 
 new ResizeObserver(fitStockPanel).observe(document.querySelector(".summary-row"));
 if(document.fonts)document.fonts.ready.then(fitStockPanel);
@@ -494,7 +518,7 @@ ASSETS.forEach(initAsset);connectTicker();connectFx();updateFx();updateSolPrice(
 setInterval(()=>{renderAll();updateGlobalStatus()},1000);
 setInterval(pollBingTicker,10000);
 setInterval(()=>ASSETS.forEach(a=>loadChart(a)),60000);
-setInterval(updateSolPrice,60000);
+setInterval(updateSolPrice,30000);
 setInterval(updateFx,15000);
 
 setInterval(()=>{ASSETS.forEach(renderSaleNote);updateGlobalStatus()},1000);
