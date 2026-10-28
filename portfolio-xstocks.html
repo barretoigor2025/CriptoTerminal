@@ -110,9 +110,9 @@ const ASSETS = [
   {id:'hoodx', label:'HOODX', pair:'HOODX_USDT'}
 ];
 // USDT market shown as approximate USD; JPY uses current USD/JPY mid-rate.
-const STORE_KEY='ib_hoodx_open_20261028_v1';
+const STORE_KEY='ib_hoodx_exact_20261028_v2';
 const DEFAULT_POSITIONS={
-  hoodx:{buy:4100/46.70,sold:0,target:96,qty:46.70,paid:4100,date:'28/10/2026'}
+  hoodx:{buy:4100.128679/46.7035312,sold:0,target:96,qty:46.7035312,paid:4100.128679,date:'28/10/2026'}
 };
 const state={fx:0,fxSource:"",fxAt:"",fxLoading:false,solPrice:0,positions:JSON.parse(JSON.stringify(DEFAULT_POSITIONS)),views:{},active:null};
 const runtime={};
