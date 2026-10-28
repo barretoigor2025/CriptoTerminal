@@ -175,6 +175,12 @@
     .target-help{font-size:10px;color:#8b98aa;line-height:1.5;margin-top:12px}
     #targetPrice[readonly]{opacity:.65}
     #targetDialog .actions{flex-wrap:wrap}
+
+    .pending-badge{color:#52d5a6;border-color:#26a69a55}
+    .trade-key .sell-key{color:#52d5a6;border-color:#26a69a88}
+    .data-title{color:#52d5a6}
+    .sale-execution{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 8px;font:400 8px/1.5 monospace;color:#8593a7;margin-top:6px;border-top:1px solid #ffffff10;padding-top:5px}
+    .sale-execution b{color:#b4c0d2;font-weight:500}
   </style>
 </head>
 <body>
@@ -216,9 +222,9 @@ const ASSETS = [
   {id:'hoodx', label:'HOODX', pair:'HOODX-USDT'}
 ];
 // USDT market shown as approximate USD; JPY uses current USD/JPY mid-rate.
-const STORE_KEY='ib_hoodx_exact_20261028_v2';
+const STORE_KEY='ib_hoodx_closed_20261028_v3';
 const DEFAULT_POSITIONS={
-  hoodx:{buy:4100.128679/46.7035312,sold:0,target:96,qty:46.7035312,paid:4100.128679,date:'28/10/2026'}
+  hoodx:{buy:4100.128679/46.7035312,sold:88.66,target:0,qty:46.7035312,paid:4100.128679,date:'28/10/2026',saleQty:46.7035,saleGross:4141.16,saleFee:4.14116703,saleNet:4141.16-4.14116703,saleDate:'28/10/2026 · 22:01 JST'}
 };
 const state={fx:0,fxSource:"",fxAt:"",fxLoading:false,solPrice:0,ethPrice:0,solAt:0,ethAt:0,positions:JSON.parse(JSON.stringify(DEFAULT_POSITIONS)),views:{},active:null};
 const runtime={};
@@ -226,7 +232,7 @@ const fmtUSD=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',mini
 const fmtJPY=new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY',maximumFractionDigits:0});
 const nfmt=new Intl.NumberFormat('en-US',{maximumFractionDigits:8});
 
-function loadState(){try{const s=JSON.parse(localStorage.getItem(STORE_KEY)||'{}');for(const id of Object.keys(DEFAULT_POSITIONS)){const p=s.positions?.[id];if(p&&+p.buy>0&&+p.qty>0)state.positions[id]={...DEFAULT_POSITIONS[id],...p,sold:DEFAULT_POSITIONS[id].sold,target:Number.isFinite(Number(p.target))&&Number(p.target)>0?Number(p.target):DEFAULT_POSITIONS[id].target}}if(s.views&&typeof s.views==='object')state.views=s.views}catch(e){}}
+function loadState(){try{const s=JSON.parse(localStorage.getItem(STORE_KEY)||'{}');if(s.views&&typeof s.views==='object')state.views=s.views}catch(e){}}
 function saveState(){try{localStorage.setItem(STORE_KEY,JSON.stringify({positions:state.positions,views:state.views}));return true}catch(e){return false}}
 function money(v){if(!Number.isFinite(v))v=0;return {usd:fmtUSD.format(v),jpy:state.fx?fmtJPY.format(v*state.fx):"—"}}
 function signed(v,formatter){const a=formatter(Math.abs(v));return (v>0?'+':v<0?'−':'')+a}
@@ -239,12 +245,12 @@ function chartHtml(a){return `<section class="asset" data-id="${a.id}">
 </section>`}
 function dataHtml(a){return `<div class="data-card" data-info-id="${a.id}">
   <section class="position-hero">
-    <div class="data-top"><span class="data-title">${a.label} · POSIÇÃO ABERTA</span><button class="edit" data-role="edit">Editar</button></div>
+    <div class="data-top"><span class="data-title">${a.label} · ENCERRADA COM LUCRO</span><button class="edit" data-role="edit" hidden>Editar</button></div>
     <div class="hero-grid">
-      <div class="metric"><span class="label">Valor atual</span><span class="value hero-value" data-role="currentUsd">—</span><span class="sub" data-role="currentJpy">—</span></div>
-      <div class="metric"><span class="label">PnL em aberto</span><span class="value hero-value pnl" data-role="pnlUsd">—</span><span class="sub pnl" data-role="pnlJpy">—</span><span class="pnl-percent" data-role="pnlPct">—</span></div>
+      <div class="metric"><span class="label">Recebido líquido</span><span class="value hero-value" data-role="currentUsd">—</span><span class="sub" data-role="currentJpy">—</span></div>
+      <div class="metric"><span class="label">Lucro realizado</span><span class="value hero-value pnl" data-role="pnlUsd">—</span><span class="sub pnl" data-role="pnlJpy">—</span><span class="pnl-percent" data-role="pnlPct">—</span></div>
     </div>
-    <div class="sol-equivalent"><span class="conversion-label">SE TROCAR O VALOR ATUAL</span><div class="conversion-grid"><b id="totalSolEquivalent">SOL · aguardando cotação</b><b id="totalEthEquivalent">ETH · aguardando cotação</b></div><span class="conversion-note">Estimativa antes das taxas</span></div>
+    <div class="sol-equivalent"><span class="conversion-label">SE TROCAR O SALDO DA VENDA</span><div class="conversion-grid"><b id="totalSolEquivalent">SOL · aguardando cotação</b><b id="totalEthEquivalent">ETH · aguardando cotação</b></div><span class="conversion-note">Estimativa antes das taxas</span></div>
   </section>
   <div class="detail-grid">
     <section class="stock-subcard"><h2>CAPITAL & COMPRA</h2>
@@ -259,12 +265,14 @@ function dataHtml(a){return `<div class="data-card" data-info-id="${a.id}">
   </div>
 </div>`}
 function totalHtml(){return `<section class="total-card stock-subcard" id="totalCard">
- <div class="total-title">ORDEM DE VENDA <b id="saleTarget">—</b><button type="button" class="edit target-edit" id="editSaleTarget" aria-label="Alterar alvo de venda">Editar alvo</button><span class="pending-badge">PENDENTE</span></div>
+ <div class="total-title">VENDA REALIZADA <b id="saleTarget">—</b><button type="button" class="edit target-edit" id="editSaleTarget" hidden aria-label="Alterar alvo de venda">Editar alvo</button><span class="pending-badge">CONCLUÍDA</span></div>
  <div class="sale-grid">
-  <div class="total-block"><span class="total-label">Total previsto</span><span class="total-value" id="totalCurrentUsd">—</span><span class="total-sub" id="totalCurrentJpy">—</span></div>
-  <div class="total-block"><span class="total-label">Lucro previsto</span><span class="total-value pnl" id="totalPnlUsd">—</span><span class="total-sub pnl" id="totalPnlJpy">—</span></div>
+  <div class="total-block"><span class="total-label">Total líquido</span><span class="total-value" id="totalCurrentUsd">—</span><span class="total-sub" id="totalCurrentJpy">—</span></div>
+  <div class="total-block"><span class="total-label">Lucro líquido</span><span class="total-value pnl" id="totalPnlUsd">—</span><span class="total-sub pnl" id="totalPnlJpy">—</span></div>
  </div>
- <div class="micro-note">Antes das taxas · USDT ≈ USD · JPY estimado</div>
+ <div class="sale-execution"><span>Bruto <b id="saleGross">—</b></span><span>Taxa <b id="saleFee">—</b></span></div>
+ <div class="micro-note">46,7035 HOODX · a mercado · 28/10/2026 22:01 JST</div>
+ <div class="micro-note">Venda registrada · USDT ≈ USD · JPY ao câmbio atual</div>
  <div id="fxStatus" class="micro-note">Consultando USD/JPY…</div>
 </section>`}
 document.querySelector('#board').innerHTML=`<div class="charts-row">${ASSETS.map(chartHtml).join('')}</div><aside class="summary-row"><div id="stockPanel">${ASSETS.map(dataHtml).join('')}${totalHtml()}</div></aside>`;
@@ -386,22 +394,22 @@ async function pollBingTicker(){
 
 function renderSaleNote(a){
  const r=runtime[a.id];if(!r)return;const p=state.positions[a.id],el=r.root.querySelector('[data-role="saleNote"]');
- if(!p.target){el.style.display='none';return}
- const amount=p.qty*p.target,price=r.price||p.buy,pnlCents=Math.round((price*p.qty-p.paid)*100);
- el.textContent=`${nfmt.format(p.qty)} ${a.label} × $${p.target} = ${fmtUSD.format(amount)} / ${state.fx?fmtJPY.format(amount*state.fx):'¥ —'} · bruto`;
- el.style.display='block';el.style.color=pnlCents>0?'#26a69a':pnlCents<0?'#ef5d67':'#ffffff';
+ if(!p.sold){el.style.display='none';return}
+ const profit=p.saleNet-p.paid;
+ el.textContent=`VENDA ${fmtUSD.format(p.sold)} · ${nfmt.format(p.saleQty)} HOODX · LÍQUIDO ${fmtUSD.format(p.saleNet)} · LUCRO +${fmtUSD.format(profit)}`;
+ el.style.display='block';el.style.color=profit>0?'#26a69a':profit<0?'#ef5d67':'#ffffff';
 }
 
 function renderAsset(a){
   const r=runtime[a.id],p=state.positions[a.id]||{buy:0,qty:0},root=r.root,info=r.info,price=r.price||0;
   renderSaleNote(a);syncEntryMarker(a,p);syncExitMarker(a,p);
-  if(!r.orderScaleReady){r.orderScaleReady=true;r.series.applyOptions({autoscaleInfoProvider:original=>{const info=original();if(!info?.priceRange)return info;const pos=state.positions[a.id];info.priceRange.minValue=Math.min(info.priceRange.minValue,pos.buy*.995);info.priceRange.maxValue=Math.max(info.priceRange.maxValue,pos.target*1.005);return info}})}
+  if(!r.orderScaleReady){r.orderScaleReady=true;r.series.applyOptions({autoscaleInfoProvider:original=>{const info=original();if(!info?.priceRange)return info;const pos=state.positions[a.id];info.priceRange.minValue=Math.min(info.priceRange.minValue,pos.buy*.995);info.priceRange.maxValue=Math.max(info.priceRange.maxValue,pos.sold*1.005);return info}})}
   root.querySelector('[data-role="buyKey"]').textContent=`COMPRA ${fmtUSD.format(+p.buy||0)}`;
-  root.querySelector('[data-role="sellKey"]').hidden=!p.target;root.querySelector('[data-role="sellKey"]').textContent=`ORDEM DE VENDA ${fmtUSD.format(p.target)}`;
+  root.querySelector('[data-role="sellKey"]').hidden=false;root.querySelector('[data-role="sellKey"]').textContent=`VENDA REALIZADA ${fmtUSD.format(p.sold)}`;
   root.querySelector('[data-role="price"]').textContent=price?fmtUSD.format(price):'—';root.querySelector('[data-role="priceJpy"]').textContent=price&&state.fx?fmtJPY.format(price*state.fx):'—';
   const ch=root.querySelector('[data-role="change"]'),cp=Number.isFinite(r.changePct)?r.changePct:null;
   ch.textContent=cp===null?'—':`${cp>=0?'+':''}${cp.toFixed(2)}%`;ch.className='change '+(cp!==null&&cp>=0?'up':'down');
-  const buy=money(+p.buy||0),valuationPrice=+p.sold||price||(+p.buy||0),current=money(valuationPrice*(+p.qty||0)),cost=(+p.paid||((+p.buy||0)*(+p.qty||0))),invested=money(cost),pnl=valuationPrice*(+p.qty||0)-cost,pct=cost?pnl/cost*100:0;
+  const buy=money(+p.buy||0),valuationPrice=+p.sold||price||(+p.buy||0),current=money(p.saleNet),cost=(+p.paid||((+p.buy||0)*(+p.qty||0))),invested=money(cost),pnl=p.saleNet-cost,pct=cost?pnl/cost*100:0;
   info.querySelector('[data-role="buyUsd"]').textContent=buy.usd;info.querySelector('[data-role="buyJpy"]').textContent=buy.jpy;
   info.querySelector('[data-role="qty"]').textContent=nfmt.format(+p.qty||0);
   info.querySelector('[data-role="investedUsd"]').textContent=invested.usd;info.querySelector('[data-role="investedJpy"]').textContent=invested.jpy;
@@ -419,27 +427,29 @@ function syncEntryMarker(a,p){
 }
 
 function syncExitMarker(a,p){
-  const r=runtime[a.id],exit=+p.target||0;if(r.exitPrice===exit)return;
+  const r=runtime[a.id],exit=+p.sold||0;if(r.exitPrice===exit)return;
   if(r.exitLine){try{r.series.removePriceLine(r.exitLine)}catch(e){}r.exitLine=null}
   r.exitPrice=exit;if(!exit)return;
-  r.exitLine=r.series.createPriceLine({price:exit,color:'#ef5d67',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'ORDEM VENDA'});
+  r.exitLine=r.series.createPriceLine({price:exit,color:'#26a69a',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'VENDA REALIZADA'});
 }
 
 function renderTotal(){
- const p=state.positions.hoodx,r=runtime.hoodx,cost=+p.paid,expected=p.qty*p.target,profit=expected-cost;
- document.querySelector('#saleTarget').textContent=fmtUSD.format(p.target);
+ const p=state.positions.hoodx,r=runtime.hoodx,cost=+p.paid,expected=p.saleNet,profit=expected-cost;
+ document.querySelector('#saleTarget').textContent=fmtUSD.format(p.sold);
  document.querySelector('#totalCurrentUsd').textContent=fmtUSD.format(expected);
  document.querySelector('#totalCurrentJpy').textContent=state.fx?fmtJPY.format(expected*state.fx):'¥ —';
  const pu=document.querySelector('#totalPnlUsd'),pj=document.querySelector('#totalPnlJpy'),tone=profit>=0?'up':'down';
  pu.className='total-value pnl '+tone;pj.className='total-sub pnl '+tone;
  pu.textContent=signed(profit,fmtUSD.format.bind(fmtUSD))+' · '+(profit>=0?'+':'')+(profit/cost*100).toFixed(2)+'%';
  pj.textContent=state.fx?signed(profit*state.fx,fmtJPY.format.bind(fmtJPY)):'¥ —';
- const current=(r?.price||p.buy)*p.qty;
+ document.querySelector('#saleGross').textContent=fmtUSD.format(p.saleGross);
+ document.querySelector('#saleFee').textContent=p.saleFee.toFixed(8)+' USDT';
+ const current=p.saleNet;
  for(const key of ['sol','eth']){
   const el=document.querySelector(key==='sol'?'#totalSolEquivalent':'#totalEthEquivalent'),symbol=key.toUpperCase(),price=state[key+'Price'],at=state[key+'At'];
   const fresh=price>0&&Date.now()-at<120000;
   el.textContent=price>0?'≈ '+(current/price).toLocaleString('pt-BR',{minimumFractionDigits:key==='sol'?3:5,maximumFractionDigits:key==='sol'?3:5})+' '+symbol+(fresh?'':' · última cotação'):symbol+' · aguardando cotação';
-  el.title=price>0?'Valor atual da posição ÷ preço '+symbol+'/USDT: '+price+' · '+new Date(at).toLocaleTimeString('pt-BR',{timeZone:'Asia/Tokyo'})+' JST':'Aguardando cotação da BingX';
+  el.title=price>0?'Saldo líquido da venda ÷ preço '+symbol+'/USDT: '+price+' · '+new Date(at).toLocaleTimeString('pt-BR',{timeZone:'Asia/Tokyo'})+' JST':'Aguardando cotação da BingX';
  }
  const size=[...document.querySelectorAll('#stockPanel .value,#stockPanel .sub,#stockPanel .total-value,.conversion-grid b')].map(el=>el.textContent.length).join(',');
  if(fitStockPanel.sizes!==size){fitStockPanel.sizes=size;requestAnimationFrame(fitStockPanel)}
@@ -454,7 +464,7 @@ function renderAll(){ASSETS.forEach(renderAsset);renderTotal()}
 function updateGlobalStatus(){const r=runtime.hoodx,fresh=r?.ok&&Date.now()-(r.lastTickAt||0)<15000;document.querySelector('#globalLed').classList.toggle('on',!!fresh);document.querySelector('#globalStatus').textContent=fresh?`BingX · ${r.feedMode||'WS'} · HOODX/USDT`:'BingX · aguardando cotação';}
 
 const dialog=document.querySelector('#editDialog'),form=document.querySelector('#editForm');
-function openEditor(a){state.active=a.id;const p=state.positions[a.id];document.querySelector('#modalTitle').textContent=`Editar compra · ${a.label}`;document.querySelector('#buyPrice').value=p.buy||'';document.querySelector('#quantity').value=p.qty||'';dialog.showModal()}
+function openEditor(a){if(state.positions[a.id].sold)return;state.active=a.id;const p=state.positions[a.id];document.querySelector('#modalTitle').textContent=`Editar compra · ${a.label}`;document.querySelector('#buyPrice').value=p.buy||'';document.querySelector('#quantity').value=p.qty||'';dialog.showModal()}
 document.querySelector('#cancelBtn').addEventListener('click',()=>dialog.close());
 form.addEventListener('submit',e=>{e.preventDefault();if(!state.active)return;const buy=Math.max(0,+document.querySelector('#buyPrice').value||0),qty=Math.max(0,+document.querySelector('#quantity').value||0),old=state.positions[state.active];state.positions[state.active]={...old,buy,qty,paid:buy*qty};saveState();dialog.close();renderAll()});
 
@@ -477,6 +487,7 @@ function showTargetPreview(){
  targetPreview.style.color=e.profit>0?'#26a69a':e.profit<0?'#ef5d67':'#ffffff';
 }
 document.querySelector('#editSaleTarget').addEventListener('click',()=>{
+ if(state.positions.hoodx.sold)return;
  resetTargetReview();targetInput.value=Number(state.positions.hoodx.target).toFixed(2);showTargetPreview();targetDialog.showModal();targetInput.focus();targetInput.select();
 });
 targetInput.addEventListener('input',()=>{targetError.textContent='';showTargetPreview()});
@@ -582,6 +593,7 @@ setInterval(()=>{ASSETS.forEach(renderSaleNote);updateGlobalStatus()},1000);
 </script>
 </body>
 </html>
+
 
 
 
