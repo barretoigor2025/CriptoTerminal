@@ -616,13 +616,13 @@
 
       <aside class="side-panel" aria-label="Dados da pool"><div class="side-content" id="sideContent">
         <div class="pool-card" id="poolCard" aria-label="Resumo da pool">
-          <div class="card-title">MINHA POOL <span class="estimate-tag" title="cbBTC estimado por BTC à vista; posição completa não informada">0,16% · estimativa</span></div>
+          <div class="card-title">MINHA POOL <span class="estimate-tag" title="Valores registrados na Orca em 30/10 às 06:13 JST; atualização automática da posição ainda não conectada">Orca · 06:13 JST</span></div>
           <div class="primary-pair"><div class="metric-row no-btn" id="rowLiquidity"><span class="label">Liquidez da pool</span><span class="value" id="metricLiquidity">--</span><span class="yen-value" id="liquidityYen">—</span></div><div class="metric-row no-btn hero-pnl" id="rowPoolPnl"><span class="label">PnL da pool</span><span class="value" id="currentPoolPnl">—</span><span class="hero-percent" id="poolPnlPct">—</span><span class="yen-value" id="poolPnlYen">—</span></div></div>
           <div class="metric-row" id="rowUncollected"><span class="label">Taxas pendentes</span><span class="value" id="metricUncollected">--</span><span class="yen-value" id="pendingYen">—</span><span class="fee-actions"><button class="fee-add" type="button" data-fee="uncollectedFees">Modificar</button><button class="fee-withdraw" id="collectFeesBtn" type="button">Sacar</button></span></div>
-          <div id="solEquivalent"></div><div style="font:400 7px/1.4 monospace;color:#8792a6;margin-top:3px">*PnL investimento parcial: saldo fora da pool não confirmado. Trade já incluído na base, sem duplicação.</div>
+          <div id="solEquivalent"></div><div style="font:400 7px/1.4 monospace;color:#8792a6;margin-top:3px">*PnL investimento parcial: saldo fora não confirmado. Pool: registro Orca 06:13 JST; gráfico ao vivo. Trade já incluído na base.</div>
         </div>
         <div class="detail-grid">
-          <section class="subcard capital-card"><h2>INVESTIMENTO</h2><div class="metric-row no-btn" id="rowCapital"><span class="label">Capital inicial</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn"><span class="label">Base Orca</span><span class="value">$4,019.46</span></div><div class="metric-row no-btn"><span class="label">Saldo fora*</span><span class="value" id="reserveValue">--</span></div><div class="metric-row no-btn" id="rowPnl"><span class="label">PnL investimento*</span><span class="value" id="metricPnl">--</span><button class="fee-add" type="button">+</button></div></section>
+          <section class="subcard capital-card"><h2>INVESTIMENTO</h2><div class="metric-row no-btn" id="rowCapital"><span class="label">Capital inicial</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn"><span class="label">Referência Orca</span><span class="value">$4,034.06</span></div><div class="metric-row no-btn"><span class="label">Saldo fora*</span><span class="value" id="reserveValue">--</span></div><div class="metric-row no-btn" id="rowPnl"><span class="label">PnL investimento*</span><span class="value" id="metricPnl">--</span><button class="fee-add" type="button">+</button></div></section>
           <section class="subcard fees-card"><h2>TAXAS & TRADE</h2><div class="metric-row no-btn positive"><span class="label">Lucro HOODX realizado</span><span class="value" id="tradeProfitValue">—</span></div><div class="metric-row no-btn" id="rowCollected"><span class="label">Coletadas</span><span class="value" id="metricCollected">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowReinvested"><span class="label">Reinvestidas</span><span class="value" id="metricReinvested">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowFeeApr"><span class="label">APR Taxas</span><span class="value" id="metricFeeApr">--</span><button class="fee-add" type="button">+</button></div></section>
           <section class="subcard contribution-card"><h2>NOVOS APORTES</h2><div class="metric-row" id="rowNewCapital"><span class="label">Aporte Novo</span><span class="value" id="metricNewCapital">--</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div><div class="metric-row no-btn" id="rowNewCapitalPnl"><span class="label">PnL aportes</span><span class="value" id="metricNewCapitalPnl">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowAge"><span class="label">Tempo da pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div></section>
                   <div class="allocation-card subcard" id="allocationCard" aria-label="Composição da pool">
@@ -668,7 +668,9 @@
       whirlpool: "",
       position: "",
       positionMint: "",
-      snapshotBalance: 4045.05,
+      snapshotBalance: 4034.06,
+      snapshotPoolPnl: 2.92,
+      snapshotPoolPnlPct: 0.0007,
       snapshotRatio: 817.42935,
       snapshotSolUsd: 2034.96 / 20.9856159,
       currentCostBasis: 4019.46,
@@ -679,7 +681,7 @@
       tradeProfit: 4141.16 - 4.14116703 - 4100.128679,
       tradeSaleNet: 4141.16 - 4.14116703,
       feeTier: 0.16,
-      snapshotAt: "2026-10-30T05:52:00+09:00",
+      snapshotAt: "2026-10-30T06:13:00+09:00",
       rpc: "https://api.mainnet-beta.solana.com"
     };
 
@@ -825,7 +827,15 @@
       if(localStorage.getItem(key)!=="1"){
         state.uncollectedFees=.12;state.collectedFees=0;state.reinvestedFees=0;state.feePnlCarry=0;
         state.newExternalCapital=0;state.newCapitalLots=[];state.feeStartedAt="2026-10-30T05:50:00+09:00";
-        state.history.unshift({kind:"cycle",ts:POOL.snapshotAt,text:"SOL/cbBTC 0,16%: compra 41,957 SOL por $4.136,96 a preço médio $98,60. Taxa da compra não informada. Pool $4.045,05 + $0,12 pendentes; base Orca $4.019,46; range 762,168742–875,995555. HOODX: custo $4.100,128679, líquido $4.137,01883297, lucro $36,89015397. PnL investimento mantém a base HOODX e não soma o lucro duas vezes. Saldo fora da pool não confirmado; diferença entre compra de SOL e base Orca não classificada como aporte, taxa ou reserva."});
+        state.history.unshift({kind:"cycle",ts:POOL.snapshotAt,text:"SOL/cbBTC 0,16%: compra 41,957 SOL por $4.136,96 a preço médio $98,60. Taxa da compra não informada. Pool $4.045,05 + $0,12 pendentes; base Orca $4.034,06; range 762,168742–875,995555. HOODX: custo $4.100,128679, líquido $4.137,01883297, lucro $36,89015397. PnL investimento mantém a base HOODX e não soma o lucro duas vezes. Saldo fora da pool não confirmado; diferença entre compra de SOL e base Orca não classificada como aporte, taxa ou reserva."});
+        saveState();localStorage.setItem(key,"1");
+      }
+    }catch(err){}
+    try {
+      const key="sol_cbbtc_orca_snapshot_20261030_0613_v1";
+      if(localStorage.getItem(key)!=="1"){
+        state.uncollectedFees=.84;
+        state.history.unshift({kind:"correction",ts:POOL.snapshotAt,text:"Orca 06:13 JST: liquidez $4.034,06; PnL $2,92 (+0,07%); taxas pendentes $0,84. Estimativa anterior descartada. Valores da pool são um registro, não cotação ao vivo, até conectar endereço completo."});
         saveState();localStorage.setItem(key,"1");
       }
     }catch(err){}
@@ -1404,9 +1414,8 @@
     }
 
     function liquidity() {
-      if (!state.solUsd || !state.btcUsd) return POOL.snapshotBalance;
-      const amounts = activeAmounts();
-      return amounts.solAmount * state.solUsd + amounts.btcAmount * state.btcUsd;
+      // Official snapshot until the exact position is connected; chart stays live.
+      return POOL.snapshotBalance;
     }
 
     function totalPositionValue() {
@@ -1527,9 +1536,10 @@
       const pnlPct = capital ? pnl / capital : 0;
       const pnlTone = pnl >= 0 ? "positive" : "negative";
       const comp = composition();
-      const poolPnl = liq + displayedUncollectedFees() - POOL.currentCostBasis;
+      // Official Orca PnL; external spot prices cannot reproduce its accounting.
+      const poolPnl = POOL.snapshotPoolPnl;
       setMetric("rowPoolPnl", "currentPoolPnl", usd(poolPnl), poolPnl >= 0 ? "positive" : "negative");
-      $("poolPnlPct").textContent = (poolPnl >= 0 ? "+" : "") + pct(poolPnl / POOL.currentCostBasis);
+      $("poolPnlPct").textContent = pct(POOL.snapshotPoolPnlPct);
       $("poolPnlYen").textContent = state.usdJpy ? jpy(poolPnl * state.usdJpy) : "¥ —";
       $("liquidityYen").textContent = state.usdJpy ? jpy(liq * state.usdJpy) : "¥ —";
       $("pendingYen").textContent = state.usdJpy ? jpy(displayedUncollectedFees() * state.usdJpy) : "¥ —";
