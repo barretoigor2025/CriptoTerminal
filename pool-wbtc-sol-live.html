@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>Pool WBTC/SOL</title>
+  <title>Pool cbBTC/SOL</title>
   <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <style>
     :root {
@@ -591,10 +591,10 @@
 </head>
 <body>
   <header>
-    <div class="pair"><span class="dot"></span><span>WBTC/SOL</span></div>
+    <div class="pair"><span class="dot"></span><span>cbBTC/SOL</span></div>
     <div class="price" id="ratio">--</div>
     <div class="badge ok" id="rangeStatus">In Range</div>
-    <div class="badge" id="rangeText">754.28 - 833.61</div>
+    <div class="badge" id="rangeText">762.17 - 876.00</div>
     <div class="badge" id="liveText">tick 1s</div>
     <div class="spacer"></div>
     <div class="tf" aria-label="Timeframe">
@@ -608,7 +608,7 @@
 
   <main>
     <div class="dashboard">
-      <section class="stage" id="stage" aria-label="Grafico limpo da pool WBTC/SOL">
+      <section class="stage" id="stage" aria-label="Grafico limpo da pool cbBTC/SOL">
         <div id="chart"></div>
         <canvas id="overlay"></canvas>
         <div class="loading" id="loading">carregando BTC/SOL...</div>
@@ -616,14 +616,14 @@
 
       <aside class="side-panel" aria-label="Dados da pool"><div class="side-content" id="sideContent">
         <div class="pool-card" id="poolCard" aria-label="Resumo da pool">
-          <div class="card-title">MINHA POOL <span class="estimate-tag">estimativa</span></div>
+          <div class="card-title">MINHA POOL <span class="estimate-tag" title="cbBTC estimado por BTC à vista; posição completa não informada">0,16% · estimativa</span></div>
           <div class="primary-pair"><div class="metric-row no-btn" id="rowLiquidity"><span class="label">Liquidez da pool</span><span class="value" id="metricLiquidity">--</span><span class="yen-value" id="liquidityYen">—</span></div><div class="metric-row no-btn hero-pnl" id="rowPoolPnl"><span class="label">PnL da pool</span><span class="value" id="currentPoolPnl">—</span><span class="hero-percent" id="poolPnlPct">—</span><span class="yen-value" id="poolPnlYen">—</span></div></div>
           <div class="metric-row" id="rowUncollected"><span class="label">Taxas pendentes</span><span class="value" id="metricUncollected">--</span><span class="yen-value" id="pendingYen">—</span><span class="fee-actions"><button class="fee-add" type="button" data-fee="uncollectedFees">Modificar</button><button class="fee-withdraw" id="collectFeesBtn" type="button">Sacar</button></span></div>
-          <div id="solEquivalent"></div>
+          <div id="solEquivalent"></div><div style="font:400 7px/1.4 monospace;color:#8792a6;margin-top:3px">*PnL investimento parcial: saldo fora da pool não confirmado. Trade já incluído na base, sem duplicação.</div>
         </div>
         <div class="detail-grid">
-          <section class="subcard capital-card"><h2>CAPITAL</h2><div class="metric-row no-btn" id="rowCapital"><span class="label">Capital inicial</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn"><span class="label">Base Orca</span><span class="value">$4,083.28</span></div><div class="metric-row no-btn"><span class="label">Reserva SOL</span><span class="value" id="reserveValue">--</span></div><div class="metric-row no-btn" id="rowPnl"><span class="label">Resultado total</span><span class="value" id="metricPnl">--</span><button class="fee-add" type="button">+</button></div></section>
-          <section class="subcard fees-card"><h2>TAXAS</h2><div class="metric-row no-btn" id="rowCollected"><span class="label">Coletadas</span><span class="value" id="metricCollected">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowReinvested"><span class="label">Reinvestidas</span><span class="value" id="metricReinvested">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowFeeApr"><span class="label">APR Taxas</span><span class="value" id="metricFeeApr">--</span><button class="fee-add" type="button">+</button></div></section>
+          <section class="subcard capital-card"><h2>INVESTIMENTO</h2><div class="metric-row no-btn" id="rowCapital"><span class="label">Capital inicial</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn"><span class="label">Base Orca</span><span class="value">$4,019.46</span></div><div class="metric-row no-btn"><span class="label">Saldo fora*</span><span class="value" id="reserveValue">--</span></div><div class="metric-row no-btn" id="rowPnl"><span class="label">PnL investimento*</span><span class="value" id="metricPnl">--</span><button class="fee-add" type="button">+</button></div></section>
+          <section class="subcard fees-card"><h2>TAXAS & TRADE</h2><div class="metric-row no-btn positive"><span class="label">Lucro HOODX realizado</span><span class="value" id="tradeProfitValue">—</span></div><div class="metric-row no-btn" id="rowCollected"><span class="label">Coletadas</span><span class="value" id="metricCollected">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowReinvested"><span class="label">Reinvestidas</span><span class="value" id="metricReinvested">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowFeeApr"><span class="label">APR Taxas</span><span class="value" id="metricFeeApr">--</span><button class="fee-add" type="button">+</button></div></section>
           <section class="subcard contribution-card"><h2>NOVOS APORTES</h2><div class="metric-row" id="rowNewCapital"><span class="label">Aporte Novo</span><span class="value" id="metricNewCapital">--</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div><div class="metric-row no-btn" id="rowNewCapitalPnl"><span class="label">PnL aportes</span><span class="value" id="metricNewCapitalPnl">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowAge"><span class="label">Tempo da pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div></section>
                   <div class="allocation-card subcard" id="allocationCard" aria-label="Composição da pool">
         <div class="card-title">Composição</div>
@@ -632,7 +632,7 @@
           <div class="alloc-fill btc" id="btcFill"></div>
         </div>
         <div class="alloc-line"><span>SOL</span><b id="solShare">--</b><em id="solValue">--</em></div>
-        <div class="alloc-line"><span>WBTC</span><b id="btcShare">--</b><em id="btcValue">--</em></div>
+        <div class="alloc-line"><span>cbBTC</span><b id="btcShare">--</b><em id="btcValue">--</em></div>
         </div>
 
         </div>
@@ -654,27 +654,32 @@
 
   <script>
     const POOL = {
-      capital: 4100.52,
-      lower: 754.283654,
-      upper: 833.608191,
-      solAmount: 20.6453713,
-      btcAmount: 0.02512657,
-      initialSolBuyUsd: 4100.52,
+      capital: 4100.128679,
+      lower: 762.168742,
+      upper: 875.995555,
+      solAmount: 20.9856159,
+      btcAmount: 0.0253864,
+      initialSolBuyUsd: 4100.128679,
       externalAddUsd: 0,
       uncollectedFees: 0,
       collectedFees: 0,
       reinvestedFees: 0,
       newExternalCapital: 0,
-      whirlpool: "B5EwJVDuAauzUEEdwvbuXzbFFgEYnUqqS37TUM1c4PQA",
+      whirlpool: "",
       position: "",
       positionMint: "",
-      snapshotBalance: 4084.89,
-      snapshotRatio: 793.66857,
-      snapshotSolUsd: 2075.72 / 20.6453713,
-      currentCostBasis: 4083.28,
-      currentBuyUsd: 4100.52,
-      currentBuySol: 40.643316,
-      reserveSol: 0.05384,
+      snapshotBalance: 4045.05,
+      snapshotRatio: 817.42935,
+      snapshotSolUsd: 2034.96 / 20.9856159,
+      currentCostBasis: 4019.46,
+      currentBuyUsd: 4136.96,
+      currentBuySol: 41.957,
+      reserveSol: 0,
+      reserveConfirmed: false,
+      tradeProfit: 4141.16 - 4.14116703 - 4100.128679,
+      tradeSaleNet: 4141.16 - 4.14116703,
+      feeTier: 0.16,
+      snapshotAt: "2026-10-30T05:52:00+09:00",
       rpc: "https://api.mainnet-beta.solana.com"
     };
 
@@ -686,7 +691,7 @@
     const REINVESTED_FEES_KEY = "wbtc_sol_pool_reinvested_fees_v1";
     const REINVESTED_LOG_KEY = "wbtc_sol_pool_reinvested_log_v1";
     const CORRECT_2595_FEES_KEY = "wbtc_sol_pool_correct_2595_to_2395_v1";
-    const POOL_STARTED_AT = new Date("2026-10-27T04:21:00+09:00").getTime();
+    const POOL_STARTED_AT = new Date("2026-10-30T05:50:00+09:00").getTime();
     const perMs = { "1h": 3600000, "4h": 14400000, "1d": 86400000 };
     const state = {
       tf: "1h",
@@ -775,7 +780,7 @@
       if (localStorage.getItem(migrationKey) !== "1") {
         state.uncollectedFees = POOL.uncollectedFees;
         state.history.unshift({kind: "reentry", ts: "2026-10-15T20:16:00Z",
-          text: "16/10: retorno SOL/WBTC. Compra 32,263 SOL por $3.426,97 a $106,22. Base Orca $3.412,07; saldo $3.405,27 + $0,11 pendente. Range 737,576356–815,143863. Capital e taxas históricos preservados. Diferença compra/base $14,90 sem detalhamento."});
+          text: "16/10: retorno SOL/cbBTC. Compra 32,263 SOL por $3.426,97 a $106,22. Base Orca $3.412,07; saldo $3.405,27 + $0,11 pendente. Range 737,576356–815,143863. Capital e taxas históricos preservados. Diferença compra/base $14,90 sem detalhamento."});
         saveState();
         localStorage.setItem(migrationKey, "1");
       }
@@ -812,6 +817,15 @@
       if(localStorage.getItem(key)!=="1"){
         state.newExternalCapital=0;state.newCapitalLots=[];state.feePnlCarry=0;
         state.history=[{kind:"start",ts:"2026-10-27T04:16:54+09:00",text:"Novo início: capital $4.100,52. PnL = pool + reserva SOL + taxas pendentes + taxas fora da pool − capital. Histórico antigo desconsiderado."}];
+        saveState();localStorage.setItem(key,"1");
+      }
+    }catch(err){}
+    try {
+      const key="sol_cbbtc_cycle_20261030_v1";
+      if(localStorage.getItem(key)!=="1"){
+        state.uncollectedFees=.12;state.collectedFees=0;state.reinvestedFees=0;state.feePnlCarry=0;
+        state.newExternalCapital=0;state.newCapitalLots=[];state.feeStartedAt="2026-10-30T05:50:00+09:00";
+        state.history.unshift({kind:"cycle",ts:POOL.snapshotAt,text:"SOL/cbBTC 0,16%: compra 41,957 SOL por $4.136,96 a preço médio $98,60. Taxa da compra não informada. Pool $4.045,05 + $0,12 pendentes; base Orca $4.019,46; range 762,168742–875,995555. HOODX: custo $4.100,128679, líquido $4.137,01883297, lucro $36,89015397. PnL investimento mantém a base HOODX e não soma o lucro duas vezes. Saldo fora da pool não confirmado; diferença entre compra de SOL e base Orca não classificada como aporte, taxa ou reserva."});
         saveState();localStorage.setItem(key,"1");
       }
     }catch(err){}
@@ -1519,7 +1533,8 @@
       $("poolPnlYen").textContent = state.usdJpy ? jpy(poolPnl * state.usdJpy) : "¥ —";
       $("liquidityYen").textContent = state.usdJpy ? jpy(liq * state.usdJpy) : "¥ —";
       $("pendingYen").textContent = state.usdJpy ? jpy(displayedUncollectedFees() * state.usdJpy) : "¥ —";
-      $("reserveValue").textContent = "0.05384 · " + usd(POOL.reserveSol * (state.solUsd || POOL.snapshotSolUsd));
+      $("reserveValue").textContent = POOL.reserveConfirmed ? usd(POOL.reserveSol * (state.solUsd || POOL.snapshotSolUsd)) : "não informado";
+      $("tradeProfitValue").textContent = "+" + usd(POOL.tradeProfit);
       const pendingFees = displayedUncollectedFees();
       const pendingLabel = usd(pendingFees);
 
@@ -1665,7 +1680,7 @@
         const liq = liquidity();
         const pnl = totalPositionValue() - investedCapital();
         const comp = composition();
-        addHistory("snapshot", "Snapshot · Liquidez " + usd(liq) + " · PnL jornada " + usd(pnl) + " · Capital do bolso " + usd(externalCapital()) + " · Taxas " + usd(state.collectedFees) + " (" + pct(state.collectedFees / externalCapital()) + ") · SOL " + (comp.solPct * 100).toFixed(1) + "% · WBTC " + (comp.btcPct * 100).toFixed(1) + "% · " + state.onchain.source);
+        addHistory("snapshot", "Snapshot · Liquidez " + usd(liq) + " · PnL jornada " + usd(pnl) + " · Capital do bolso " + usd(externalCapital()) + " · Taxas " + usd(state.collectedFees) + " (" + pct(state.collectedFees / externalCapital()) + ") · SOL " + (comp.solPct * 100).toFixed(1) + "% · cbBTC " + (comp.btcPct * 100).toFixed(1) + "% · " + state.onchain.source);
       });
     }
 
@@ -1737,6 +1752,7 @@
   </script>
 </body>
 </html>
+
 
 
 
