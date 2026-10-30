@@ -682,7 +682,7 @@
       tradeSaleNet: 4141.16 - 4.14116703,
       feeTier: 0.16,
       snapshotAt: "2026-10-30T12:54:00+09:00",
-      rpc: "https://api.mainnet-beta.solana.com"
+      rpc: "https://solana-rpc.publicnode.com"
     };
 
     const STORAGE_KEY = "wbtc_sol_pool_live_v3";
@@ -1285,14 +1285,16 @@
       if(!(p>0))throw new Error("preço Orca indisponível"); return p;
     }
     async function positionFees(position,pool){
+      const addresses={"-91520":"FKfYCgyncsmTAaJvi8rYW1isMD3zHdnVkzi88Y7k6NFV","-90112":"9Sett7DnPWe4o1gRewuKh7epWxmSo4DC1dBBatcbQSrL"};
+      const starts=[position.tickLower,position.tickUpper].map(t=>Math.floor(t/(88*pool.tickSpacing))*88*pool.tickSpacing);
+      if(starts.some(t=>!addresses[t]))throw new Error("range alterado: reconectar tick arrays");
+      const result=await solanaRpc("getMultipleAccounts",[starts.map(t=>addresses[t]),{encoding:"base64"}]);
       const readTick=async tick=>{
-        const start=Math.floor(tick/(88*pool.tickSpacing))*88*pool.tickSpacing;
-        const raw=new Uint8Array(4);new DataView(raw.buffer).setInt32(0,start,true);
-        const rows=await solanaRpc("getProgramAccounts",["whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",{
-          encoding:"base64",filters:[{dataSize:9988},{memcmp:{offset:8,bytes:base58(raw)}},{memcmp:{offset:9956,bytes:POOL.whirlpool}}]
-        }]);
-        if(rows?.length!==1)throw new Error("tick array indisponível");
-        const b=b64Bytes(rows[0].account.data[0]),o=12+((tick-start)/pool.tickSpacing)*113;
+        const index=tick===position.tickLower?0:1,start=starts[index],account=result?.value?.[index];
+        if(!account || account.owner!=="whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc")throw new Error("tick array indisponível");
+        const b=b64Bytes(account.data[0]);
+        if(b.length!==9988 || view(b).getInt32(8,true)!==start || base58(b.slice(9956,9988))!==POOL.whirlpool)throw new Error("tick array inválido");
+        const o=12+((tick-start)/pool.tickSpacing)*113;
         if(!b[o])throw new Error("tick não inicializado");
         return {a:u128(b,o+33),b:u128(b,o+49)};
       };
