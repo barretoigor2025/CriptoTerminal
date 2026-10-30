@@ -719,7 +719,7 @@
         </div>
         <div class="detail-grid">
           <section class="subcard capital-card"><h2>CAPITAL INVESTIDO</h2><div class="metric-row no-btn" id="rowCapital"><span class="label">Capital inicial</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowTotalCapital"><span class="label">Total investido</span><span class="value" id="metricTotalCapital">--</span><span class="capital-yen" id="totalCapitalYen">—</span></div><div class="metric-row no-btn" id="rowPnl"><span class="label">PnL total</span><span class="value" id="metricPnl">--</span><span class="capital-yen" id="totalPnlYen">—</span><button class="fee-add" type="button">+</button></div></section>
-          <section class="subcard contribution-card"><h2>NOVOS APORTES</h2><div class="metric-row" id="rowNewCapital"><span class="label">Aporte Novo</span><span class="value" id="metricNewCapital">--</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div><div class="metric-row no-btn" id="rowNewCapitalValue"><span class="label">Valor atual aporte</span><span class="value" id="metricNewCapitalValue">--</span></div><div class="metric-row no-btn" id="rowNewCapitalPnl"><span class="label">PnL aporte (sem taxas)</span><span class="value" id="metricNewCapitalPnl">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowAge"><span class="label">Tempo da pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div></section>
+          <section class="subcard contribution-card"><h2>NOVOS APORTES</h2><div class="metric-row" id="rowNewCapital"><span class="label">Aportes externos</span><span class="value" id="metricNewCapital">--</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div><div class="metric-row no-btn"><span class="label">Última entrada</span><span class="value">$14.00</span></div><div class="metric-row no-btn"><span class="label">Taxas reinvestidas ≈</span><span class="value">$10.59</span></div><div class="metric-row no-btn" id="rowNewCapitalValue"><span class="label">Valor atual aporte</span><span class="value" id="metricNewCapitalValue">--</span></div><div class="metric-row no-btn" id="rowNewCapitalPnl"><span class="label">PnL aporte (sem taxas)</span><span class="value" id="metricNewCapitalPnl">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowAge"><span class="label">Tempo da pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div></section>
                   <div class="allocation-card subcard" id="allocationCard" aria-label="Composição da pool">
         <div class="card-title">Composição</div>
         <div class="alloc-bar" aria-hidden="true">
@@ -972,6 +972,35 @@
       }
     } catch (err) {}
     $("metricNewCapital").title = "Aporte de 30/10 às 22:36:49 JST: base US$128,42 informada pelo usuário; tokens confirmados on-chain.";
+
+    // 31/10 02:27:09 JST: $14 gross deposit, including approximately $10.59 harvested fees.
+    // The split uses the user's fee estimate; token amounts and liquidity delta are on-chain.
+    const REDEPOSIT_OCT31 = {
+      signature: "3JfrxPcEqjiYBpkGExoq8KzVC3SfyfHPs9JhxpgEgxDgujTrNxfnkzGzcpjHKKTifbVbWHDDsbUtCFRYNJXiKrht",
+      gross: 14, reinvested: 10.59, external: 3.41,
+      liquidityRaw: "23997082", ts: "2026-10-31T02:27:09+09:00"
+    };
+    try {
+      const key = "redeposit_20261031_022709_v1";
+      if (localStorage.getItem(key) !== "1") {
+        state.newCapitalLots.push({
+          signature:REDEPOSIT_OCT31.signature, amount:REDEPOSIT_OCT31.external,
+          liquidityRaw: (Number(REDEPOSIT_OCT31.liquidityRaw) * REDEPOSIT_OCT31.external / REDEPOSIT_OCT31.gross).toString(),
+          share: 23997082 / (6969615179 + 23997082) * 3.41 / 14,
+          ts:REDEPOSIT_OCT31.ts
+        });
+        state.newExternalCapital += REDEPOSIT_OCT31.external;
+        // If the manual harvest button already recorded this collection, reconcile rather than add twice.
+        state.collectedFees = Math.max(state.collectedFees, REDEPOSIT_OCT31.reinvested);
+        state.reinvestedFees = Math.max(state.reinvestedFees, REDEPOSIT_OCT31.reinvested);
+        state.uncollectedFees = 0;
+        state.history.unshift({kind:"capital",ts:REDEPOSIT_OCT31.ts,
+          text:"Depósito $14,00: taxas reinvestidas ≈$10,59 + capital externo ≈$3,41. Divisão estimada conforme relato. Entrada on-chain: 0,070011016 SOL + 0,00009591 cbBTC. Tx "+REDEPOSIT_OCT31.signature});
+        saveState();
+        localStorage.setItem(key,"1");
+      }
+    } catch (err) {}
+    $("metricNewCapital").title = "Capital externo: US$128,42 + aproximadamente US$3,41. Última entrada US$14 inclui aproximadamente US$10,59 de taxas reinvestidas. Divisão em dólar baseada no relato.";
 
     const chart = LightweightCharts.createChart(chartEl, {
       layout: {
@@ -1775,7 +1804,7 @@
       const pnlTone = pnl >= 0 ? "positive" : "negative";
       const comp = composition();
       // Official Orca PnL; external spot prices cannot reproduce its accounting.
-      const poolPnl = state.positionValuation ? liq + displayedUncollectedFees() + state.collectedFees - POOL.currentCostBasis - state.newExternalCapital : POOL.snapshotPoolPnl;
+      const poolPnl = state.positionValuation ? liq + displayedUncollectedFees() + availableCollectedFees() - POOL.currentCostBasis - state.newExternalCapital : POOL.snapshotPoolPnl;
       setMetric("rowPoolPnl", "currentPoolPnl", usd(poolPnl), poolPnl >= 0 ? "positive" : "negative");
       $("poolPnlPct").textContent = pct(state.positionValuation ? poolPnl / POOL.currentCostBasis : POOL.snapshotPoolPnlPct);
       $("poolPnlYen").textContent = state.usdJpy ? jpy(poolPnl * state.usdJpy) : "¥ —";
