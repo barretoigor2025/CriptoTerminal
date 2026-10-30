@@ -62,6 +62,27 @@
  .asset-data{gap:2px 4px}.target-result .label{display:none}
 }
 
+
+.target-summary{background:#101b23;border:1px solid #cfac6333;border-radius:7px;padding:7px 9px;margin-top:6px;color:var(--text)}
+.sim-heading{font:600 8px/1.4 system-ui,sans-serif;color:#dbc798;letter-spacing:.04em;display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:5px}
+.sim-heading small{font-size:7px;font-weight:400;color:var(--muted);white-space:nowrap}
+.sim-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.summary .sim-grid .value{font-size:17px;line-height:1.2}
+.sim-grid .label{font-size:8px;line-height:11px}
+.sim-grid .percent{font-size:10px;line-height:13px}
+@media(orientation:portrait) and (max-width:760px){
+ .target-summary{padding:5px 6px;margin-top:4px}
+ .sim-heading{font-size:7px;margin-bottom:3px;letter-spacing:0}
+ .sim-heading small{font-size:6px}
+ .sim-grid{gap:5px}.sim-grid .label{font-size:7px;line-height:9px}
+ .summary .sim-grid .value{font-size:13px}
+ .sim-grid .percent{font-size:8px;line-height:10px}
+}
+@media(orientation:landscape) and (max-height:560px){
+ .target-summary{padding:4px 7px;margin-top:3px}
+ .sim-heading{font-size:7px;margin-bottom:2px}
+ .summary .sim-grid .value{font-size:13px}.sim-grid .percent{font-size:8px;line-height:10px}
+}
 </style></head><body>
 <header><a href="index.html">← Terminal</a><b>IB · Ações</b><span id="status">BingX · conectando</span><button id="fullscreen">Tela cheia</button></header>
 <main id="assets"></main>
@@ -103,7 +124,15 @@ r.root.querySelector('.exit-level').textContent=v>0?'Alvo '+money(v):'Alvo não 
 r.series.applyOptions({autoscaleInfoProvider:original=>{const info=original();if(!info?.priceRange)return info;const target=+state.targets[a.id];info.priceRange.minValue=Math.min(info.priceRange.minValue,a.cost/a.qty*.995);if(target>0)info.priceRange.maxValue=Math.max(info.priceRange.maxValue,target*1.005);return info;}});
 renderTargetSummary();
 }
-function renderTargetSummary(){const all=ASSETS.every(a=>+state.targets[a.id]>0);if(!all){$('targetsSummary').textContent='Defina os três alvos para simular o conjunto.';return}const total=ASSETS.reduce((s,a)=>s+state.targets[a.id]*a.qty,0),gain=total-COST,cycle=total-BASE;$('targetsSummary').textContent='NOS ALVOS · Venda '+money(total)+' · PnL compras '+signed(gain)+' ('+pct(gain/COST*100)+') · Ciclo parcial '+signed(cycle)+' ('+pct(cycle/BASE*100)+') · antes das taxas';}
+function renderTargetSummary(){
+ const all=ASSETS.every(a=>+state.targets[a.id]>0);
+ if(!all){$('targetsSummary').textContent='Defina os três alvos para simular o conjunto.';return}
+ const total=ASSETS.reduce((s,a)=>s+state.targets[a.id]*a.qty,0),gain=total-COST,cycle=total-BASE;
+ $('targetsSummary').innerHTML='<div class="sim-heading">SIMULAÇÃO · TODAS VENDIDAS NOS ALVOS <small>Antes das taxas</small></div><div class="sim-grid">'+
+ '<div class="metric"><span class="label">Total da venda</span><b class="value">'+money(total)+'</b></div>'+
+ '<div class="metric"><span class="label">Lucro sobre as compras</span><b class="value '+tone(gain)+'">'+signed(gain)+'</b><span class="percent '+tone(gain)+'">'+pct(gain/COST*100)+'</span></div>'+
+ '<div class="metric"><span class="label">Resultado sobre o ciclo*</span><b class="value '+tone(cycle)+'">'+signed(cycle)+'</b><span class="percent '+tone(cycle)+'">'+pct(cycle/BASE*100)+'</span></div></div>';
+}
 function paint(el,n,text){el.textContent=text;el.classList.remove('up','down','neutral');el.classList.add(tone(n))}
 function render(){for(const a of ASSETS){const r=runtime[a.id],v=+state.targets[a.id];if(r)r.root.querySelector('.target-yen').textContent=v>0&&state.fx?signed(v*a.qty-a.cost,n=>jpy(n)):'¥ —';}let total=0,complete=true,fresh=0;for(const a of ASSETS){const r=runtime[a.id];if(!r){complete=false;continue}const val=r.price*a.qty,pnl=val-a.cost;if(!(r.price>0))complete=false;if(r.eventAt&&Date.now()-r.eventAt<120000)fresh++;total+=val;r.root.querySelector('.price').textContent=r.price?money(r.price):'—';r.root.querySelector('.current').textContent=r.price?money(val):'—';r.root.querySelector('.current-yen').textContent=jpy(val);paint(r.root.querySelector('.pnl'),pnl,r.price?signed(pnl):'—');paint(r.root.querySelector('.pnl-percent'),pnl,r.price?pct(pnl/a.cost*100):'—');r.root.querySelector('.pnl-yen').textContent=r.price&&state.fx?signed(pnl,n=>jpy(n)):'¥ —'}$('totalCost').textContent=money(COST);$('totalValue').textContent=complete?money(total):'—';$('totalYen').textContent=complete?jpy(total):'¥ —';$('baseYen').textContent=jpy(BASE);const tp=total-COST,cp=total-BASE;paint($('tradePnl'),tp,complete?signed(tp):'—');paint($('tradePct'),tp,complete?pct(tp/COST*100):'—');$('tradeYen').textContent=complete&&state.fx?signed(tp,n=>jpy(n)):'¥ —';paint($('cyclePnl'),cp,complete?signed(cp):'—');paint($('cyclePct'),cp,complete?pct(cp/BASE*100):'—');$('cycleYen').textContent=complete&&state.fx?signed(cp,n=>jpy(n)):'¥ —';$('status').textContent='BingX · '+fresh+'/3 ao vivo'+(fresh<3?' · demais: última cotação':'');$('equivalents').textContent=complete&&state.sol>0&&state.eth>0?'≈ '+num.format(total/state.sol)+' SOL · '+num.format(total/state.eth)+' ETH':'SOL / ETH · aguardando';$('fxStatus').textContent=state.fx?'USD/JPY '+state.fx.toFixed(3)+' · '+state.fxSource:'USD/JPY aguardando';}
 let socket,reconnect,queue=Promise.resolve();async function decode(data){if(typeof data==='string')return data;const buf=data instanceof Blob?await data.arrayBuffer():data,u=new Uint8Array(buf);if(u[0]===31&&u[1]===139)return new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text();return new TextDecoder().decode(u)}
