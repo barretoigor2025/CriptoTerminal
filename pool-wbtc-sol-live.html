@@ -598,7 +598,36 @@
     .fee-refresh-ring.has-error{color:#ef6973}
     @keyframes fee-ring-spin{to{transform:rotate(360deg)}}
     @media(prefers-reduced-motion:reduce){.fee-refresh-ring.is-loading .ring-progress{animation:none}}
-  </style>
+  
+    /* Emphasize principal and contribution results; retain compact fee APR. */
+    .capital-card,.contribution-card{padding:9px 10px;border-color:#ffffff20;background:#121923}
+    .capital-card h2,.contribution-card h2{font-size:9px;color:#b3bfd0;margin-bottom:7px}
+    .capital-card .metric-row,.contribution-card .metric-row{padding:4px 0;gap:2px}
+    .capital-card .metric-row .label,.contribution-card .metric-row .label{font-size:8px;line-height:12px}
+    .capital-card .metric-row .value,.contribution-card .metric-row .value{font-size:12px;line-height:16px}
+    #rowOriginalValue .value,#rowNewCapitalValue .value{font-size:15px;line-height:20px}
+    #rowPnl,#rowNewCapitalPnl{margin-top:4px;padding-top:6px;border-top:1px solid #ffffff18}
+    #rowPnl .value,#rowNewCapitalPnl .value{font-size:17px;line-height:22px;font-weight:800}
+    .allocation-card{grid-column:1/-1}
+    .pool-card #rowFeeApr{justify-content:flex-start;gap:5px;margin-top:3px}
+    .pool-card #rowFeeApr .label{flex-basis:auto;font-size:8px;line-height:11px;color:#7e8b9e}
+    .pool-card #rowFeeApr .value{font-size:8px;line-height:11px;color:#9cabbc}
+    @media(max-width:680px) and (orientation:portrait){
+      .detail-grid{grid-template-columns:1fr}
+      .capital-card,.contribution-card{padding:6px 8px}
+      .capital-card .metric-row,.contribution-card .metric-row{padding:2px 0}
+      #rowPnl .value,#rowNewCapitalPnl .value{font-size:15px;line-height:19px}
+    }
+    @media(orientation:landscape) and (max-height:560px){
+      .capital-card,.contribution-card{padding:5px 7px}
+      .capital-card .metric-row,.contribution-card .metric-row{flex-wrap:wrap;padding:2px 0}
+      .capital-card .metric-row .label,.contribution-card .metric-row .label{flex-basis:100%}
+      .capital-card .metric-row .value,.contribution-card .metric-row .value{font-size:11px;line-height:14px}
+      #rowPnl .value,#rowNewCapitalPnl .value{font-size:14px;line-height:18px}
+      #rowOriginalValue .value,#rowNewCapitalValue .value{font-size:13px;line-height:16px}
+    }
+
+</style>
 </head>
 <body>
   <header>
@@ -630,11 +659,11 @@
           <div class="card-title">MINHA POOL <span class="estimate-tag" id="positionStatus">Orca · registro 12:54</span></div>
           <div class="primary-pair"><div class="metric-row no-btn" id="rowLiquidity"><span class="label">Liquidez da pool</span><span class="value" id="metricLiquidity">--</span><span class="yen-value" id="liquidityYen">—</span></div><div class="metric-row no-btn hero-pnl" id="rowPoolPnl"><span class="label">PnL da pool</span><span class="value" id="currentPoolPnl">—</span><span class="hero-percent" id="poolPnlPct">—</span><span class="yen-value" id="poolPnlYen">—</span></div></div>
           <div class="metric-row" id="rowUncollected"><span class="label">Taxas pendentes</span><span class="value fee-value-with-ring"><span id="metricUncollected">--</span><span id="feeRefreshRing" class="fee-refresh-ring" role="img" aria-label="Aguardando consulta das taxas" title="Próxima consulta em 5 segundos"><svg viewBox="0 0 20 20" aria-hidden="true"><circle class="ring-track" cx="10" cy="10" r="7.5"/><circle class="ring-progress" cx="10" cy="10" r="7.5" pathLength="100"/></svg></span></span><span class="yen-value" id="pendingYen">—</span><span class="fee-actions"><button class="fee-add" type="button" data-fee="uncollectedFees">Modificar</button><button class="fee-withdraw" id="collectFeesBtn" type="button">Sacar</button></span></div>
+          <div class="metric-row no-btn" id="rowFeeApr"><span class="label">APR taxas</span><span class="value" id="metricFeeApr">--</span></div>
           <div id="solEquivalent"></div><div style="font:400 7px/1.4 monospace;color:#8792a6;margin-top:3px">*PnL investimento parcial: saldo fora não confirmado. Pool: leitura on-chain e preços Orca quando conectada; base aproximada. Trade já incluído na base.</div>
         </div>
         <div class="detail-grid">
           <section class="subcard capital-card"><h2>INVESTIMENTO ORIGINAL</h2><div class="metric-row no-btn" id="rowCapital"><span class="label">Capital inicial</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn"><span class="label">Base pool ≈</span><span class="value">$4,031.99</span></div><div class="metric-row no-btn"><span class="label">Saldo fora*</span><span class="value" id="reserveValue">--</span></div><div class="metric-row no-btn" id="rowOriginalValue"><span class="label">Valor atual original*</span><span class="value" id="metricOriginalValue">--</span></div><div class="metric-row no-btn" id="rowPnl"><span class="label">PnL original*</span><span class="value" id="metricPnl">--</span><button class="fee-add" type="button">+</button></div></section>
-          <section class="subcard fees-card"><h2>TAXAS & TRADE</h2><div class="metric-row no-btn positive"><span class="label">Lucro HOODX realizado</span><span class="value" id="tradeProfitValue">—</span></div><div class="metric-row no-btn" id="rowCollected"><span class="label">Coletadas</span><span class="value" id="metricCollected">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowReinvested"><span class="label">Reinvestidas</span><span class="value" id="metricReinvested">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowFeeApr"><span class="label">APR Taxas</span><span class="value" id="metricFeeApr">--</span><button class="fee-add" type="button">+</button></div></section>
           <section class="subcard contribution-card"><h2>NOVOS APORTES</h2><div class="metric-row" id="rowNewCapital"><span class="label">Aporte Novo</span><span class="value" id="metricNewCapital">--</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div><div class="metric-row no-btn" id="rowNewCapitalValue"><span class="label">Valor atual aporte</span><span class="value" id="metricNewCapitalValue">--</span></div><div class="metric-row no-btn" id="rowNewCapitalPnl"><span class="label">PnL aporte (sem taxas)</span><span class="value" id="metricNewCapitalPnl">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowCombinedPnl"><span class="label">PnL combinado*</span><span class="value" id="metricCombinedPnl">--</span></div><div class="metric-row no-btn" id="rowAge"><span class="label">Tempo da pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div></section>
                   <div class="allocation-card subcard" id="allocationCard" aria-label="Composição da pool">
         <div class="card-title">Composição</div>
@@ -1684,7 +1713,6 @@
       $("liquidityYen").textContent = state.usdJpy ? jpy(liq * state.usdJpy) : "¥ —";
       $("pendingYen").textContent = state.usdJpy ? jpy(displayedUncollectedFees() * state.usdJpy) : "¥ —";
       $("reserveValue").textContent = POOL.reserveConfirmed ? usd(POOL.reserveSol * (state.solUsd || POOL.snapshotSolUsd)) : "não informado";
-      $("tradeProfitValue").textContent = "+" + usd(POOL.tradeProfit);
       const pendingFees = displayedUncollectedFees();
       const pendingLabel = usd(pendingFees);
 
@@ -1700,9 +1728,7 @@
       setMetric("rowNewCapital", "metricNewCapital", usd(state.newExternalCapital), "positive");
       const newPnl = newCapitalPnl();
       setMetric("rowNewCapitalPnl", "metricNewCapitalPnl", usd(newPnl) + " (" + pct(state.newExternalCapital ? newPnl / state.newExternalCapital : 0) + ")", newPnl >= 0 ? "positive" : "negative");
-      setMetric("rowReinvested", "metricReinvested", usd(state.reinvestedFees), "positive");
       setMetric("rowUncollected", "metricUncollected", pendingLabel, "positive");
-      setMetric("rowCollected", "metricCollected", usd(state.collectedFees) + " (" + pct(state.collectedFees / externalCapital()) + ")", "positive");
       setMetric("rowFeeApr", "metricFeeApr", pct(feeApr()) + " a.a.", "positive");
       setMetric("rowAge", "metricAge", poolAge());
       $("solFill").style.width = (comp.solPct * 100).toFixed(2) + "%";
