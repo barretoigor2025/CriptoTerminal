@@ -894,20 +894,22 @@
 
     const rangeTop = series.createPriceLine({
       price: POOL.upper,
-      color: "rgba(255,255,255,.92)",
+      color: "#54a9ff",
       lineWidth: 2,
       lineStyle: LightweightCharts.LineStyle.Solid,
+      lineVisible: false,
       axisLabelVisible: true,
-      title: "Range alto"
+      title: ""
     });
 
     const rangeBottom = series.createPriceLine({
       price: POOL.lower,
-      color: "rgba(255,255,255,.92)",
+      color: "#f5a33b",
       lineWidth: 2,
       lineStyle: LightweightCharts.LineStyle.Solid,
+      lineVisible: false,
       axisLabelVisible: true,
-      title: "Range baixo"
+      title: ""
     });
 
     function usd(n) {
@@ -1581,22 +1583,36 @@
       const anchorX = (xLast == null ? w - 190 : xLast + spacing * 3);
       const anchorY = yNow == null ? h * .36 : yNow;
 
+      const plotWidth = Math.max(0, w - chart.priceScale("right").width());
       if (yHigh != null && yLow != null) {
-        const top = Math.min(yHigh, yLow);
-        const bottom = Math.max(yHigh, yLow);
         ctx.save();
         ctx.fillStyle = "rgba(255,255,255,.035)";
-        ctx.fillRect(0, top, w, Math.max(1, bottom - top));
-        ctx.strokeStyle = "rgba(255,255,255,.95)";
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.moveTo(0, yHigh);
-        ctx.lineTo(w, yHigh);
-        ctx.moveTo(0, yLow);
-        ctx.lineTo(w, yLow);
-        ctx.stroke();
+        ctx.fillRect(0, Math.min(yHigh,yLow), plotWidth, Math.abs(yLow-yHigh));
         ctx.restore();
       }
+      // Ratio is SOL per cbBTC: at the upper bound the position is all SOL;
+      // at the lower bound it is all cbBTC (token A SOL / token B cbBTC).
+      function drawExit(y, text, color) {
+        if (y == null || y < 0 || y > h - 24) return;
+        ctx.save();
+        const fontSize = w < 500 ? 14 : 16;
+        ctx.font = "600 " + fontSize + "px IBM Plex Mono, monospace";
+        ctx.textBaseline = "middle";
+        const labelWidth = Math.ceil(ctx.measureText(text).width) + 16;
+        const labelHeight = fontSize + 12;
+        const x = Math.max(6, plotWidth - labelWidth - 8);
+        const labelY = Math.max(labelHeight/2 + 2, Math.min(h - 26 - labelHeight/2, y));
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(Math.max(0,x-6),y); ctx.stroke();
+        ctx.fillStyle = "#0b111a";
+        ctx.fillRect(x,labelY-labelHeight/2,labelWidth,labelHeight);
+        ctx.fillStyle = color;
+        ctx.fillText(text,x+8,labelY);
+        ctx.restore();
+      }
+      drawExit(yHigh, "Saída em Solana", "#54a9ff");
+      drawExit(yLow, "Saída em BTC", "#f5a33b");
 
       if (yNow != null) {
         ctx.save();
