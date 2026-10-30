@@ -627,6 +627,49 @@
       #rowOriginalValue .value,#rowNewCapitalValue .value{font-size:13px;line-height:16px}
     }
 
+
+    /* Portrait: full-width summary, then aligned original/contribution cards. */
+    @media(max-width:680px) and (orientation:portrait){
+      .dashboard{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,40fr) minmax(0,60fr);gap:6px}
+      .side-content{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;align-items:stretch}
+      .pool-card{padding:8px 10px}
+      .pool-card>.card-title{margin-bottom:5px}
+      .primary-pair{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+      .pool-card #metricLiquidity,.pool-card #currentPoolPnl{font-size:22px;line-height:26px}
+      .pool-card .metric-row .label{font-size:9px;line-height:12px}
+      .pool-card .yen-value{font-size:9px;line-height:12px}
+      .pool-card #rowUncollected{grid-column:auto;margin-top:5px;padding-top:5px;gap:0 8px}
+      #rowUncollected .value{font-size:18px;line-height:22px}
+      #rowUncollected .fee-actions{grid-row:1/4}
+      #rowUncollected button{height:24px;font-size:9px;padding:0 7px}
+      #solEquivalent{padding-top:2px!important;font-size:10px!important}
+      .detail-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;align-items:stretch}
+      .capital-card,.contribution-card{padding:7px 8px;min-width:0}
+      .capital-card h2,.contribution-card h2{font-size:8px;line-height:12px;letter-spacing:.04em;margin-bottom:4px}
+      .capital-card .metric-row,.contribution-card .metric-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:1px 3px;padding:3px 0;min-height:0}
+      .capital-card .metric-row .label,.contribution-card .metric-row .label{flex-basis:100%;font-size:8px;line-height:11px;white-space:normal}
+      .capital-card .metric-row .value,.contribution-card .metric-row .value{font-size:12px;line-height:16px;white-space:normal;overflow-wrap:normal}
+      #rowOriginalValue .value,#rowNewCapitalValue .value{font-size:14px;line-height:18px}
+      #rowPnl,#rowNewCapitalPnl{margin-top:3px;padding-top:4px}
+      #rowPnl .value,#rowNewCapitalPnl .value{font-size:15px;line-height:20px;letter-spacing:-.3px}
+      .contribution-card .fee-actions{width:auto;margin-left:auto}
+      .contribution-card .capital-add{height:20px;font-size:8px;padding:0 5px}
+      #rowCombinedPnl .value{font-size:11px}
+      #rowAge .value{font-size:10px}
+      .allocation-card{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;padding:5px 8px}
+      .allocation-card .card-title,.allocation-card .alloc-bar{grid-column:1/-1}
+      .allocation-card .card-title{margin:0}
+      .allocation-card .alloc-bar{margin:1px 0;height:4px}
+      .allocation-card .alloc-line{grid-template-columns:26px 1fr auto;min-height:15px;font-size:9px;gap:3px}
+      .allocation-card .alloc-line em{grid-column:auto;font-size:8px}
+    }
+    @media(max-width:680px) and (orientation:portrait) and (max-height:700px){
+      .dashboard{grid-template-rows:minmax(0,34fr) minmax(0,66fr)}
+      .pool-card{padding:6px 8px}
+      .capital-card .metric-row,.contribution-card .metric-row{padding:2px 0}
+      .pool-card #metricLiquidity,.pool-card #currentPoolPnl{font-size:20px;line-height:23px}
+    }
+
 </style>
 </head>
 <body>
