@@ -230,14 +230,15 @@ function fitAssetData(a){
  if(!matchMedia('(orientation:portrait) and (max-width:760px)').matches)return;
  const style=getComputedStyle(outer),available=outer.clientHeight-parseFloat(style.paddingTop)-parseFloat(style.paddingBottom);
  if(available<=0)return;
- let scale=1;
- for(let i=0;i<3;i++){
-   const natural=inner.scrollHeight;
-   scale=Math.min(1,available/Math.max(1,natural));
-   inner.style.width=(100/scale)+'%';
+ if(inner.scrollHeight<=available)return;
+ let low=.05,high=1;
+ for(let i=0;i<9;i++){
+   const mid=(low+high)/2;
+   inner.style.width=(100/mid)+'%';
+   if(inner.scrollHeight*mid<=available)low=mid;else high=mid;
  }
- scale=Math.min(1,available/Math.max(1,inner.scrollHeight));
- inner.style.transform='scale('+scale+')';
+ inner.style.width=(100/low)+'%';
+ inner.style.transform='scale('+low+')';
 }
 function syncTarget(a){const r=runtime[a.id],v=+state.targets[a.id];if(r.targetLine)r.series.removePriceLine(r.targetLine);r.targetLine=v>0?r.series.createPriceLine({price:v,color:'#e0ac59bb',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:''}):null;
 r.root.querySelector('.target-value').textContent=v>0?money(v):'Não definido';
