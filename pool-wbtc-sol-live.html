@@ -633,9 +633,9 @@
           <div id="solEquivalent"></div><div style="font:400 7px/1.4 monospace;color:#8792a6;margin-top:3px">*PnL investimento parcial: saldo fora não confirmado. Pool: leitura on-chain e preços Orca quando conectada; base aproximada. Trade já incluído na base.</div>
         </div>
         <div class="detail-grid">
-          <section class="subcard capital-card"><h2>INVESTIMENTO</h2><div class="metric-row no-btn" id="rowCapital"><span class="label">Capital inicial</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn"><span class="label">Base pool ≈</span><span class="value">$4,031.99</span></div><div class="metric-row no-btn"><span class="label">Saldo fora*</span><span class="value" id="reserveValue">--</span></div><div class="metric-row no-btn" id="rowPnl"><span class="label">PnL investimento*</span><span class="value" id="metricPnl">--</span><button class="fee-add" type="button">+</button></div></section>
+          <section class="subcard capital-card"><h2>INVESTIMENTO ORIGINAL</h2><div class="metric-row no-btn" id="rowCapital"><span class="label">Capital inicial</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn"><span class="label">Base pool ≈</span><span class="value">$4,031.99</span></div><div class="metric-row no-btn"><span class="label">Saldo fora*</span><span class="value" id="reserveValue">--</span></div><div class="metric-row no-btn" id="rowOriginalValue"><span class="label">Valor atual original*</span><span class="value" id="metricOriginalValue">--</span></div><div class="metric-row no-btn" id="rowPnl"><span class="label">PnL original*</span><span class="value" id="metricPnl">--</span><button class="fee-add" type="button">+</button></div></section>
           <section class="subcard fees-card"><h2>TAXAS & TRADE</h2><div class="metric-row no-btn positive"><span class="label">Lucro HOODX realizado</span><span class="value" id="tradeProfitValue">—</span></div><div class="metric-row no-btn" id="rowCollected"><span class="label">Coletadas</span><span class="value" id="metricCollected">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowReinvested"><span class="label">Reinvestidas</span><span class="value" id="metricReinvested">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowFeeApr"><span class="label">APR Taxas</span><span class="value" id="metricFeeApr">--</span><button class="fee-add" type="button">+</button></div></section>
-          <section class="subcard contribution-card"><h2>NOVOS APORTES</h2><div class="metric-row" id="rowNewCapital"><span class="label">Aporte Novo</span><span class="value" id="metricNewCapital">--</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div><div class="metric-row no-btn" id="rowNewCapitalPnl"><span class="label">PnL aportes</span><span class="value" id="metricNewCapitalPnl">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowAge"><span class="label">Tempo da pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div></section>
+          <section class="subcard contribution-card"><h2>NOVOS APORTES</h2><div class="metric-row" id="rowNewCapital"><span class="label">Aporte Novo</span><span class="value" id="metricNewCapital">--</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div><div class="metric-row no-btn" id="rowNewCapitalValue"><span class="label">Valor atual aporte</span><span class="value" id="metricNewCapitalValue">--</span></div><div class="metric-row no-btn" id="rowNewCapitalPnl"><span class="label">PnL aporte (sem taxas)</span><span class="value" id="metricNewCapitalPnl">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowCombinedPnl"><span class="label">PnL combinado*</span><span class="value" id="metricCombinedPnl">--</span></div><div class="metric-row no-btn" id="rowAge"><span class="label">Tempo da pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div></section>
                   <div class="allocation-card subcard" id="allocationCard" aria-label="Composição da pool">
         <div class="card-title">Composição</div>
         <div class="alloc-bar" aria-hidden="true">
@@ -1668,9 +1668,12 @@
 
     function updatePoolCard(anchorX, anchorY, w, h) {
       const liq = liquidity();
-      const capital = investedCapital();
-      const pnl = totalPositionValue() - capital;
+      const capital = POOL.capital;
+      const contributionValue = newCapitalCurrentValue();
+      const originalValue = totalPositionValue() - contributionValue;
+      const pnl = originalValue - capital;
       const pnlPct = capital ? pnl / capital : 0;
+      const combinedPnl = totalPositionValue() - externalCapital();
       const pnlTone = pnl >= 0 ? "positive" : "negative";
       const comp = composition();
       // Official Orca PnL; external spot prices cannot reproduce its accounting.
@@ -1687,7 +1690,13 @@
 
       setMetric("rowLiquidity", "metricLiquidity", usd(liq));
       setMetric("rowPnl", "metricPnl", usd(pnl) + " (" + pct(pnlPct) + ")", pnlTone);
-      setMetric("rowCapital", "metricCapital", usd(capital));
+      setMetric("rowCapital", "metricCapital", usd(POOL.capital));
+      setMetric("rowOriginalValue", "metricOriginalValue", usd(originalValue));
+      setMetric("rowNewCapitalValue", "metricNewCapitalValue", usd(contributionValue));
+      setMetric("rowCombinedPnl", "metricCombinedPnl", usd(combinedPnl) + " (" + pct(combinedPnl / externalCapital()) + ")", combinedPnl >= 0 ? "positive" : "negative");
+      $("metricPnl").title = "Base original fixa. Exclui o valor atual dos aportes. Inclui as taxas acompanhadas, ainda sem separação por aporte; saldo externo não confirmado.";
+      $("metricNewCapitalPnl").title = "Parcela de liquidez do aporte menos sua base estimada de US$129,52. Não inclui rateio das taxas.";
+
       setMetric("rowNewCapital", "metricNewCapital", usd(state.newExternalCapital), "positive");
       const newPnl = newCapitalPnl();
       setMetric("rowNewCapitalPnl", "metricNewCapitalPnl", usd(newPnl) + " (" + pct(state.newExternalCapital ? newPnl / state.newExternalCapital : 0) + ")", newPnl >= 0 ? "positive" : "negative");
