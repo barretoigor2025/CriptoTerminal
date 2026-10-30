@@ -1595,19 +1595,21 @@
       function drawExit(y, text, color) {
         if (y == null || y < 0 || y > h - 24) return;
         ctx.save();
-        const fontSize = w < 500 ? 14 : 16;
+        const fontSize = w < 500 ? 11 : 12;
         ctx.font = "600 " + fontSize + "px IBM Plex Mono, monospace";
         ctx.textBaseline = "middle";
         const labelWidth = Math.ceil(ctx.measureText(text).width) + 16;
-        const labelHeight = fontSize + 12;
+        const labelHeight = fontSize + 10;
         const x = Math.max(6, plotWidth - labelWidth - 8);
         const labelY = Math.max(labelHeight/2 + 2, Math.min(h - 26 - labelHeight/2, y));
         ctx.strokeStyle = color;
         ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(Math.max(0,x-6),y); ctx.stroke();
-        ctx.fillStyle = "#0b111a";
-        ctx.fillRect(x,labelY-labelHeight/2,labelWidth,labelHeight);
         ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.roundRect(x, labelY-labelHeight/2, labelWidth, labelHeight, labelHeight/2);
+        ctx.fill();
+        ctx.fillStyle = "#ffffff";
         ctx.fillText(text,x+8,labelY);
         ctx.restore();
       }
