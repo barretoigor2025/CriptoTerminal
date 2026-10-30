@@ -588,7 +588,8 @@
       #solEquivalent{padding-top:2px!important}
     }
   
-    .fee-refresh-ring{display:inline-flex;width:14px;height:14px;margin-left:5px;vertical-align:-2px;color:#34c6a1}
+    .fee-value-with-ring{display:inline-flex;align-items:center;gap:.35em;justify-self:start;white-space:nowrap!important}
+    .fee-refresh-ring{display:inline-flex;flex:none;width:.85em;height:.85em;margin:0;color:#34c6a1}
     .fee-refresh-ring svg{width:100%;height:100%;overflow:visible;transform:rotate(-90deg)}
     .fee-refresh-ring circle{fill:none;stroke-width:2}
     .fee-refresh-ring .ring-track{stroke:currentColor;opacity:.18}
@@ -628,7 +629,7 @@
         <div class="pool-card" id="poolCard" aria-label="Resumo da pool">
           <div class="card-title">MINHA POOL <span class="estimate-tag" id="positionStatus">Orca · registro 12:54</span></div>
           <div class="primary-pair"><div class="metric-row no-btn" id="rowLiquidity"><span class="label">Liquidez da pool</span><span class="value" id="metricLiquidity">--</span><span class="yen-value" id="liquidityYen">—</span></div><div class="metric-row no-btn hero-pnl" id="rowPoolPnl"><span class="label">PnL da pool</span><span class="value" id="currentPoolPnl">—</span><span class="hero-percent" id="poolPnlPct">—</span><span class="yen-value" id="poolPnlYen">—</span></div></div>
-          <div class="metric-row" id="rowUncollected"><span class="label">Taxas pendentes <span id="feeRefreshRing" class="fee-refresh-ring" role="img" aria-label="Aguardando consulta das taxas" title="Próxima consulta em 5 segundos"><svg viewBox="0 0 20 20" aria-hidden="true"><circle class="ring-track" cx="10" cy="10" r="7.5"/><circle class="ring-progress" cx="10" cy="10" r="7.5" pathLength="100"/></svg></span></span><span class="value" id="metricUncollected">--</span><span class="yen-value" id="pendingYen">—</span><span class="fee-actions"><button class="fee-add" type="button" data-fee="uncollectedFees">Modificar</button><button class="fee-withdraw" id="collectFeesBtn" type="button">Sacar</button></span></div>
+          <div class="metric-row" id="rowUncollected"><span class="label">Taxas pendentes</span><span class="value fee-value-with-ring"><span id="metricUncollected">--</span><span id="feeRefreshRing" class="fee-refresh-ring" role="img" aria-label="Aguardando consulta das taxas" title="Próxima consulta em 5 segundos"><svg viewBox="0 0 20 20" aria-hidden="true"><circle class="ring-track" cx="10" cy="10" r="7.5"/><circle class="ring-progress" cx="10" cy="10" r="7.5" pathLength="100"/></svg></span></span><span class="yen-value" id="pendingYen">—</span><span class="fee-actions"><button class="fee-add" type="button" data-fee="uncollectedFees">Modificar</button><button class="fee-withdraw" id="collectFeesBtn" type="button">Sacar</button></span></div>
           <div id="solEquivalent"></div><div style="font:400 7px/1.4 monospace;color:#8792a6;margin-top:3px">*PnL investimento parcial: saldo fora não confirmado. Pool: leitura on-chain e preços Orca quando conectada; base aproximada. Trade já incluído na base.</div>
         </div>
         <div class="detail-grid">
