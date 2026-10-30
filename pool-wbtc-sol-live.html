@@ -758,6 +758,8 @@
         state.newCapitalLots = saved.newCapitalLots
           .map(item => ({
             amount: Number(item.amount) || 0,
+            liquidityRaw: item.liquidityRaw || "",
+            signature: item.signature || "",
             share: Number(item.share) || 0,
             ts: item.ts || new Date().toISOString()
           }))
@@ -851,6 +853,27 @@
       }
     }catch(err){}
     if (migratedState) saveState();
+
+    // On-chain amounts confirmed; USD value estimated from screenshot SOL price and swap ratio.
+    const CONFIRMED_DEPOSIT = {
+      signature: "3TQxh8pBGjiwe52urtaE6but7oFGNvRFGn4szeix97PXe9V7yRBWAGYF14tp8UUM3aVS9NifagzGUvZMpo5MUDwc",
+      amount: 129.52429533885152,
+      liquidityRaw: "220522424",
+      share: 220522424 / 6969615179,
+      ts: "2026-10-30T22:36:49+09:00"
+    };
+    try {
+      const key = "confirmed_deposit_20261030_223649_v1";
+      if (localStorage.getItem(key) !== "1") {
+        state.newCapitalLots.push({...CONFIRMED_DEPOSIT});
+        state.newExternalCapital += CONFIRMED_DEPOSIT.amount;
+        state.history.unshift({kind:"capital", ts:CONFIRMED_DEPOSIT.ts,
+          text:"Aporte confirmado: 0,546340937 SOL + 0,00100116 cbBTC. Valor estimado $129,52; cotação SOL do print e razão do autoswap executado. Não é o custo em ienes. Tx "+CONFIRMED_DEPOSIT.signature});
+        saveState();
+        localStorage.setItem(key, "1");
+      }
+    } catch (err) {}
+    $("metricNewCapital").title = "Inclui aporte confirmado em 30/10 às 22:36:49 JST: 0,546340937 SOL + 0,00100116 cbBTC ≈ US$129,52 (avaliação estimada).";
 
     const chart = LightweightCharts.createChart(chartEl, {
       layout: {
@@ -1518,7 +1541,11 @@
 
     function newCapitalCurrentValue() {
       const liq = liquidity();
-      return state.newCapitalLots.reduce((total, item) => total + liq * item.share, 0);
+      return state.newCapitalLots.reduce((total, item) => {
+        const currentL = Number(state.onchain.liquidityRaw || 0);
+        const share = item.liquidityRaw && currentL > 0 ? Number(item.liquidityRaw) / currentL : item.share;
+        return total + liq * share;
+      }, 0);
     }
 
     function newCapitalPnl() {
