@@ -570,6 +570,7 @@
       <option value="15m">15m</option>
       <option value="1h" selected>1h</option>
       <option value="4h">4h</option>
+      <option value="12h">12H</option>
       <option value="1d">1D</option>
       <option value="1w">1S</option>
       <option value="1M">1Mês</option>
@@ -660,7 +661,7 @@
         <div class="ind-row">
           <label class="sw"><input type="checkbox" id="sumOn"><span></span></label>
           <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,var(--bull),var(--bear))"></span>Resumo Multi-TF</span>
-          <span class="ind-params">card: 1h · 4h · Diário · Semanal + síntese, com o BTC Cycle</span>
+          <span class="ind-params">card: 1h · 4h · 12h · Diário · Semanal + síntese, com o BTC Cycle</span>
         </div>
 
         <div class="ind-row">
@@ -778,7 +779,7 @@
   <div class="cmp-head">
     <div class="cmp-title">Comparar movimento <span>· base 100 (normalizado)</span></div>
     <div class="cmp-ranges" id="cmpTfs">
-      <button data-tf="1h">1h</button><button data-tf="4h">4h</button><button data-tf="6h">6h</button>
+      <button data-tf="1h">1h</button><button data-tf="4h">4h</button><button data-tf="6h">6h</button><button data-tf="12h">12H</button>
       <button data-tf="1d" class="active">D</button><button data-tf="1wk">S</button><button data-tf="1mo">M</button>
     </div>
     <div class="cmp-spacer"></div>
@@ -864,7 +865,7 @@ try{ const pv=localStorage.getItem('ib_proxy'); if(pv!==null) GATE_PROXY=pv; }ca
 
 const SOURCES = {
   binance:{
-    tfMap:{'1m':'1m','5m':'5m','15m':'15m','1h':'1h','4h':'4h','1d':'1d','1w':'1w','1M':'1M'},
+    tfMap:{'1m':'1m','5m':'5m','15m':'15m','1h':'1h','4h':'4h','12h':'12h','1d':'1d','1w':'1w','1M':'1M'},
     async rest(tf, symbol='BTCUSDT'){
       const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${this.tfMap[tf]}&limit=1000`;
       const r = await fetch(url); if(!r.ok) throw new Error('http '+r.status);
@@ -881,9 +882,9 @@ const SOURCES = {
     }
   },
   hyperliquid:{
-    tfMap:{'1m':'1m','5m':'5m','15m':'15m','1h':'1h','4h':'4h','1d':'1d','1w':'1w','1M':'1M'},
+    tfMap:{'1m':'1m','5m':'5m','15m':'15m','1h':'1h','4h':'4h','12h':'12h','1d':'1d','1w':'1w','1M':'1M'},
     coin(sym){ return (sym||'BTCUSDT').replace(/USDT$/,'').replace(/USD$/,''); },
-    perMs:{'1m':60000,'5m':300000,'15m':900000,'1h':3600000,'4h':14400000,'1d':86400000,'1w':604800000,'1M':2592000000},
+    perMs:{'1m':60000,'5m':300000,'15m':900000,'1h':3600000,'4h':14400000,'12h':43200000,'1d':86400000,'1w':604800000,'1M':2592000000},
     async rest(tf, symbol='BTCUSDT'){
       const now=Date.now(), per=this.perMs[tf]||3600000, start=now-per*1000;
       const r=await fetch('https://api.hyperliquid.xyz/info',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -905,7 +906,7 @@ const SOURCES = {
     }
   },
   bybit:{
-    tfMap:{'1m':'1','5m':'5','15m':'15','1h':'60','4h':'240','1d':'D','1w':'W','1M':'M'},
+    tfMap:{'1m':'1','5m':'5','15m':'15','1h':'60','4h':'240','12h':'720','1d':'D','1w':'W','1M':'M'},
     async rest(tf, symbol='BTCUSDT'){
       const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=${this.tfMap[tf]}&limit=1000`;
       const r = await fetch(url); if(!r.ok) throw new Error('http '+r.status);
@@ -930,7 +931,7 @@ const SOURCES = {
      alguns países, então tudo passa por um PROXY (GATE_PROXY). Sem WebSocket via
      proxy: usamos polling do último candle. */
   gate:{
-    tfMap:{'1m':'1m','5m':'5m','15m':'15m','1h':'1h','4h':'4h','1d':'1d','1w':'7d','1M':'30d'},
+    tfMap:{'1m':'1m','5m':'5m','15m':'15m','1h':'1h','4h':'4h','12h':'12h','1d':'1d','1w':'7d','1M':'30d'},
     _url(tf, symbol, limit){
       const api = `https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=${symbol}&interval=${this.tfMap[tf]}&limit=${limit}`;
       return GATE_PROXY ? GATE_PROXY + encodeURIComponent(api) : api;
@@ -953,6 +954,28 @@ const SOURCES = {
     }
   }
 };
+
+// Gate has no native 12H spot candles: aggregate real 4H history and update the full bucket live.
+function aggregate12hCandles(rows){
+ const sorted=[...new Map(rows.map(c=>[c.time,c])).values()].sort((a,b)=>a.time-b.time),out=[];
+ for(const c of sorted){const time=Math.floor(c.time/43200)*43200,last=out[out.length-1];
+   if(last&&last.time===time){last.high=Math.max(last.high,c.high);last.low=Math.min(last.low,c.low);last.close=c.close;last.volume+=c.volume;}
+   else out.push({...c,time});
+ }return out;
+}
+(function(){
+ const gate=SOURCES.gate,rest=gate.rest.bind(gate),ws=gate.ws.bind(gate),cache=new Map();
+ gate.rest=async function(tf,symbol){if(tf!=='12h')return rest(tf,symbol);const rows=await rest('4h',symbol);cache.set(symbol,rows);return aggregate12hCandles(rows);};
+ gate.ws=function(tf,onCandle,symbol){
+   if(tf!=='12h')return ws(tf,onCandle,symbol);
+   let rows=cache.get(symbol)||[],stopped=false;
+   const socket=ws('4h',(c,closed)=>{if(stopped)return;rows=rows.filter(x=>x.time!==c.time);rows.push(c);rows.sort((a,b)=>a.time-b.time);rows=rows.slice(-1000);cache.set(symbol,rows);
+     const bucket=aggregate12hCandles(rows).find(x=>x.time===Math.floor(c.time/43200)*43200);
+     if(bucket)onCandle(bucket,!!closed&&c.time%43200===28800);
+   },symbol);
+   return {close(){stopped=true;socket.close();}};
+ };
+})();
 
 /* =========================================================================
    GRÁFICO (Lightweight Charts)
@@ -1716,8 +1739,8 @@ const RSI = {
    fonte atual e classifica tendência (EMAs + inclinação), momentum (RSI) e variação.
    ========================================================================= */
 const SUMMARY = {
-  cfg:{ on:false }, tfs:['1h','4h','1d','1w'], L:{'1h':'1h','4h':'4h','1d':'1D','1w':'1S'},
-  W:{'1h':1,'4h':1.5,'1d':2.5,'1w':3}, data:{}, timer:null, el:$('#sumbox'), _loading:false,
+  cfg:{ on:false }, tfs:['1h','4h','1d','1w'], L:{'1h':'1h','4h':'4h','12h':'12h','1d':'1D','1w':'1S'},
+  W:{'1h':1,'4h':1.5,'12h':2,'1d':2.5,'1w':3}, data:{}, timer:null, el:$('#sumbox'), _loading:false,
   visible(){ return this.cfg.on; },
   analyze(c){
     if(!c||c.length<60) return null;
@@ -1965,6 +1988,7 @@ const COMPARE = {
   TF:{
     '1h': {hi:'1h', hAgg:null,  hdays:45,   bi:'1h', yi:'60m', yr:'1mo', yAgg:null,  intra:true,  tsec:3600},
     '4h': {hi:'4h', hAgg:null,  hdays:150,  bi:'4h', yi:'60m', yr:'3mo', yAgg:14400, intra:true,  tsec:14400},
+    '12h':{hi:'12h',hAgg:null,hdays:400,bi:'12h',yi:'60m',yr:'6mo',yAgg:43200,intra:true,tsec:43200},
     '6h': {hi:'1h', hAgg:21600, hdays:220,  bi:'6h', yi:'60m', yr:'6mo', yAgg:21600, intra:true,  tsec:21600},
     '1d': {hi:'1d', hAgg:null,  hdays:500,  bi:'1d', yi:'1d',  yr:'1y',  yAgg:null,  intra:false, tsec:86400},
     '1wk':{hi:'1w', hAgg:null,  hdays:2200, bi:'1w', yi:'1wk', yr:'5y',  yAgg:null,  intra:false, tsec:604800},
@@ -3560,7 +3584,7 @@ const ASSETS = [
   ['TSLAx','TSLAX_USDT','Ações tokenizadas','gate'],['NVDAx','NVDAX_USDT','Ações tokenizadas','gate'],
   ['AAPLx','AAPLX_USDT','Ações tokenizadas','gate'],['COINx','COINX_USDT','Ações tokenizadas','gate']
 ];
-const PANE_TFS = ['15m','1h','4h','1d','1w'];
+const PANE_TFS = ['15m','1h','4h','12h','1d','1w'];
 // provedor de um símbolo: xStocks -> gate; cripto -> a fonte selecionada
 function providerFor(sym){ const a=ASSETS.find(x=>x[1]===sym); return (a&&a[3]) || S.source; }
 function symLabel(sym){ if(sym==='BTCSOL') return 'BTC/SOL'; const a=ASSETS.find(x=>x[1]===sym); return a ? a[0] : (sym||'').replace(/USDT$/,''); }
@@ -3721,7 +3745,7 @@ $('#soundOn').addEventListener('change', e=>SOUND.enable(e.target.checked));
    saúde) é reavaliada AO VIVO contra o preço a cada tick, sem refresh.
    ========================================================================= */
 const MTFOB = {
-  tfs:['1h','4h','1d'], data:{}, timer:null, el:$('#mtfob'),
+  tfs:['1h','4h','12h','1d'], data:{}, timer:null, el:$('#mtfob'),
   visible(){ return false; },   // card mesclado no Resumo Multi-TF; evalTF continua servindo de fonte
   // penetração viva do preço na zona (0=fora, 1=atravessou tudo)
   livePen(o, price){
@@ -3762,7 +3786,7 @@ const MTFOB = {
     this.el.hidden = !this.visible();
     if(!this.visible()) return;
     const price = S.candles.length ? S.candles[S.candles.length-1].close : 0;
-    const L={'1h':'1h','4h':'4h','1d':'1D'};
+    const L={'1h':'1h','4h':'4h','12h':'12h','1d':'1D'};
     const rows = this.tfs.map(tf=>{
       const r=this.evalTF(price, this.data[tf]);
       const cur = (tf===S.tf);           // período que está no gráfico agora
