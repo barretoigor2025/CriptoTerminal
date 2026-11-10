@@ -527,21 +527,36 @@
 
   @media (prefers-reduced-motion: reduce){ .flash{animation:none} }
 
-  /* ---------- RESPONSIVO (tablet / celular) ---------- */
+  .header-tools{display:contents}
+  #moreToolsBtn{display:none}
+
+  /* Compact market bar on phones. Secondary tools open beneath it. */
   @media (max-width:760px){
-    header{gap:8px}
-    .status #statusTxt{display:none}      /* mantém só o LED no aperto */
-    .ind-menu{min-width:min(300px,92vw);left:auto;right:0}
+    header{position:relative;flex-wrap:nowrap;gap:4px;padding:4px 6px}
+    header .brand,header .spacer,.status #statusTxt{display:none}
+    .ticker{align-items:center;gap:4px;flex-shrink:0}
+    .ticker .asset-sel{width:68px;height:32px;padding:2px 3px;font-size:11px;letter-spacing:0}
+    .ticker .px{font-size:12px}
+    .ticker .chg{font-size:10px;padding:2px 3px}
+    .ctrls{gap:4px;flex-shrink:0}
+    #tfSel{width:49px;height:32px;padding:2px 3px;font-size:11px}
+    .ind-btn .lbl{display:none}
+    .ind-btn,#moreToolsBtn{width:30px;height:32px;padding:0;justify-content:center}
+    #moreToolsBtn{display:inline-flex;align-items:center;font-size:19px}
+    .ind-menu-wrap{position:static}
+    .ind-menu{position:absolute;top:calc(100% + 5px);left:6px;right:6px;min-width:0}
+    .header-tools{display:none;position:absolute;top:calc(100% + 5px);right:6px;
+      width:max-content;max-width:calc(100vw - 12px);box-sizing:border-box;z-index:21;
+      flex-wrap:wrap;align-items:center;gap:6px;padding:8px;
+      background:var(--panel);border:1px solid var(--hair-2);border-radius:10px;
+      box-shadow:0 12px 34px rgba(0,0,0,.55)}
+    .header-tools.is-open{display:flex}
+    .header-tools .icon-btn,.header-tools .pool-link,.header-tools .hsel{min-height:34px}
+    .status .led{width:6px;height:6px}
   }
-  @media (max-width:560px){
-    .brand-full{display:none}             /* fica só "IB" */
-    .ind-btn .lbl{display:none}           /* botão de indicadores vira só ícone */
-    .ind-btn{padding:6px 8px}
-    .ctrls{gap:6px}
-    .ticker .px{font-size:15px}
-    .ticker .sym{display:none}            /* preço + % bastam no aperto */
-    /* menu vira uma folha fixa que cabe na largura (não vaza pela esquerda) */
-    .ind-menu{position:fixed;top:52px;left:8px;right:8px;min-width:0}
+  @media (max-width:360px){
+    .ticker .asset-sel{width:62px}
+    header .status{display:none}
   }
 </style>
 </head>
@@ -577,7 +592,6 @@
       <option value="1y">1Ano</option>
     </select>
 
-    <a class="pool-link" href="portfolio-xstocks.html" title="Carteira HOODX e MSTRX">STOCKS</a>\n\n    <a class="pool-link" href="pool-wbtc-sol-live.html" title="Pool WBTC/SOL">POOL</a>
 
     <div class="ind-menu-wrap">
       <button class="ind-btn" id="indBtn" title="Indicadores">
@@ -701,6 +715,10 @@
       </div>
     </div>
 
+    <button class="icon-btn" id="moreToolsBtn" type="button" title="Mais opções" aria-label="Mais opções" aria-controls="headerTools" aria-expanded="false">⋯</button>
+    <div class="header-tools" id="headerTools">
+    <a class="pool-link" href="portfolio-xstocks.html" title="Carteira de ações">STOCKS</a>
+    <a class="pool-link" href="pool-wbtc-sol-live.html" title="Pool cbBTC/SOL">POOL</a>
     <select class="hsel" id="src" title="Fonte de dados">
       <option value="hyperliquid">Hyperliquid</option>
       <option value="binance">Binance</option>
@@ -730,6 +748,7 @@
       <svg viewBox="0 0 24 24" width="16" height="16" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
     </button>
 
+    </div>
     <span class="status"><span class="led" id="led"></span><span id="statusTxt">conectando…</span></span>
   </div>
 </header>
@@ -3392,17 +3411,36 @@ function setTool(t){
 
 // ---- menu de Indicadores (abre/fecha, estilo TradingView) ----
 const indBtn=$('#indBtn'), indMenu=$('#indMenu');
+const moreToolsBtn=$('#moreToolsBtn'), headerTools=$('#headerTools');
+function toggleHeaderTools(show){
+  headerTools.classList.toggle('is-open',show);
+  moreToolsBtn.setAttribute('aria-expanded',String(show));
+}
+moreToolsBtn.addEventListener('click',()=>{
+  const show=!headerTools.classList.contains('is-open');
+  if(show) toggleIndMenu(false);
+  toggleHeaderTools(show);
+});
 function toggleIndMenu(open){
   const show = open===undefined ? indMenu.hidden : open;
+  if(show) toggleHeaderTools(false);
   indMenu.hidden = !show;
   indBtn.classList.toggle('active', show);
 }
 indBtn.addEventListener('click', e=>{ e.stopPropagation(); toggleIndMenu(); });
 $('#indClose').addEventListener('click', e=>{ e.stopPropagation(); toggleIndMenu(false); });
 document.addEventListener('click', e=>{
+  if(!moreToolsBtn.contains(e.target) && (!headerTools.contains(e.target) || e.target.closest('button'))) toggleHeaderTools(false);
   if(!indMenu.hidden && !indMenu.contains(e.target) && !indBtn.contains(e.target)) toggleIndMenu(false);
 });
-document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !indMenu.hidden) toggleIndMenu(false); });
+document.addEventListener('keydown', e=>{
+  if(e.key!=='Escape')return;
+  if(!indMenu.hidden) toggleIndMenu(false);
+  if(headerTools.classList.contains('is-open')){
+    toggleHeaderTools(false);
+    moreToolsBtn.focus();
+  }
+});
 
 $('#tfSel').addEventListener('change', e=>{ S.tf=e.target.value; store.save(); loadData(); });
 
