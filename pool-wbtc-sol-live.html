@@ -689,7 +689,7 @@
     <div class="pair"><span class="dot"></span><span>cbBTC/SOL</span></div>
     <div class="price" id="ratio">--</div>
     <div class="badge ok" id="rangeStatus">In Range</div>
-    <div class="badge" id="rangeText">762.17 - 876.00</div>
+    <div class="badge" id="rangeText">826.97 - 951.99</div>
     <div class="badge" id="liveText">tick 1s</div>
     <div class="spacer"></div>
     <div class="tf" aria-label="Timeframe">
@@ -753,7 +753,6 @@
       previousContributions: 142,
       lower: 826.966261,
       upper: 951.992215,
-      entryRatio: 890.03458,
       solAmount: 0,
       btcAmount: 0,
       uncollectedFees: 0.03,
@@ -898,7 +897,15 @@
       borderDownColor: "#ef5350",
       wickUpColor: "#26a69a",
       wickDownColor: "#ef5350",
-      priceFormat: { type: "price", precision: 2, minMove: .01 }
+      priceFormat: { type: "price", precision: 2, minMove: .01 },
+      autoscaleInfoProvider: original => {
+        const info = original();
+        if (!info?.priceRange) return info;
+        return {...info, priceRange: {
+          minValue: Math.min(info.priceRange.minValue, state.onchain.lower * .995),
+          maxValue: Math.max(info.priceRange.maxValue, state.onchain.upper * 1.005)
+        }};
+      }
     });
 
     const rangeTop = series.createPriceLine({
