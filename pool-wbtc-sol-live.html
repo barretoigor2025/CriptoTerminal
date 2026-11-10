@@ -711,15 +711,15 @@
 
       <aside class="side-panel" aria-label="Dados da pool"><div class="side-content" id="sideContent">
         <div class="pool-card" id="poolCard" aria-label="Resumo da pool">
-          <div class="card-title">MINHA POOL <span class="estimate-tag" id="positionStatus">Orca · registro 12:54</span></div>
-          <div class="primary-pair"><div class="metric-row no-btn" id="rowLiquidity"><span class="label">Liquidez da pool</span><span class="value" id="metricLiquidity">--</span><span class="yen-value" id="liquidityYen">—</span></div><div class="metric-row no-btn hero-pnl" id="rowPoolPnl"><span class="label">PnL da pool</span><span class="value" id="currentPoolPnl">—</span><span class="hero-percent" id="poolPnlPct">—</span><span class="yen-value" id="poolPnlYen">—</span></div></div>
+          <div class="card-title">MINHA POOL <span class="estimate-tag" id="positionStatus">Orca · registro 01:54</span></div>
+          <div class="primary-pair"><div class="metric-row no-btn" id="rowLiquidity"><span class="label">Liquidez da pool</span><span class="value" id="metricLiquidity">--</span><span class="yen-value" id="liquidityYen">—</span></div><div class="metric-row no-btn hero-pnl" id="rowPoolPnl"><span class="label">PnL da pool (est.)</span><span class="value" id="currentPoolPnl">—</span><span class="hero-percent" id="poolPnlPct">—</span><span class="yen-value" id="poolPnlYen">—</span></div></div>
           <div class="metric-row" id="rowUncollected"><span class="label">Taxas pendentes</span><span class="value fee-value-with-ring"><span id="metricUncollected">--</span><span id="feeRefreshRing" class="fee-refresh-ring" role="img" aria-label="Aguardando consulta das taxas" title="Próxima consulta em 5 segundos"><svg viewBox="0 0 20 20" aria-hidden="true"><circle class="ring-track" cx="10" cy="10" r="7.5"/><circle class="ring-progress" cx="10" cy="10" r="7.5" pathLength="100"/></svg></span></span><span class="yen-value" id="pendingYen">—</span><span class="fee-actions"><button class="fee-add" type="button" data-fee="uncollectedFees">Modificar</button><button class="fee-withdraw" id="collectFeesBtn" type="button">Sacar</button></span></div>
           <div class="metric-row no-btn" id="rowFeeApr"><span class="label">APR taxas</span><span class="value" id="metricFeeApr">--</span></div>
           <div id="solEquivalent"></div><div style="font:400 7px/1.4 monospace;color:#8792a6;margin-top:3px">PnL total = liquidez + taxas acompanhadas − capital investido. ¥ pelo câmbio atual.</div>
         </div>
         <div class="detail-grid">
           <section class="subcard capital-card"><h2>CAPITAL INVESTIDO</h2><div class="metric-row no-btn" id="rowCapital"><span class="label">Capital inicial</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowTotalCapital"><span class="label">Total investido</span><span class="value" id="metricTotalCapital">--</span><span class="capital-yen" id="totalCapitalYen">—</span></div><div class="metric-row no-btn" id="rowPnl"><span class="label">PnL total</span><span class="value" id="metricPnl">--</span><span class="capital-yen" id="totalPnlYen">—</span><button class="fee-add" type="button">+</button></div></section>
-          <section class="subcard contribution-card"><h2>NOVOS APORTES</h2><div class="metric-row" id="rowNewCapital"><span class="label">Aportes externos</span><span class="value" id="metricNewCapital">--</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div><div class="metric-row no-btn"><span class="label">Última entrada</span><span class="value">$14.00</span></div><div class="metric-row no-btn"><span class="label">Taxas reinvestidas ≈</span><span class="value">$10.59</span></div><div class="metric-row no-btn" id="rowNewCapitalValue"><span class="label">Valor atual aporte</span><span class="value" id="metricNewCapitalValue">--</span></div><div class="metric-row no-btn" id="rowNewCapitalPnl"><span class="label">PnL aporte (sem taxas)</span><span class="value" id="metricNewCapitalPnl">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowAge"><span class="label">Tempo da pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div></section>
+          <section class="subcard contribution-card"><h2>APORTES DO CICLO</h2><div class="metric-row" id="rowNewCapital"><span class="label">Aportes acumulados</span><span class="value" id="metricNewCapital">--</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div><div class="metric-row no-btn"><span class="label">Compra na BingX</span><span class="value">51.388 SOL</span></div><div class="metric-row no-btn"><span class="label">Preço médio SOL</span><span class="value">$82.14</span></div><div class="metric-row no-btn" id="rowNewCapitalValue"><span class="label">Valor atual aporte</span><span class="value" id="metricNewCapitalValue">--</span></div><div class="metric-row no-btn" id="rowNewCapitalPnl"><span class="label">PnL dos aportes (est.)</span><span class="value" id="metricNewCapitalPnl">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowAge"><span class="label">Tempo da pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div></section>
                   <div class="allocation-card subcard" id="allocationCard" aria-label="Composição da pool">
         <div class="card-title">Composição</div>
         <div class="alloc-bar" aria-hidden="true">
@@ -749,46 +749,38 @@
 
   <script>
     const POOL = {
-      capital: 4100.128679,
-      lower: 762.168742,
-      upper: 875.995555,
-      solAmount: 20.9856159,
-      btcAmount: 0.0253864,
-      initialSolBuyUsd: 4100.128679,
-      externalAddUsd: 0,
-      uncollectedFees: 0,
+      capital: 4100,
+      previousContributions: 142,
+      lower: 826.966261,
+      upper: 951.992215,
+      entryRatio: 890.03458,
+      solAmount: 0,
+      btcAmount: 0,
+      uncollectedFees: 0.03,
       collectedFees: 0,
       reinvestedFees: 0,
       newExternalCapital: 0,
       whirlpool: "CeaZcxBNLpJWtxzt58qQmfMBtJY8pQLvursXTJYGQpbN",
-      position: "FLdxdgJeLsQm55nisQX79LgGQyPN1mGwAyx8zNJzHSBs",
-      positionMint: "",
-      snapshotBalance: 4010.34,
-      snapshotPoolPnl: -14.23,
-      snapshotPoolPnlPct: -0.0035,
-      snapshotRatio: 817.42935,
-      snapshotSolUsd: 2034.96 / 20.9856159,
-      currentCostBasis: 4031.99,
-      currentBuyUsd: 4136.96,
-      currentBuySol: 41.957,
+      position: "GHoBCm2pmJ7dHiyhxUfBnAQJqPDiSAFxDE9Fjka87mov",
+      positionMint: "DgvAwkgcr1hPc6gkfCrFrpJfiHDpAGT1MR7itQ78tK3P",
+      snapshotBalance: 4200.90,
+      snapshotPoolPnl: 2.05,
+      snapshotPoolPnlPct: 2.05 / 4198.88,
+      snapshotRatio: 889.50066,
+      snapshotSolUsd: 82.14,
+      // Approximate position cost inferred from the Orca screenshot including pending fees.
+      currentCostBasis: 4198.88,
+      currentBuyUsd: 4221.08,
+      currentBuySol: 51.388,
       reserveSol: 0,
-      reserveConfirmed: false,
-      tradeProfit: 4141.16 - 4.14116703 - 4100.128679,
-      tradeSaleNet: 4141.16 - 4.14116703,
       feeTier: 0.16,
-      snapshotAt: "2026-10-30T12:54:00+09:00",
-      rpc: "https://solana-rpc.publicnode.com"
+      snapshotAt: "2026-11-11T01:54:00+09:00",
+      rpc: ["https://api.mainnet-beta.solana.com", "https://solana-rpc.publicnode.com"]
     };
 
-    const STORAGE_KEY = "wbtc_sol_pool_live_v3";
-    const OLD_STORAGE_KEY = "wbtc_sol_pool_live_v2";
-    const ACCIDENTAL_WITHDRAW_KEY = "wbtc_sol_pool_accidental_withdraw_fix";
-    const CAPITAL_LOG_KEY = "wbtc_sol_pool_capital_log_v1";
-    const CLEAR_DEFAULT_FEES_KEY = "wbtc_sol_pool_clear_default_044_v1";
-    const REINVESTED_FEES_KEY = "wbtc_sol_pool_reinvested_fees_v1";
-    const REINVESTED_LOG_KEY = "wbtc_sol_pool_reinvested_log_v1";
-    const CORRECT_2595_FEES_KEY = "wbtc_sol_pool_correct_2595_to_2395_v1";
-    const POOL_STARTED_AT = new Date("2026-10-30T05:50:00+09:00").getTime();
+    const STORAGE_KEY = "cbbtc_sol_pool_20261111_v1";
+    const PREVIOUS_STORAGE_KEY = "wbtc_sol_pool_live_v3";
+    const POOL_STARTED_AT = new Date("2026-11-11T01:50:18+09:00").getTime();
     const perMs = { "1h": 3600000, "4h": 14400000, "1d": 86400000 };
     const state = {
       tf: "1h",
@@ -818,8 +810,7 @@
       reinvestedFees: POOL.reinvestedFees,
       newExternalCapital: POOL.newExternalCapital,
       newCapitalLots: [],
-      feePnlCarry: 0.11,
-      feeStartedAt: "2026-10-16T05:26:33+09:00",
+      feeStartedAt: new Date(POOL_STARTED_AT).toISOString(),
       history: []
     };
 
@@ -828,12 +819,9 @@
     const overlay = $("overlay");
     const ctx = overlay.getContext("2d");
 
-    let migratedState = false;
     try {
       const rawState = localStorage.getItem(STORAGE_KEY);
-      const rawOldState = localStorage.getItem(OLD_STORAGE_KEY);
-      const saved = JSON.parse(rawState || rawOldState || "{}");
-      migratedState = !rawState && !!rawOldState;
+      const saved = JSON.parse(rawState || "{}");
       if (Number.isFinite(Number(saved.uncollectedFees))) state.uncollectedFees = Number(saved.uncollectedFees);
       if (Number.isFinite(Number(saved.collectedFees))) state.collectedFees = Number(saved.collectedFees);
       if (Number.isFinite(Number(saved.reinvestedFees))) state.reinvestedFees = Number(saved.reinvestedFees);
@@ -853,7 +841,7 @@
         state.collectedFees += Number(saved.reinsertedFees);
         state.reinvestedFees += Number(saved.reinsertedFees);
       }
-      if (Number.isFinite(Number(saved.feePnlCarry))) state.feePnlCarry = Number(saved.feePnlCarry);
+
       if (saved.feeStartedAt) state.feeStartedAt = saved.feeStartedAt;
       if (Array.isArray(saved.history)) state.history = saved.history.slice(0, 80);
     } catch (err) {}
@@ -861,7 +849,7 @@
     function saveState() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
-          feePnlCarry: state.feePnlCarry,
+
           feeStartedAt: state.feeStartedAt,
           uncollectedFees: state.uncollectedFees,
           collectedFees: state.collectedFees,
@@ -872,135 +860,6 @@
         }));
       } catch (err) {}
     }
-
-    // Retain journey capital, harvested fees and history; replace only pending fees once.
-    try {
-      const migrationKey = "wbtc_sol_reentry_20261016_v1";
-      if (localStorage.getItem(migrationKey) !== "1") {
-        state.uncollectedFees = POOL.uncollectedFees;
-        state.history.unshift({kind: "reentry", ts: "2026-10-15T20:16:00Z",
-          text: "16/10: retorno SOL/cbBTC. Compra 32,263 SOL por $3.426,97 a $106,22. Base Orca $3.412,07; saldo $3.405,27 + $0,11 pendente. Range 737,576356–815,143863. Capital e taxas históricos preservados. Diferença compra/base $14,90 sem detalhamento."});
-        saveState();
-        localStorage.setItem(migrationKey, "1");
-      }
-    } catch (err) {}
-    try {
-      const resetKey = "wbtc_sol_fee_reset_20261016_v1";
-      if (localStorage.getItem(resetKey) !== "1") {
-        // Archive financial value before clearing reporting counters.
-        state.feePnlCarry = state.uncollectedFees + Math.max(0, state.collectedFees - state.reinvestedFees);
-        state.uncollectedFees = 0;
-        state.collectedFees = 0;
-        state.reinvestedFees = 0;
-        state.feeStartedAt = "2026-10-16T05:26:33+09:00";
-        state.history.unshift({kind: "fee-reset", ts: state.feeStartedAt,
-          text: "Contadores de taxas zerados a pedido. Capital e PnL da jornada preservados; taxas anteriores arquivadas."});
-        saveState();
-        localStorage.setItem(resetKey, "1");
-      }
-    } catch (err) {}
-    try {
-      const key = "wbtc_sol_reentry_20261027_v1";
-      if (localStorage.getItem(key) !== "1") {
-        state.history.unshift({kind:"reentry",ts:"2026-10-27T04:26:00+09:00",text:"Nova pool 27/10: compra $4.100,52; 40,643316 SOL líquidos. Base Orca $4.083,28; saldo $4.084,89; pendente $0,01. Reserva 0,05384 SOL (carteira total $5,42 no print). Range 754,283654–833,608191. Taxas do ciclo anterior arquivadas; capital histórico preservado, aportes a confirmar."});
-        state.uncollectedFees = .01;
-        state.collectedFees = 0;
-        state.reinvestedFees = 0;
-        state.feePnlCarry = 0;
-        state.feeStartedAt = "2026-10-27T04:21:00+09:00";
-        saveState();localStorage.setItem(key,"1");
-      }
-    } catch(err) {}
-    try {
-      const key="wbtc_sol_capital_reset_20261027_v1";
-      if(localStorage.getItem(key)!=="1"){
-        state.newExternalCapital=0;state.newCapitalLots=[];state.feePnlCarry=0;
-        state.history=[{kind:"start",ts:"2026-10-27T04:16:54+09:00",text:"Novo início: capital $4.100,52. PnL = pool + reserva SOL + taxas pendentes + taxas fora da pool − capital. Histórico antigo desconsiderado."}];
-        saveState();localStorage.setItem(key,"1");
-      }
-    }catch(err){}
-    try {
-      const key="sol_cbbtc_cycle_20261030_v1";
-      if(localStorage.getItem(key)!=="1"){
-        state.uncollectedFees=.12;state.collectedFees=0;state.reinvestedFees=0;state.feePnlCarry=0;
-        state.newExternalCapital=0;state.newCapitalLots=[];state.feeStartedAt="2026-10-30T05:50:00+09:00";
-        state.history.unshift({kind:"cycle",ts:POOL.snapshotAt,text:"SOL/cbBTC 0,16%: compra 41,957 SOL por $4.136,96 a preço médio $98,60. Taxa da compra não informada. Pool $4.045,05 + $0,12 pendentes; base Orca $4.034,06; range 762,168742–875,995555. HOODX: custo $4.100,128679, líquido $4.137,01883297, lucro $36,89015397. PnL investimento mantém a base HOODX e não soma o lucro duas vezes. Saldo fora da pool não confirmado; diferença entre compra de SOL e base Orca não classificada como aporte, taxa ou reserva."});
-        saveState();localStorage.setItem(key,"1");
-      }
-    }catch(err){}
-    try {
-      const key="sol_cbbtc_orca_snapshot_20261030_1254_v1";
-      if(localStorage.getItem(key)!=="1"){
-        state.uncollectedFees=7.42;
-        state.history.unshift({kind:"correction",ts:POOL.snapshotAt,text:"Orca 12:54 JST: liquidez $4.010,34; PnL -$14,23 (-0,35%); taxas $7,42. Base aproximada reconciliada $4.031,99. Posição conectada para leitura on-chain e preços Orca."});
-        saveState();localStorage.setItem(key,"1");
-      }
-    }catch(err){}
-    if (migratedState) saveState();
-
-    // On-chain amounts confirmed; USD value estimated from screenshot SOL price and swap ratio.
-    const CONFIRMED_DEPOSIT = {
-      signature: "3TQxh8pBGjiwe52urtaE6but7oFGNvRFGn4szeix97PXe9V7yRBWAGYF14tp8UUM3aVS9NifagzGUvZMpo5MUDwc",
-      amount: 128.42,
-      liquidityRaw: "220522424",
-      share: 220522424 / 6969615179,
-      ts: "2026-10-30T22:36:49+09:00"
-    };
-    try {
-      const key = "confirmed_deposit_20261030_223649_v1";
-      if (localStorage.getItem(key) !== "1") {
-        state.newCapitalLots.push({...CONFIRMED_DEPOSIT});
-        state.newExternalCapital += CONFIRMED_DEPOSIT.amount;
-        state.history.unshift({kind:"capital", ts:CONFIRMED_DEPOSIT.ts,
-          text:"Aporte confirmado: 0,546340937 SOL + 0,00100116 cbBTC. Base US$128,42 informada pelo usuário. Tx "+CONFIRMED_DEPOSIT.signature});
-        saveState();
-        localStorage.setItem(key, "1");
-      }
-    } catch (err) {}
-    // Reconcile this known contribution without changing other lots or duplicating capital.
-    try {
-      const key = "confirmed_deposit_20261030_cost_12842_v1";
-      if (localStorage.getItem(key) !== "1") {
-        for (const lot of state.newCapitalLots) {
-          if (lot.signature === CONFIRMED_DEPOSIT.signature) {
-            state.newExternalCapital += 128.42 - lot.amount;
-            lot.amount = 128.42;
-          }
-        }
-        saveState();
-        localStorage.setItem(key, "1");
-      }
-    } catch (err) {}
-    $("metricNewCapital").title = "Aporte de 30/10 às 22:36:49 JST: base US$128,42 informada pelo usuário; tokens confirmados on-chain.";
-
-    // 31/10 02:27:09 JST: $14 gross deposit, including approximately $10.59 harvested fees.
-    // The split uses the user's fee estimate; token amounts and liquidity delta are on-chain.
-    const REDEPOSIT_OCT31 = {
-      signature: "3JfrxPcEqjiYBpkGExoq8KzVC3SfyfHPs9JhxpgEgxDgujTrNxfnkzGzcpjHKKTifbVbWHDDsbUtCFRYNJXiKrht",
-      gross: 14, reinvested: 10.59, external: 3.41,
-      liquidityRaw: "23997082", ts: "2026-10-31T02:27:09+09:00"
-    };
-    try {
-      const key = "redeposit_20261031_022709_v1";
-      if (localStorage.getItem(key) !== "1") {
-        state.newCapitalLots.push({
-          signature:REDEPOSIT_OCT31.signature, amount:REDEPOSIT_OCT31.external,
-          liquidityRaw: (Number(REDEPOSIT_OCT31.liquidityRaw) * REDEPOSIT_OCT31.external / REDEPOSIT_OCT31.gross).toString(),
-          share: 23997082 / (6969615179 + 23997082) * 3.41 / 14,
-          ts:REDEPOSIT_OCT31.ts
-        });
-        state.newExternalCapital += REDEPOSIT_OCT31.external;
-        // If the manual harvest button already recorded this collection, reconcile rather than add twice.
-        state.collectedFees = Math.max(state.collectedFees, REDEPOSIT_OCT31.reinvested);
-        state.reinvestedFees = Math.max(state.reinvestedFees, REDEPOSIT_OCT31.reinvested);
-        state.uncollectedFees = 0;
-        state.history.unshift({kind:"capital",ts:REDEPOSIT_OCT31.ts,
-          text:"Depósito $14,00: taxas reinvestidas ≈$10,59 + capital externo ≈$3,41. Divisão estimada conforme relato. Entrada on-chain: 0,070011016 SOL + 0,00009591 cbBTC. Tx "+REDEPOSIT_OCT31.signature});
-        saveState();
-        localStorage.setItem(key,"1");
-      }
-    } catch (err) {}
-    $("metricNewCapital").title = "Capital externo: US$128,42 + aproximadamente US$3,41. Última entrada US$14 inclui aproximadamente US$10,59 de taxas reinvestidas. Divisão em dólar baseada no relato.";
 
     const chart = LightweightCharts.createChart(chartEl, {
       layout: {
@@ -1401,15 +1260,24 @@
     }
 
     async function solanaRpc(method, params) {
-      const res = await fetch(POOL.rpc, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jsonrpc: "2.0", id: Date.now(), method, params })
-      });
-      if (!res.ok) throw new Error("rpc " + res.status);
-      const data = await res.json();
-      if (data.error) throw new Error(data.error.message || "rpc error");
-      return data.result;
+      let failure;
+      for (const endpoint of POOL.rpc) {
+        try {
+          const res = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ jsonrpc: "2.0", id: Date.now(), method, params }),
+            signal: AbortSignal.timeout(8000)
+          });
+          if (!res.ok) throw new Error("RPC " + res.status);
+          const data = await res.json();
+          if (data.error) throw new Error(data.error.message || "Falha RPC");
+          return data.result;
+        } catch (error) {
+          failure = error;
+        }
+      }
+      throw failure;
     }
 
     function parsePosition(bytes) {
@@ -1448,7 +1316,7 @@
       if(!(p>0))throw new Error("preço Orca indisponível"); return p;
     }
     async function positionFees(position,pool){
-      const addresses={"-91520":"FKfYCgyncsmTAaJvi8rYW1isMD3zHdnVkzi88Y7k6NFV","-90112":"9Sett7DnPWe4o1gRewuKh7epWxmSo4DC1dBBatcbQSrL"};
+      const addresses={"-92928":"79QHdjLcnHoJDjw66yz2tzQziiap9qwwZo8omQiJqJ65","-91520":"FKfYCgyncsmTAaJvi8rYW1isMD3zHdnVkzi88Y7k6NFV"};
       const starts=[position.tickLower,position.tickUpper].map(t=>Math.floor(t/(88*pool.tickSpacing))*88*pool.tickSpacing);
       if(starts.some(t=>!addresses[t]))throw new Error("range alterado: reconectar tick arrays");
       const result=await solanaRpc("getMultipleAccounts",[starts.map(t=>addresses[t]),{encoding:"base64"}]);
@@ -1507,7 +1375,7 @@
         if (!accounts || !accounts[0] || !accounts[1]) throw new Error("conta da pool nao encontrada");
         const posBytes = b64Bytes(accounts[0].data[0]);
         const program = "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc";
-        if(accounts.some(a=>a.owner!==program) || base58(posBytes.slice(8,40))!==POOL.whirlpool) throw new Error("posição não pertence à pool");
+        if(accounts.some(a=>a.owner!==program) || base58(posBytes.slice(8,40))!==POOL.whirlpool || base58(posBytes.slice(40,72))!==POOL.positionMint) throw new Error("posição não pertence à pool");
         const position = parsePosition(posBytes);
         const pool = parsePool(b64Bytes(accounts[1].data[0]));
         const amounts = positionAmounts(position.liquidityRaw, position.tickLower, position.tickUpper, pool.sqrtPriceX64);
@@ -1535,7 +1403,7 @@
         state.positionValuation = {solUsd:solToken,btcUsd:btcToken,feesUsd:Number(feesRaw.a)/1e9*solToken+Number(feesRaw.b)/1e8*btcToken};
         state.lastOnchainUpdate = new Date();
         $("positionStatus").textContent = "on-chain · "+state.lastOnchainUpdate.toLocaleTimeString("pt-BR",{timeZone:"Asia/Tokyo",hour:"2-digit",minute:"2-digit"});
-        $("positionStatus").title = "Saldos e taxas on-chain; preços USD da Orca. Base aproximada reconciliada ao print de 12:54.";
+        $("positionStatus").title = "Saldos e taxas on-chain; preços USD da Orca. Base da posição estimada pelo print da Orca de 11/11 às 01:54 JST.";
         state.onchainError = "";
         rangeTop.applyOptions({ price: state.onchain.upper });
         rangeBottom.applyOptions({ price: state.onchain.lower });
@@ -1543,7 +1411,7 @@
         drawOverlay();
       } catch (err) {
         state.onchainError = err.message || "falha on-chain";
-        $("positionStatus").textContent = state.positionValuation ? "última leitura · sem conexão" : "Orca 12:54 · sem conexão";
+        $("positionStatus").textContent = state.positionValuation ? "última leitura · sem conexão" : "Orca 01:54 · sem conexão";
         $("positionStatus").title = state.onchainError;
       } finally {
         state.onchainLoading = false;
@@ -1605,7 +1473,7 @@
     }
 
     function externalCapital() {
-      return POOL.capital + state.newExternalCapital;
+      return POOL.capital + POOL.previousContributions + state.newExternalCapital;
     }
 
     function workingCapital() {
@@ -1668,15 +1536,17 @@
 
     function newCapitalCurrentValue() {
       const liq = liquidity();
-      return state.newCapitalLots.reduce((total, item) => {
+      const newLotValue = state.newCapitalLots.reduce((total, item) => {
         const currentL = Number(state.onchain.liquidityRaw || 0);
         const share = item.liquidityRaw && currentL > 0 ? Number(item.liquidityRaw) / currentL : item.share;
         return total + liq * share;
       }, 0);
+      const previousShare = POOL.previousContributions / (POOL.capital + POOL.previousContributions);
+      return newLotValue + (totalPositionValue() - newLotValue) * previousShare;
     }
 
     function newCapitalPnl() {
-      return newCapitalCurrentValue() - state.newExternalCapital;
+      return newCapitalCurrentValue() - POOL.previousContributions - state.newExternalCapital;
     }
 
     function composition() {
@@ -1695,7 +1565,7 @@
     }
 
     function renderHeader() {
-      const ratio = currentRatio();
+      const ratio = state.onchain.poolRatio || POOL.snapshotRatio;
       const lower = state.onchain.lower || POOL.lower;
       const upper = state.onchain.upper || POOL.upper;
       const inside = ratio >= lower && ratio <= upper;
@@ -1797,10 +1667,8 @@
       const liq = liquidity();
       const capital = POOL.capital;
       const contributionValue = newCapitalCurrentValue();
-      const originalValue = totalPositionValue() - contributionValue;
       const pnl = totalPositionValue() - externalCapital();
       const pnlPct = externalCapital() ? pnl / externalCapital() : 0;
-      const combinedPnl = totalPositionValue() - externalCapital();
       const pnlTone = pnl >= 0 ? "positive" : "negative";
       const comp = composition();
       // Official Orca PnL; external spot prices cannot reproduce its accounting.
@@ -1821,11 +1689,11 @@
       $("totalPnlYen").textContent = state.usdJpy ? jpy(pnl * state.usdJpy) : "¥ —";
       setMetric("rowNewCapitalValue", "metricNewCapitalValue", usd(contributionValue));
       $("metricPnl").title = "Liquidez + taxas acompanhadas menos capital inicial e aportes. Valores externos não acompanhados. Ienes pela cotação atual.";
-      $("metricNewCapitalPnl").title = "Parcela atual do aporte menos base US$128,42; sem rateio das taxas.";
+      $("metricNewCapitalPnl").title = "Aportes anteriores rateados proporcionalmente sobre o saldo transferido. Aportes novos usam sua parcela na liquidez.";
 
-      setMetric("rowNewCapital", "metricNewCapital", usd(state.newExternalCapital), "positive");
+      setMetric("rowNewCapital", "metricNewCapital", usd(POOL.previousContributions + state.newExternalCapital), "positive");
       const newPnl = newCapitalPnl();
-      setMetric("rowNewCapitalPnl", "metricNewCapitalPnl", usd(newPnl) + " (" + pct(state.newExternalCapital ? newPnl / state.newExternalCapital : 0) + ")", newPnl >= 0 ? "positive" : "negative");
+      setMetric("rowNewCapitalPnl", "metricNewCapitalPnl", usd(newPnl) + " (" + pct(newPnl / (POOL.previousContributions + state.newExternalCapital)) + ")", newPnl >= 0 ? "positive" : "negative");
       setMetric("rowUncollected", "metricUncollected", pendingLabel, "positive");
       setMetric("rowFeeApr", "metricFeeApr", pct(feeApr()) + " a.a.", "positive");
       setMetric("rowAge", "metricAge", poolAge());
@@ -1985,37 +1853,19 @@
 
     window.addEventListener("resize", resize);
     if (!state.history.length) {
-      state.history.push({
-        kind: "start",
-        text: "Pool criada em 08/10/2026 03:40 JST",
-        ts: new Date(POOL_STARTED_AT).toISOString()
-      });
+      let previousHistory = [];
+      try {
+        const previous = JSON.parse(localStorage.getItem(PREVIOUS_STORAGE_KEY) || "{}");
+        if (Array.isArray(previous.history)) previousHistory = previous.history.slice(0, 77);
+      } catch (error) {}
+      state.history = [
+        {kind:"start",ts:POOL.snapshotAt,text:"Orca cbBTC/SOL 0,16%. Liquidez no print $4.200,90, taxas pendentes $0,03, PnL +$2,05. Base estimada $4.198,88. Faixa 826,966261–951,992215 SOL/cbBTC. Entrada média Orca 890,03458."},
+        {kind:"reentry",ts:new Date(POOL_STARTED_AT).toISOString(),text:"Posição aberta on-chain às 01:50:18 JST. Capital acumulado $4.242 (inicial $4.100 + $142 registrados anteriormente)."},
+        {kind:"trade",ts:"2026-11-11T01:45:53+09:00",text:"BingX: 51,388 SOL comprados a mercado por 4.221,08 USDT, média 82,14. Saldo anterior das ações 4.221,13 USDT. Compra com capital existente."},
+        ...previousHistory
+      ];
       saveState();
     }
-    try {
-      const hasCapitalLog = state.history.some(item => String(item.text || "").includes("Capital investido: compra SOL"));
-      if (!hasCapitalLog && localStorage.getItem(CAPITAL_LOG_KEY) !== "1") {
-        state.history.unshift({
-          kind: "capital",
-          text: "Capital do bolso: compra SOL " + usd(POOL.initialSolBuyUsd) + " + aporte " + usd(POOL.externalAddUsd) + " + aportes novos " + usd(state.newExternalCapital) + " = " + usd(externalCapital()) + " · taxas reinvestidas " + usd(state.reinvestedFees),
-          ts: new Date().toISOString()
-        });
-        localStorage.setItem(CAPITAL_LOG_KEY, "1");
-        saveState();
-      }
-    } catch (err) {}
-    try {
-      const hasReinvestedLog = state.history.some(item => String(item.text || "").includes("Taxas reinvestidas acumuladas"));
-      if (!hasReinvestedLog && localStorage.getItem(REINVESTED_LOG_KEY) !== "1") {
-        state.history.unshift({
-          kind: "fee",
-          text: "Taxas reinvestidas acumuladas " + usd(state.reinvestedFees) + " · capital em trabalho " + usd(workingCapital()),
-          ts: new Date().toISOString()
-        });
-        localStorage.setItem(REINVESTED_LOG_KEY, "1");
-        saveState();
-      }
-    } catch (err) {}
     renderHistory();
     resize();
     loadFx();
