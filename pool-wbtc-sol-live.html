@@ -682,6 +682,11 @@
     @media(max-width:680px) and (orientation:portrait){
       #rowTotalCapital .value{font-size:17px;line-height:22px}
     }
+    #closedSummary[hidden], .pool-closed .active-position { display:none; }
+    #closedSummary { grid-column:1/-1; display:grid; gap:6px; }
+    #closedSummary .primary-pair { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    #closedSummary .value { font-size:clamp(13px,2vw,21px); }
+    #closedSummary .close-detail { margin:5px 0 0; color:#8b97a9; font-size:9px; line-height:1.4; }
 </style>
 </head>
 <body>
@@ -710,14 +715,34 @@
       </section>
 
       <aside class="side-panel" aria-label="Dados da pool"><div class="side-content" id="sideContent">
-        <div class="pool-card" id="poolCard" aria-label="Resumo da pool">
+        <div id="closedSummary" hidden>
+          <section class="pool-card">
+            <div class="card-title">POSIÇÃO ENCERRADA <span class="estimate-tag">11/11/2026</span></div>
+            <div class="primary-pair">
+              <div class="metric-row no-btn" id="rowCloseCash"><span class="label">Saldo final</span><span class="value" id="closeCash">—</span><span class="yen-value" id="closeCashYen">—</span></div>
+              <div class="metric-row no-btn" id="rowCloseTotal"><span class="label">PnL total realizado</span><span class="value" id="closeTotal">—</span><span class="hero-percent" id="closeTotalPct">—</span><span class="yen-value" id="closeTotalYen">—</span></div>
+              <div class="metric-row no-btn" id="rowCloseCycle"><span class="label">Resultado da compra de SOL à saída</span><span class="value" id="closeCycle">—</span><span class="hero-percent" id="closeCyclePct">—</span><span class="yen-value" id="closeCycleYen">—</span></div>
+            </div>
+            <p class="close-detail" id="closeBasis"></p>
+          </section>
+          <section class="pool-card">
+            <div class="card-title">SE A POOL AINDA ESTIVESSE ABERTA <span class="estimate-tag">Simulação</span></div>
+            <div class="primary-pair">
+              <div class="metric-row no-btn" id="rowSimValue"><span class="label">Valor estimado hoje</span><span class="value" id="simValue">—</span><span class="yen-value" id="simValueYen">—</span></div>
+              <div class="metric-row no-btn" id="rowSimDelta"><span class="label">Diferença vs. saldo da saída</span><span class="value" id="simDelta">—</span><span class="hero-percent" id="simDeltaPct">—</span><span class="yen-value" id="simDeltaYen">—</span></div>
+              <div class="metric-row no-btn" id="rowSimTotal"><span class="label">PnL total se tivesse mantido</span><span class="value" id="simTotal">—</span><span class="hero-percent" id="simTotalPct">—</span><span class="yen-value" id="simTotalYen">—</span></div>
+            </div>
+            <p class="close-detail">Faixa original e liquidez estimada pelo print da Orca, com preços de mercado. Exclui taxas hipotéticas.</p>
+          </section>
+        </div>
+        <div class="pool-card active-position" id="poolCard" aria-label="Resumo da pool">
           <div class="card-title">MINHA POOL <span class="estimate-tag" id="positionStatus">Orca · registro 01:54</span></div>
           <div class="primary-pair"><div class="metric-row no-btn" id="rowLiquidity"><span class="label">Liquidez da pool</span><span class="value" id="metricLiquidity">--</span><span class="yen-value" id="liquidityYen">—</span></div><div class="metric-row no-btn hero-pnl" id="rowPoolPnl"><span class="label">PnL da nova pool (est.)</span><span class="value" id="currentPoolPnl">—</span><span class="hero-percent" id="poolPnlPct">—</span><span class="yen-value" id="poolPnlYen">—</span></div></div>
           <div class="metric-row" id="rowUncollected"><span class="label">Taxas pendentes</span><span class="value fee-value-with-ring"><span id="metricUncollected">--</span><span id="feeRefreshRing" class="fee-refresh-ring" role="img" aria-label="Aguardando consulta das taxas" title="Próxima consulta em 5 segundos"><svg viewBox="0 0 20 20" aria-hidden="true"><circle class="ring-track" cx="10" cy="10" r="7.5"/><circle class="ring-progress" cx="10" cy="10" r="7.5" pathLength="100"/></svg></span></span><span class="yen-value" id="pendingYen">—</span><span class="fee-actions"><button class="fee-add" type="button" data-fee="uncollectedFees">Modificar</button><button class="fee-withdraw" id="collectFeesBtn" type="button">Sacar</button></span></div>
           <div class="metric-row no-btn" id="rowFeeApr"><span class="label">APR taxas</span><span class="value" id="metricFeeApr">--</span></div>
           <div id="solEquivalent"></div><div style="font:400 7px/1.4 monospace;color:#8792a6;margin-top:3px">Base estimada da nova pool <span id="poolCostBasis">US$ 4.198,88</span> · calculada pelo print da Orca.</div>
         </div>
-        <div class="detail-grid">
+        <div class="detail-grid active-position">
           <section class="subcard capital-card"><h2>HISTÓRICO DO INVESTIMENTO</h2><div class="metric-row no-btn" id="rowCapital"><span class="label">Capital inicial</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowTotalCapital"><span class="label">Base acumulada</span><span class="value" id="metricTotalCapital">--</span><span class="capital-yen" id="totalCapitalYen">—</span></div><div class="metric-row no-btn" id="rowPnl"><span class="label">PnL acumulado</span><span class="value" id="metricPnl">--</span><span class="capital-yen" id="totalPnlYen">—</span><button class="fee-add" type="button">+</button></div></section>
           <section class="subcard contribution-card"><h2>APORTES DO CICLO</h2><div class="metric-row no-btn"><span class="label">Aportes e reinvestimentos anteriores</span><span class="value" id="previousContributions" title="US$ 128 + US$ 14 registrados no histórico">$142.00</span></div><div class="metric-row" id="rowNewCapital"><span class="label">Aporte novo nesta pool</span><span class="value" id="metricNewCapital">--</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div><div class="metric-row no-btn"><span class="label">Compra na BingX</span><span class="value">51.388 SOL</span></div><div class="metric-row no-btn"><span class="label">Preço médio SOL</span><span class="value">$82.14</span></div><div class="metric-row no-btn" id="rowNewCapitalValue"><span class="label">Valor atribuído aos aportes</span><span class="value" id="metricNewCapitalValue">--</span></div><div class="metric-row no-btn" id="rowNewCapitalPnl"><span class="label">PnL dos aportes (est.)</span><span class="value" id="metricNewCapitalPnl">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowAge"><span class="label">Tempo da pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div></section>
                   <div class="allocation-card subcard" id="allocationCard" aria-label="Composição da pool">
@@ -749,6 +774,7 @@
 
   <script>
     const POOL = {
+      close: { cashUsd: 4260, beforeSolPurchaseUsd: 4221.13 },
       capital: 4100,
       previousContributions: 142,
       lower: 826.966261,
@@ -1119,6 +1145,7 @@
         }
         chart.timeScale().applyOptions({ rightOffset: 24 });
         renderHeader();
+        if (POOL.close) renderClosedPosition();
         drawOverlay();
         $("loading").hidden = true;
         tick();
@@ -1192,6 +1219,7 @@
     async function loadFx() {
       try {
         state.usdJpy = await fetchUsdJpy();
+        if (POOL.close) renderClosedPosition();
         drawOverlay();
       } catch (err) {}
     }
@@ -1428,11 +1456,16 @@
     }
 
     function applySpotPrices(btcUsd, solUsd) {
-      if (!btcUsd || !solUsd || !state.candles.length) return;
+      if (!btcUsd || !solUsd || (!POOL.close && !state.candles.length)) return;
       state.btcUsd = btcUsd;
       state.solUsd = solUsd;
       state.lastUpdate = new Date();
 
+      if (POOL.close) renderClosedPosition();
+      if (!state.candles.length) {
+        renderHeader();
+        return;
+      }
       const ratio = btcUsd / solUsd;
       const time = bucketTime(Date.now());
       const last = state.candles[state.candles.length - 1];
@@ -1462,7 +1495,7 @@
     }
 
     async function tick() {
-      if (state.ticking || !state.candles.length) return;
+      if (state.ticking || (!POOL.close && !state.candles.length)) return;
       state.ticking = true;
       try {
         const prices = await fetchSpotPrices();
@@ -1572,7 +1605,7 @@
     }
 
     function renderHeader() {
-      const ratio = state.onchain.poolRatio || POOL.snapshotRatio;
+      const ratio = (POOL.close && state.btcUsd && state.solUsd ? state.btcUsd / state.solUsd : state.onchain.poolRatio) || POOL.snapshotRatio;
       const lower = state.onchain.lower || POOL.lower;
       const upper = state.onchain.upper || POOL.upper;
       const inside = ratio >= lower && ratio <= upper;
@@ -1583,7 +1616,9 @@
       const priceText = state.lastUpdate
         ? "tick 1s · " + state.lastUpdate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
         : "tick 1s";
-      $("liveText").textContent = state.lastOnchainUpdate
+      $("liveText").textContent = POOL.close
+        ? (state.lastUpdate ? priceText + " · simulação" : "aguardando preços")
+        : state.lastOnchainUpdate
         ? priceText + " · chain " + state.lastOnchainUpdate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
         : priceText + " · posição estimada · taxas manuais";
     }
@@ -1659,7 +1694,7 @@
         ctx.restore();
       }
 
-      updatePoolCard(anchorX, anchorY, w, h);
+      if (!POOL.close) updatePoolCard(anchorX, anchorY, w, h);
     }
 
     function setMetric(rowId, valueId, value, tone) {
@@ -1668,6 +1703,34 @@
       row.classList.remove("positive", "negative");
       if (tone) row.classList.add(tone);
       el.textContent = value;
+    }
+
+    function renderClosedPosition() {
+      const { cashUsd, beforeSolPurchaseUsd } = POOL.close;
+      const capital = POOL.capital + POOL.previousContributions;
+      function showResult(rowId, valueId, value, basis) {
+        const change = value - basis;
+        const tone = change >= 0 ? "positive" : "negative";
+        setMetric(rowId, valueId, (change >= 0 ? "+" : "−") + usd(Math.abs(change)), tone);
+        $(valueId + "Pct").textContent = pct(change / basis);
+        $(valueId + "Yen").textContent = state.usdJpy ? jpy(change * state.usdJpy) : "¥ —";
+      }
+
+      setMetric("rowCloseCash", "closeCash", usd(cashUsd));
+      $("closeCashYen").textContent = state.usdJpy ? jpy(cashUsd * state.usdJpy) : "¥ —";
+      showResult("rowCloseTotal", "closeTotal", cashUsd, capital);
+      showResult("rowCloseCycle", "closeCycle", cashUsd, beforeSolPurchaseUsd);
+      $("closeBasis").textContent = "Base acumulada " + usd(capital) + " (" + usd(POOL.capital) +
+        " iniciais + " + usd(POOL.previousContributions) + " em aportes e reinvestimentos). Saldo antes da compra de SOL " + usd(beforeSolPurchaseUsd) + ".";
+
+      if (state.btcUsd > 0 && state.solUsd > 0) {
+        const { solAmount, btcAmount } = estimatedAmounts();
+        const value = solAmount * state.solUsd + btcAmount * state.btcUsd;
+        setMetric("rowSimValue", "simValue", usd(value));
+        $("simValueYen").textContent = state.usdJpy ? jpy(value * state.usdJpy) : "¥ —";
+        showResult("rowSimDelta", "simDelta", value, cashUsd);
+        showResult("rowSimTotal", "simTotal", value, capital);
+      }
     }
 
     function updatePoolCard(anchorX, anchorY, w, h) {
@@ -1879,10 +1942,18 @@
     renderHistory();
     resize();
     loadFx();
-    refreshPoolPosition();
+    if (POOL.close) {
+      document.body.classList.add("pool-closed");
+      $("closedSummary").hidden = false;
+      renderClosedPosition();
+      renderHeader();
+      tick();
+    } else {
+      refreshPoolPosition();
+      requestAnimationFrame(animateFeeRefresh);
+    }
     load();
     setInterval(tick, 1000);
-    requestAnimationFrame(animateFeeRefresh);
     setInterval(load, 30000);
     setInterval(loadFx, 300000);
     requestAnimationFrame(function loop() {
