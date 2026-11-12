@@ -328,10 +328,11 @@ async function loadHistory(a){
   r.rows=rows;r.series.setData(rows);r.historyAt=+d.timestamp||Date.now();r.freshHistory=true;
   if(first)r.chart.timeScale().setVisibleLogicalRange({from:Math.max(0,rows.length-90),to:rows.length+3});else if(view)r.chart.timeScale().setVisibleLogicalRange(view);
   if(!r.receivedAt){r.price=rows.at(-1).close;r.eventAt=rows.at(-1).time*1000;}
+  historyLabel(r,source,r.historyAt);
   if(r.receivedAt&&Date.now()-r.receivedAt<60000)tick(a,r.price,r.eventAt,r.mode);
   try{localStorage.setItem(KEY+'_history_'+a.id+'_'+tf,JSON.stringify(d))}catch(e){}
   r.root.querySelector('.chart-status').title='Histórico BingX consultado em '+new Date(r.historyAt).toLocaleString('pt-BR',{timeZone:'Asia/Tokyo'});
-  historyLabel(r,source,r.historyAt);render();
+  render();
  }catch(e){
   r.root.querySelector('.chart-status').title='Falha no histórico: '+e.message;
   historyLabel(r,'histórico salvo · reconectando',r.historyAt||Date.now());
@@ -347,6 +348,11 @@ function applyLiveKline(a,k,eventAt){
   return;
  }
  if(c.time<last.time)return;
+ if(r.eventAt>eventAt&&r.eventAt>=c.time*1000&&r.eventAt<(c.time+unit[r.tf])*1000&&r.price>0){
+  c.close=r.price;
+  c.high=Math.max(c.high,r.price);
+  c.low=Math.min(c.low,r.price);
+ }
  if(last.time===c.time)r.rows[r.rows.length-1]=c;else r.rows.push(c);
  r.series.update(c);r.candleAt=Date.now();
  tick(a,c.close,eventAt||Date.now(),'WS');
@@ -363,11 +369,20 @@ function tick(a,price,eventAt=Date.now(),mode='WS'){
  r.mode=mode;
  detectHit(a,price,eventAt);
  const last=r.rows.at(-1),step=unit[r.tf];
- if(last&&eventAt>=last.time*1000&&eventAt<(last.time+step)*1000){
+ const elapsed=last ? Math.floor((eventAt/1000-last.time)/step) : -1;
+ if(elapsed===0){
   const candle={...last,close:price,high:Math.max(last.high,price),low:Math.min(last.low,price)};
   r.rows[r.rows.length-1]=candle;
   r.series.update(candle);
   historyLabel(r,'ao vivo',eventAt);
+ }else if(elapsed===1){
+  // Seed only the next period from the first observed BingX price.
+  // The exchange's candle replaces these provisional OHLC values.
+  const candle={time:last.time+step,open:price,high:price,low:price,close:price};
+  r.rows.push(candle);
+  r.series.update(candle);
+  historyLabel(r,'ao vivo · vela em formação',eventAt);
+  loadHistory(a);
  }else{
   historyLabel(r,'cotação atual · aguardando velas',eventAt);
   if(!r.historyRetryAt||Date.now()-r.historyRetryAt>=15000){
