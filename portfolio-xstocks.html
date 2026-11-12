@@ -289,7 +289,7 @@ function marketSnapshot(){
  }
  return snapshotPending;
 }
-function historyRows(a,d,tf){return tf==='12h'?aggregate(parseRows(d.data),tf):parseRows(d.data);}
+function historyRows(a,d,tf){const rows=parseRows(d?.data);return tf==='12h'?aggregate(rows,tf):rows;}
 function savedHistory(a){
  const r=runtime[a.id],tf=r.tf,baseTf=tf==='12h'?'4h':tf;
  let d=BOOT_FRAMES[a.id]?.[baseTf]||BOOT_HISTORY[a.id];
@@ -303,15 +303,27 @@ async function loadHistory(a){
  const r=runtime[a.id],tf=r.tf;if(r.loading)return;r.loading=true;
  try{
   const baseTf=tf==='12h'?'4h':tf;
-  const d=await Promise.any([
-   marketSnapshot().then(x=>{const d=x.assets?.[a.id]?.[baseTf];if(!d?.data?.length)throw Error('Sem histórico no snapshot');return d}),
-   bing('/openApi/spot/v2/market/kline?symbol='+a.pair+'&interval='+baseTf+'&limit=180&timestamp='+Date.now())
-  ]);
+  const path='/openApi/spot/v2/market/kline?symbol='+a.pair+'&interval='+baseTf+'&limit=180&timestamp='+Date.now();
+  let source='histórico sincronizado';
+  const d=await bing(path).then(data=>{
+   if(!historyRows(a,data,tf).length)throw Error('Sem candles na BingX');
+   return data;
+  }).catch(async()=>{
+   source='histórico salvo · reconectando';
+   const snapshot=await marketSnapshot();
+   return snapshot.assets?.[a.id]?.[baseTf];
+  });
   if(r.tf!==tf)return;
-  let rows=historyRows(a,d,tf);if(!rows.length)throw Error('Sem candles');
-  const latest=rows.at(-1).time,merged=new Map(rows.map(c=>[c.time,c]));
-  for(const c of r.rows){if(c.time>=latest){const p=merged.get(c.time);merged.set(c.time,p?{...p,high:Math.max(p.high,c.high),low:Math.min(p.low,c.low),close:c.close}:c);}}
-  rows=[...merged.values()].sort((a,b)=>a.time-b.time);
+  const rows=historyRows(a,d,tf);
+  if(!rows.length)throw Error('Sem candles');
+  const latest=rows.at(-1).time;
+  // Prefer official candles and retain only live candles that connect to them.
+  const liveTail=r.rows.filter(c=>c.time>latest);
+  for(const candle of liveTail){
+   if(candle.time!==rows.at(-1).time+unit[tf])break;
+   rows.push(candle);
+  }
+  if(rows.at(-1).time<(r.rows.at(-1)?.time||0))return;
   const view=r.chart.timeScale().getVisibleLogicalRange(),first=!r.freshHistory;
   r.rows=rows;r.series.setData(rows);r.historyAt=+d.timestamp||Date.now();r.freshHistory=true;
   if(first)r.chart.timeScale().setVisibleLogicalRange({from:Math.max(0,rows.length-90),to:rows.length+3});else if(view)r.chart.timeScale().setVisibleLogicalRange(view);
@@ -319,7 +331,7 @@ async function loadHistory(a){
   if(r.receivedAt&&Date.now()-r.receivedAt<60000)tick(a,r.price,r.eventAt,r.mode);
   try{localStorage.setItem(KEY+'_history_'+a.id+'_'+tf,JSON.stringify(d))}catch(e){}
   r.root.querySelector('.chart-status').title='Histórico BingX consultado em '+new Date(r.historyAt).toLocaleString('pt-BR',{timeZone:'Asia/Tokyo'});
-  historyLabel(r,'histórico sincronizado',Date.now());render();
+  historyLabel(r,source,r.historyAt);render();
  }catch(e){
   r.root.querySelector('.chart-status').title='Falha no histórico: '+e.message;
   historyLabel(r,'histórico salvo · reconectando',r.historyAt||Date.now());
@@ -329,12 +341,42 @@ function applyLiveKline(a,k,eventAt){
  const r=runtime[a.id];let t=+k.t;if(t>1e12)t=Math.floor(t/1000);
  const c={time:Math.floor(t),open:+k.o,high:+k.h,low:+k.l,close:+k.c};
  if(!Object.values(c).every(Number.isFinite)||c.high<Math.max(c.open,c.close)||c.low>Math.min(c.open,c.close)||c.time>Math.floor(Date.now()/1000)+60)return;
- const last=r.rows.at(-1);if(last&&c.time<last.time)return;
- if(last?.time===c.time)r.rows[r.rows.length-1]=c;else r.rows.push(c);
+ const last=r.rows.at(-1);
+ if(!last||c.time>last.time+unit[r.tf]){
+  tick(a,c.close,eventAt||Date.now(),'WS');
+  return;
+ }
+ if(c.time<last.time)return;
+ if(last.time===c.time)r.rows[r.rows.length-1]=c;else r.rows.push(c);
  r.series.update(c);r.candleAt=Date.now();
  tick(a,c.close,eventAt||Date.now(),'WS');
 }
-function tick(a,price,eventAt=Date.now(),mode='WS'){const r=runtime[a.id];eventAt=+eventAt;if(eventAt<1e12)eventAt*=1000;if(!Number.isFinite(eventAt)||eventAt>Date.now()+60000)return;if(!(price>0)||!Number.isFinite(price))return;if(r.eventAt&&eventAt<r.eventAt)return;r.price=price;r.eventAt=eventAt;r.receivedAt=Date.now();r.mode=mode;detectHit(a,price,eventAt);const t=Math.floor(eventAt/1000/unit[r.tf])*unit[r.tf],last=r.rows.at(-1);if(last&&t>=last.time){let c;if(t===last.time){c={...last,close:price,high:Math.max(last.high,price),low:Math.min(last.low,price)};r.rows[r.rows.length-1]=c}else{c={time:t,open:t-last.time===unit[r.tf]?last.close:price,high:t-last.time===unit[r.tf]?Math.max(last.close,price):price,low:t-last.time===unit[r.tf]?Math.min(last.close,price):price,close:price};r.rows.push(c)}r.series.update(c);}historyLabel(r,Date.now()-eventAt<120000?'ao vivo':'último negócio',eventAt);render()}
+function tick(a,price,eventAt=Date.now(),mode='WS'){
+ const r=runtime[a.id];
+ eventAt=+eventAt;
+ if(eventAt<1e12)eventAt*=1000;
+ if(!Number.isFinite(eventAt)||eventAt>Date.now()+60000||!(price>0)||!Number.isFinite(price))return;
+ if(r.eventAt&&eventAt<r.eventAt)return;
+ r.price=price;
+ r.eventAt=eventAt;
+ r.receivedAt=Date.now();
+ r.mode=mode;
+ detectHit(a,price,eventAt);
+ const last=r.rows.at(-1),step=unit[r.tf];
+ if(last&&eventAt>=last.time*1000&&eventAt<(last.time+step)*1000){
+  const candle={...last,close:price,high:Math.max(last.high,price),low:Math.min(last.low,price)};
+  r.rows[r.rows.length-1]=candle;
+  r.series.update(candle);
+  historyLabel(r,'ao vivo',eventAt);
+ }else{
+  historyLabel(r,'cotação atual · aguardando velas',eventAt);
+  if(!r.historyRetryAt||Date.now()-r.historyRetryAt>=15000){
+   r.historyRetryAt=Date.now();
+   loadHistory(a);
+  }
+ }
+ render();
+}
 function init(a){const root=$(a.id),el=root.querySelector('.chart');const chart=LightweightCharts.createChart(el,{autoSize:true,layout:{background:{color:'#0a1018'},textColor:'#8190a4',fontFamily:'monospace',fontSize:9},grid:{vertLines:{visible:false},horzLines:{color:'#ffffff05'}},rightPriceScale:{borderColor:'#263244',scaleMargins:{top:.1,bottom:.12}},timeScale:{borderColor:'#263244',timeVisible:true,rightOffset:3},handleScale:true,handleScroll:true});const series=chart.addCandlestickSeries({upColor:'#35b39a',downColor:'#ec6573',wickUpColor:'#35b39a',wickDownColor:'#ec6573',borderVisible:false});runtime[a.id]={root,chart,series,tf:'1h',rows:[],price:0,eventAt:0,receivedAt:0,loading:false,targetLine:null};series.createPriceLine({price:a.cost/a.qty,color:'#9dacbe99',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'Compra'});root.querySelector('.tf').onchange=e=>{runtime[a.id].tf=e.target.value;runtime[a.id].freshHistory=false;savedHistory(a);loadHistory(a);connect()};root.querySelector('.target button').onclick=()=>editTarget(a);root.querySelector('.register-sale').onclick=()=>openSale(a);root.querySelector('.chart-live').onclick=()=>{const r=runtime[a.id];r.chart.timeScale().setVisibleLogicalRange({from:Math.max(0,r.rows.length-90),to:r.rows.length+3});loadHistory(a);};syncTarget(a);savedHistory(a);loadHistory(a)}
 function syncTarget(a){
  const r=runtime[a.id],v=+state.targets[a.id],p=position(a);
