@@ -239,9 +239,14 @@ body.stock-dashboard { height:100dvh; overflow:hidden; grid-template-rows:32px m
   .stock-dashboard .asset-body { grid-template:clamp(280px,54dvh,620px) auto / minmax(0,1fr); }
   .stock-dashboard .asset-data { overflow:visible; border-left:0; border-top:1px solid var(--line); padding:6px; }
 }
-.stock-dashboard .hold-summary { margin-top:7px; padding:7px; border:1px solid #ffffff18; border-radius:7px; background:#0e141d; }
+.stock-dashboard .hold-summary { margin:0 0 7px; padding:7px; border:1px solid #ffffff18; border-radius:7px; background:#0e141d; }
 .stock-dashboard .hold-summary[hidden] { display:none; }
 .stock-dashboard .hold-summary .sim-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+@media (orientation:portrait) and (max-width:760px) {
+  .stock-dashboard .asset-body:has(.hold-summary:not([hidden])) {
+    grid-template-rows:clamp(250px,46dvh,560px) auto;
+  }
+}
 </style></head><body class="stock-dashboard">
 <header><a href="index.html">← Terminal</a><b>IB · Ações</b><span id="status">BingX · conectando</span><button id="fullscreen">Tela cheia</button></header>
 <main id="assets"></main>
@@ -554,6 +559,8 @@ $('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await docume
 
 function resumeLive(){if(document.visibilityState==='hidden')return;poll();fx();ASSETS.forEach(loadHistory);render();if(!socket||socket.readyState===WebSocket.CLOSED)connect();if(!fxSocket||fxSocket.readyState===WebSocket.CLOSED)connectFx();}
 document.addEventListener('visibilitychange',resumeLive);window.addEventListener('online',resumeLive);
-document.querySelector('.asset-data').append(document.querySelector('.summary'));
+const positionPanel=document.querySelector('.asset-data');
+positionPanel.prepend($('holdSummary'));
+positionPanel.append(document.querySelector('.summary'));
 ASSETS.forEach(init);render();connect();connectFx();poll();fx();setInterval(render,1000);setInterval(poll,5000);setInterval(()=>ASSETS.forEach(loadHistory),60000);setInterval(fx,20000);
 </script></body></html>
