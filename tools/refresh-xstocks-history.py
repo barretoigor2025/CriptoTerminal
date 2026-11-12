@@ -6,8 +6,9 @@ def fetch(job):
     error = None
     for attempt in range(3):
         try:
-            url = ("https://open-api.bingx.com/openApi/spot/v2/market/kline"
-                   f"?symbol={asset.upper()}-USDT&interval={interval}&limit=180&timestamp={int(time.time()*1000)}")
+            host = ("open-api.bingx.com", "open-api.bingx.pro")[attempt % 2]
+            url = (f"https://{host}/openApi/spot/v2/market/kline"
+                   f"?symbol={asset.upper()}-USDT&interval={interval}&limit=180")
             with urllib.request.urlopen(url, timeout=20) as response:
                 data = json.load(response)
             if data.get("code") != 0 or not isinstance(data.get("data"), list) or len(data["data"]) < 30:
