@@ -239,6 +239,9 @@ body.stock-dashboard { height:100dvh; overflow:hidden; grid-template-rows:32px m
   .stock-dashboard .asset-body { grid-template:clamp(280px,54dvh,620px) auto / minmax(0,1fr); }
   .stock-dashboard .asset-data { overflow:visible; border-left:0; border-top:1px solid var(--line); padding:6px; }
 }
+.stock-dashboard .hold-summary { margin-top:7px; padding:7px; border:1px solid #ffffff18; border-radius:7px; background:#0e141d; }
+.stock-dashboard .hold-summary[hidden] { display:none; }
+.stock-dashboard .hold-summary .sim-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
 </style></head><body class="stock-dashboard">
 <header><a href="index.html">← Terminal</a><b>IB · Ações</b><span id="status">BingX · conectando</span><button id="fullscreen">Tela cheia</button></header>
 <main id="assets"></main>
@@ -248,16 +251,38 @@ body.stock-dashboard { height:100dvh; overflow:hidden; grid-template-rows:32px m
 </div><div class="capital-ledger">
 <div class="capital-lot"><div class="lot-title">INVESTIMENTO INICIAL <b>$4,100.00</b></div><div class="lot-values"><span>Valor atribuído <b id="initialNow">—</b></span><span>PNL inicial* <b id="initialPnl">—</b><small id="initialPct">—</small><small id="initialYen">¥ —</small></span></div></div>
 <div class="capital-lot"><div class="lot-title">APORTES <b>$142.00</b></div><div class="lot-values"><span>Valor atribuído <b id="addedNow">—</b></span><span>PNL dos aportes* <b id="addedPnl">—</b><small id="addedPct">—</small><small id="addedYen">¥ —</small></span></div><div class="lot-breakdown">$128 aporte + $14 taxas reinvestidas <span id="lotBreakdown"></span></div></div>
-<div class="allocation-note">*Divisão do resultado acumulado por rateio proporcional: inicial 96,65% e aportes 3,35%. Não é o retorno histórico individual de cada lote.</div></div><div class="closing-note" id="closingNote"></div><div class="summary-bottom"><span>Compras: <b id="totalCost">—</b></span><span>Base: $4.100 + $128 + $14 reinvestidos</span><span id="realizedSummary">Realizado: —</span><span class="crypto" id="equivalents">SOL / ETH · aguardando</span></div><div class="target-summary" id="targetsSummary">Simulação dos alvos…</div><div class="footnote">Compra via Jupiter · cotações da BingX. PnL e simulações antes das taxas de venda. USDT ≈ USD. <a href="pool-wbtc-sol-live.html" style="color:var(--gold)">Resultado da pool</a> · <a href="portfolio-xstocks-oct31.html" style="color:var(--gold)">Vendas de 31/10</a></div></section>
+<div class="allocation-note">*Divisão do resultado acumulado por rateio proporcional: inicial 96,65% e aportes 3,35%. Não é o retorno histórico individual de cada lote.</div></div><div class="closing-note" id="closingNote"></div><div class="summary-bottom"><span>Compras: <b id="totalCost">—</b></span><span>Base: $4.100 + $128 + $14 reinvestidos</span><span id="realizedSummary">Realizado: —</span><span class="crypto" id="equivalents">SOL / ETH · aguardando</span></div><div class="target-summary" id="targetsSummary">Simulação dos alvos…</div>
+<div class="target-summary hold-summary" id="holdSummary" hidden>
+ <div class="sim-heading">SE TIVESSE MANTIDO <small>Estimativa bruta · BingX</small></div>
+ <div class="sim-grid">
+  <div class="metric"><span class="label">Valor atual</span><b class="value" id="holdValue">—</b><span class="yen" id="holdValueYen">¥ —</span></div>
+  <div class="metric"><span class="label">PnL da compra</span><b class="value" id="holdPnl">—</b><span class="percent" id="holdPct">—</span><span class="yen" id="holdPnlYen">¥ —</span></div>
+  <div class="metric"><span class="label">Diferença vs. venda bruta</span><b class="value" id="holdDelta">—</b><span class="percent" id="holdDeltaPct">—</span><span class="yen" id="holdDeltaYen">¥ —</span></div>
+ </div>
+</div><div class="footnote">Compra via Jupiter · cotações da BingX. PnL e simulações antes das taxas de venda. USDT ≈ USD. <a href="pool-wbtc-sol-live.html" style="color:var(--gold)">Resultado da pool</a> · <a href="portfolio-xstocks-oct31.html" style="color:var(--gold)">Vendas de 31/10</a></div></section>
 <dialog id="targetDialog"><form id="targetForm"><h2 id="targetTitle">Alvo de venda</h2><label>Preço por unidade · US$<input id="targetInput" type="text" inputmode="decimal" required></label><p id="targetPreview"></p><p>Altera somente o dashboard; não envia ordens à corretora.</p><div class="actions"><button type="button" id="targetCancel">Cancelar</button><button class="confirm" id="targetConfirm" type="submit">Revisar</button></div></form></dialog>
 <dialog id="saleDialog"><form id="saleForm"><h2 id="saleTitle">Registrar venda</h2><p>Preencha conforme a execução na corretora. Atingir o alvo no gráfico não confirma a ordem.</p><label>Preço médio executado · US$<input id="salePrice" inputmode="decimal" type="text" required></label><label>Quantidade executada<input id="saleQty" inputmode="decimal" type="text" required></label><label>Taxa da venda · USDT / US$<input id="saleFee" inputmode="decimal" type="text" value="0" required></label><label>Horário da execução · Japão<input id="saleAt" type="datetime-local" required></label><p id="salePreview" role="status"></p><p id="saleError" role="alert"></p><div class="actions"><button type="button" id="saleUndo">Desfazer último registro</button><button type="button" id="saleCancel">Cancelar</button><button type="submit" class="confirm" id="saleConfirm">Revisar venda</button></div><p id="saleSaveStatus"></p></form></dialog>
 <script>
 const POOL_EXIT_BALANCE=4260;
 const ASSETS=[{id:'mstrx',name:'Strategy',label:'MSTRX',pair:'MSTRX-USDT',qty:36.08879648,cost:4255.433926,color:'#ee7878'}];
 const INITIAL=4100,CONTRIBUTIONS=[{label:'Aporte novo',amount:128},{label:'Taxas reinvestidas',amount:14}],ADDED=CONTRIBUTIONS.reduce((s,x)=>s+x.amount,0),BASE=INITIAL+ADDED,COST=ASSETS.reduce((s,a)=>s+a.cost,0),KEY='ib_xstocks_20261112_v1';
+const CONFIRMED_SALE={price:119.06,qty:ASSETS[0].qty,executionQty:36.08879,grossReported:4296.84,fee:0,feeConfirmed:false,at:'2026-11-13T01:11:47+09:00'};
 const state={fx:0,fxAt:0,fxSource:'',sol:0,eth:0,solAt:0,ethAt:0,targets:{mstrx:0},hits:{},sales:{}};const runtime={};
 try{const saved=JSON.parse(localStorage.getItem(KEY)||'{}');state.targets={...state.targets,...(saved.targets||{})};state.hits=saved.hits||{};state.sales=saved.sales||{};for(const a of ASSETS){const rows=state.sales[a.id];if(!Array.isArray(rows)||rows.some(x=>!Number.isFinite(x.qty)||x.qty<=0||!Number.isFinite(x.price)||x.price<=0||!Number.isFinite(x.fee)||x.fee<0||x.fee>x.qty*x.price)||rows.reduce((s,x)=>s+x.qty,0)>a.qty+1e-8)state.sales[a.id]=[];}}catch(e){}
 
+// Seed the confirmed close once while retaining edits made after this import.
+try{
+ const saved=JSON.parse(localStorage.getItem(KEY)||'{}');
+ if(!saved.confirmedCloseImported){
+  const matchingSale=state.sales.mstrx?.find(sale=>sale.at===CONFIRMED_SALE.at&&saleGross(sale)===CONFIRMED_SALE.grossReported&&sale.feeConfirmed!==false);
+  state.sales.mstrx=[{...CONFIRMED_SALE,...(matchingSale?{fee:matchingSale.fee,feeConfirmed:true}:{})}];
+  delete state.hits.mstrx;
+  persist();
+ }
+}catch(e){
+ state.sales.mstrx=[{...CONFIRMED_SALE}];
+ delete state.hits.mstrx;
+}
 const usd=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2}),yen=new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY',maximumFractionDigits:0}),num=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:8});
 const $=id=>document.getElementById(id),money=n=>usd.format(n),jpy=n=>state.fx?yen.format(n*state.fx):'¥ —',signed=(n,fmt=money)=>(n>0?'+':n<0?'−':'')+fmt(Math.abs(n)),pct=n=>(n>0?'+':'')+n.toFixed(2)+'%',tone=n=>n>0?'up':n<0?'down':'neutral';
 $('assets').innerHTML=ASSETS.map(a=>`<section class="asset" id="${a.id}" style="--accent:${a.color}"><div class="asset-head"><b class="symbol" title="${a.name}">${a.label}</b><span class="price" title="Preço BingX usado no gráfico e no PNL">—</span><select class="tf" aria-label="Período ${a.label}"><option value="1h">1H</option><option value="4h">4H</option><option value="12h">12H</option><option value="1d">1D</option></select></div><div class="level-row"><span class="entry-level">Compra —</span><span class="exit-level">Alvo —</span></div><div class="asset-body"><div class="chart-wrap"><div class="chart"></div><button type="button" class="chart-live" title="Voltar à última vela">Ao vivo ↦</button><span class="chart-status">Carregando histórico…</span></div><div class="asset-data"><div class="asset-data-content"><div class="metric hero"><span class="label current-label">Valor atual</span><b class="value current">—</b><span class="yen current-yen">—</span></div><div class="metric hero"><span class="label pnl-label">PnL da compra</span><b class="value pnl">—</b><span class="percent pnl-percent">—</span><span class="yen pnl-yen">—</span></div><div class="quote-status" role="status">BingX · aguardando cotação…</div><div class="entry-details"><div class="metric"><span class="label">Custo</span><b class="value">${money(a.cost)}</b></div><div class="metric"><span class="label">Em aberto</span><b class="value remaining-qty">${num.format(a.qty)}</b></div><div class="metric"><span class="label">Preço médio</span><b class="value">${money(a.cost/a.qty)}</b></div></div><div class="position-actions"><span class="position-notice" role="status" aria-live="polite">POSIÇÃO ABERTA</span><button type="button" class="register-sale">Registrar venda</button></div><div class="metric target"><span class="target-heading"><span class="label">ALVO DE VENDA</span><button type="button">Editar alvo</button></span><div class="target-grid"><div class="metric"><span class="label">Alvo</span><b class="value target-value">—</b><span class="yen simulation-yen target-price-yen">¥ —</span></div><div class="metric"><span class="label">Venda prevista</span><b class="value target-total">—</b><span class="yen simulation-yen target-total-yen">¥ —</span></div><div class="metric target-result"><span class="label">Lucro previsto*</span><b class="value target-profit">—</b><span class="yen simulation-yen target-yen">—</span></div></div></div></div></div></div></section>`).join('');
@@ -270,7 +295,7 @@ function aggregate(rows,tf){const groups=new Map;for(const c of rows){const t=Ma
 async function getJson(url){const res=await fetch(url,{signal:AbortSignal.timeout(9000)});if(!res.ok)throw Error('HTTP '+res.status);return res.json()}
 async function bing(path){return Promise.any(['https://open-api.bingx.com','https://open-api.bingx.pro'].map(async host=>{const d=await getJson(host+path);if(d.code!==0||!d.data)throw Error(d.msg||'BingX sem dados');return d}))}
 
-function persist(){try{localStorage.setItem(KEY,JSON.stringify({targets:state.targets,hits:state.hits,sales:state.sales}));return true}catch(e){return false}}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify({targets:state.targets,hits:state.hits,sales:state.sales,confirmedCloseImported:true}));return true}catch(e){return false}}
 function saleGross(x){return Number.isFinite(x.grossReported)?x.grossReported:x.qty*x.price}
 function position(a){const sales=state.sales[a.id]||[],qtySold=sales.reduce((s,x)=>s+x.qty,0),gross=sales.reduce((s,x)=>s+saleGross(x),0),net=sales.reduce((s,x)=>s+saleGross(x)-x.fee,0),remaining=Math.max(0,a.qty-qtySold),closed=remaining<=1e-9,feeUnknown=sales.some(x=>x.feeConfirmed===false);return {sales,qtySold,gross,net,remaining,closed,feeUnknown,realized:net-a.cost*qtySold/a.qty};}
 function detectHit(a,price,at){const target=+state.targets[a.id],p=position(a);if(p.closed||!(target>0)||price<target||!Number.isFinite(at)||Math.abs(Date.now()-at)>120000)return;const hit=state.hits[a.id];if(hit?.target===target)return;state.hits[a.id]={target,price,at};persist();}
@@ -444,6 +469,22 @@ function renderAllocation(total,complete){
  }
  $('lotBreakdown').textContent=complete?' · PNL rateado: $128 '+signed((total-BASE)*128/BASE)+' / $14 '+signed((total-BASE)*14/BASE):'';
 }
+function renderHoldScenario(a,p,price){
+ const panel=$('holdSummary');
+ panel.hidden=!p.closed;
+ if(!p.closed)return;
+ const value=a.qty*price,gain=value-a.cost,difference=value-p.gross;
+ const hasQuote=price>0;
+ $('holdValue').textContent=hasQuote?money(value):'—';
+ $('holdValueYen').textContent=hasQuote?jpy(value):'¥ —';
+ paint($('holdPnl'),gain,hasQuote?signed(gain):'—');
+ paint($('holdPct'),gain,hasQuote?pct(gain/a.cost*100):'—');
+ $('holdPnlYen').textContent=hasQuote&&state.fx?signed(gain,n=>jpy(n)):'¥ —';
+ paint($('holdDelta'),difference,hasQuote?signed(difference):'—');
+ paint($('holdDeltaPct'),difference,hasQuote?pct(difference/p.gross*100):'—');
+ $('holdDeltaYen').textContent=hasQuote&&state.fx?signed(difference,n=>jpy(n)):'¥ —';
+}
+
 function render(){
  let total=0,complete=true,fresh=0;
  for(const a of ASSETS){
@@ -452,11 +493,12 @@ function render(){
   const available=valid||p.closed;
   const val=p.net+(valid?r.price:0)*p.remaining,pnl=val-a.cost;
   renderPositionStatus(a);
+  renderHoldScenario(a,p,valid?r.price:0);
   if(!available)complete=false;if(valid)fresh++;
   total+=val;
   r.root.querySelector('.price').textContent=valid?money(r.price):'—';
   const note=r.root.querySelector('.quote-status');
-  note.textContent=valid?'BingX · '+(r.mode==='REST'?'reserva 5s':'tempo real')+' · '+new Date(r.eventAt).toLocaleTimeString('pt-BR',{timeZone:'Asia/Tokyo'}):'BingX sem cotação recente · PNL indisponível';
+  note.textContent=valid?'BingX · '+(r.mode==='REST'?'reserva 5s':'tempo real')+' · '+new Date(r.eventAt).toLocaleTimeString('pt-BR',{timeZone:'Asia/Tokyo'}):(p.closed?'BingX sem cotação recente · cenário indisponível':'BingX sem cotação recente · PNL indisponível');
   note.title='Compra = custo / quantidade. Preço atual acima da compra: lucro; abaixo: prejuízo. Antes das taxas de venda.';
   r.root.querySelector('.current').textContent=available?money(val):'—';
   r.root.querySelector('.current-yen').textContent=available?jpy(val):'¥ —';
@@ -466,13 +508,14 @@ function render(){
   
  }
  const realized=ASSETS.reduce((s,a)=>s+position(a).realized,0);
- $('realizedSummary').textContent='Realizado nesta entrada: '+signed(realized);
+ $('realizedSummary').textContent=(ASSETS.some(a=>position(a).feeUnknown)?'Realizado antes da taxa: ':'Realizado nesta entrada: ')+signed(realized);
  $('totalCost').textContent=money(COST);
  $('baseYen').textContent=jpy(BASE);
  const cp=total-BASE;
  paint($('cyclePnl'),cp,complete?signed(cp):'—');paint($('cyclePct'),cp,complete?pct(cp/BASE*100):'—');$('cycleYen').textContent=complete&&state.fx?signed(cp,n=>jpy(n)):'¥ —';
  renderAllocation(total,complete);refreshSimulationYen();
- $('closingNote').textContent='Saída da pool '+money(POOL_EXIT_BALANCE)+' · custo da MSTRX '+money(COST)+' · diferença de '+money(POOL_EXIT_BALANCE-COST)+'. PnL acumulado considera a posição e vendas registradas.';
+ const close=position(ASSETS[0]).sales.find(sale=>sale.at===CONFIRMED_SALE.at&&sale.grossReported===CONFIRMED_SALE.grossReported);
+ $('closingNote').textContent=close?'Venda a mercado em 13/11 às 01:11:47 JST · '+num.format(close.executionQty)+' MSTRX a '+money(close.price)+' de média. PnL acumulado sobre o valor da venda registrada.':'Saída da pool '+money(POOL_EXIT_BALANCE)+' · custo da MSTRX '+money(COST)+' · diferença de '+money(POOL_EXIT_BALANCE-COST)+'. PnL acumulado considera a posição e vendas registradas.';
  $('status').textContent='BingX · '+fresh+'/'+ASSETS.length+' cotações recentes';
  $('equivalents').textContent=complete&&state.sol>0&&state.eth>0?'≈ '+num.format(total/state.sol)+' SOL · '+num.format(total/state.eth)+' ETH':'SOL / ETH · aguardando';
  $('fxStatus').textContent=state.fx?'USD/JPY '+state.fx.toFixed(3)+' · '+state.fxSource:'USD/JPY aguardando';
