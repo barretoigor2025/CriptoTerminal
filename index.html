@@ -608,9 +608,9 @@
         </div>
 
         <div class="ind-row" id="holderRow">
-          <label class="sw"><input type="checkbox" id="holderOn" aria-label="Preço realizado dos holders de BTC" aria-describedby="holderStatus"><span></span></label>
-          <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,#18a58b,#b069e0)"></span>Holders BTC · LTH / STH</span>
-          <span class="ind-params" id="holderStatus" role="status" title="BGeometrics · dados diários em USD. LTH: 155 dias ou mais. STH: menos de 155 dias. A fonte gratuita tem atraso.">Preço realizado · BGeometrics</span>
+          <label class="sw"><input type="checkbox" id="holderOn" aria-label="Preço realizado dos holders" aria-describedby="holderStatus"><span></span></label>
+          <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,#18a58b,#b069e0)"></span>Holders · LTH / STH</span>
+          <span class="ind-params" id="holderStatus" role="status" title="BTC: BGeometrics, corte de 155 dias. ETH e SOL: estimativa Glassnode por endereço, corte de 6 meses.">Preço realizado · BGeometrics</span>
         </div>
 
         <div class="ind-row">
@@ -1038,11 +1038,15 @@ const HOLDERS = {
   pending:null,
   loadedAt:0,
   candleSymbol:null,
+  altLevels:null,
+  altPending:null,
+  altLoadedAt:0,
+  get asset(){ return {BTCUSDT:'BTC',ETHUSDT:'ETH',SOLUSDT:'SOL'}[S.symbol]; },
   groups:[
     {id:'lth', label:'LTH', field:'lthRealizedPrice', color:'#18a58b'},
     {id:'sth', label:'STH', field:'sthRealizedPrice', color:'#b069e0'},
   ],
-  get enabled(){ return $('#holderOn').checked && S.symbol==='BTCUSDT'; },
+  get enabled(){ return $('#holderOn').checked && !!this.asset; },
   init(){
     for(const group of this.groups){
       group.series = chart.addLineSeries({
@@ -1050,11 +1054,21 @@ const HOLDERS = {
         priceLineVisible:false, lastValueVisible:true, crosshairMarkerVisible:false,
       });
     }
+    candleSeries.applyOptions({autoscaleInfoProvider: base=>{
+      const info = base();
+      const levels = this.altLevels?.[this.asset];
+      if(!info?.priceRange || !this.enabled || this.candleSymbol!==S.symbol ||
+        !this.groups.every(group=>Number.isFinite(levels?.[group.id]) && levels[group.id]>0)) return info;
+      return {...info,priceRange:{
+        minValue:Math.min(info.priceRange.minValue,levels.lth,levels.sth),
+        maxValue:Math.max(info.priceRange.maxValue,levels.lth,levels.sth),
+      }};
+    }});
     const toggle = $('#holderOn');
     try{ toggle.checked = localStorage.getItem('ib_btc_holders_on')==='1'; }catch{}
     toggle.addEventListener('change', ()=>{
       try{ localStorage.setItem('ib_btc_holders_on', toggle.checked?'1':'0'); }catch{}
-      this.refresh().then(()=>{ if(this.enabled && this.data) fitPriceOnce(chart); });
+      this.refresh().then(()=>{ if(this.enabled && this.candleSymbol===S.symbol) fitPriceOnce(chart); });
     });
     setInterval(()=>{ if(this.enabled) this.refresh(); }, 3600000);
   },
@@ -1082,9 +1096,13 @@ const HOLDERS = {
     return this.pending;
   },
   async refresh(){
-    $('#holderRow').hidden = S.symbol!=='BTCUSDT';
+    $('#holderRow').hidden = !this.asset;
     if(!this.enabled){
       this.render();
+      return;
+    }
+    if(this.asset!=='BTC'){
+      await this.refreshAlt();
       return;
     }
     if(!this.data){
@@ -1102,15 +1120,45 @@ const HOLDERS = {
     try{
       await this.fetch();
       this.render();
-      if(this.enabled && this.candleSymbol==='BTCUSDT') fitPriceOnce(chart);
+      if(this.enabled && this.asset==='BTC' && this.candleSymbol===S.symbol) fitPriceOnce(chart);
     }catch{
-      if(this.enabled && !this.data) $('#holderStatus').textContent='Dados indisponíveis · tente mais tarde';
+      if(this.enabled && this.asset==='BTC' && !this.data) $('#holderStatus').textContent='Dados indisponíveis · tente mais tarde';
+    }
+  },
+  async refreshAlt(){
+    this.render();
+    if(Date.now()-this.altLoadedAt < 3600000) return;
+    const asset = this.asset;
+    if(!this.altLevels?.[asset]) $('#holderStatus').textContent='Carregando dados on-chain…';
+    try{
+      if(!this.altPending){
+        const fetchLevels = async url=>{
+          const response = await fetch(url,{signal:AbortSignal.timeout(10000),cache:'no-cache'});
+          if(!response.ok) throw new Error('Níveis indisponíveis');
+          return response.json();
+        };
+        this.altPending = fetchLevels('https://raw.githubusercontent.com/barretoigor2025/CriptoTerminal/market-data/holder-levels.json')
+          .catch(()=>fetchLevels('./holder-levels.json'))
+          .then(levels=>{ this.altLevels=levels; this.altLoadedAt=Date.now(); })
+          .finally(()=>{ this.altPending=null; });
+      }
+      await this.altPending;
+      this.render();
+      if(this.enabled && this.asset===asset && this.candleSymbol===S.symbol) fitPriceOnce(chart);
+    }catch{
+      if(this.enabled && this.asset===asset && !this.altLevels?.[asset]){
+        $('#holderStatus').textContent='Dados indisponíveis · tente mais tarde';
+      }
     }
   },
   render(){
-    const candles = this.enabled && this.candleSymbol==='BTCUSDT' ? S.candles : [];
+    const asset = this.asset;
+    const candles = this.enabled && this.candleSymbol===S.symbol ? S.candles : [];
+    const alt = this.altLevels?.[asset];
+    const date = Date.parse(alt?.date+'T00:00:00Z')/1000;
+    const altValid = Number.isFinite(date) && this.groups.every(group=>Number.isFinite(alt[group.id]) && alt[group.id]>0);
     for(const [index,group] of this.groups.entries()){
-      const rows = this.data?.[index] || [];
+      const rows = asset==='BTC' ? this.data?.[index] || [] : [];
       const points = [];
       let next=0;
       for(const candle of candles){
@@ -1120,14 +1168,15 @@ const HOLDERS = {
       group.series.setData(points);
 
       // Nível de referência atual, estendido por todo o gráfico.
-      const latest = candles.length ? rows.at(-1) : null;
+      const latest = candles.length ? (asset==='BTC' ? rows.at(-1) : altValid ? {value:alt[group.id]} : null) : null;
       if(latest){
         if(group.referenceLine){
-          group.referenceLine.applyOptions({price:latest.value});
+          group.referenceLine.applyOptions({price:latest.value,axisLabelVisible:asset!=='BTC',title:asset==='BTC'?'':group.label});
         }else{
           group.referenceLine = candleSeries.createPriceLine({
             price:latest.value, color:group.color, lineWidth:1,
-            lineStyle:LightweightCharts.LineStyle.Dotted, axisLabelVisible:false,
+            lineStyle:LightweightCharts.LineStyle.Dotted, axisLabelVisible:asset!=='BTC',
+            title:asset==='BTC' ? '' : group.label,
           });
         }
       }else if(group.referenceLine){
@@ -1135,11 +1184,14 @@ const HOLDERS = {
         group.referenceLine = null;
       }
     }
-    if(this.enabled && this.data){
-      const format = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'USD',maximumFractionDigits:0});
-      const lastRows = this.data.map(rows=>rows.at(-1));
+    const lastRows = asset==='BTC' ? this.data?.map(rows=>rows.at(-1))
+      : altValid ? this.groups.map(group=>({time:date,value:alt[group.id]})) : null;
+    if(this.enabled && lastRows){
+      const format = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'USD',maximumFractionDigits:asset==='BTC'?0:2});
       const day = new Date(Math.min(...lastRows.map(row=>row.time))*1000).toLocaleDateString('pt-BR',{timeZone:'UTC'});
-      $('#holderStatus').textContent = 'LTH '+format.format(lastRows[0].value)+' · STH '+format.format(lastRows[1].value)+' · '+day;
+      $('#holderStatus').textContent = 'LTH '+format.format(lastRows[0].value)+' · STH '+format.format(lastRows[1].value)+' · '+day+(asset==='BTC'?'':' · 6 meses · Glassnode');
+    }else{
+      $('#holderStatus').textContent=asset==='BTC'?'Preço realizado · BGeometrics':'Estimativa on-chain · 6 meses · Glassnode';
     }
   },
 };
@@ -1503,7 +1555,7 @@ function onLiveCandle(c, closed){
     if(closed) S.emaPrev = c.close*k + S.emaPrev*(1-k);
   } else if(closed){ renderEMA(); }
 
-  if((!last || c.time>last.time) && HOLDERS.enabled && HOLDERS.data) HOLDERS.render();
+  if((!last || c.time>last.time) && S.symbol==='BTCUSDT' && HOLDERS.enabled && HOLDERS.data) HOLDERS.render();
 
   // Médias Móveis: último ponto ao vivo; recomputa tudo no fechamento
   MA.live(c);
