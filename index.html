@@ -159,7 +159,7 @@
   .ind-menu::-webkit-scrollbar{width:8px}
   .ind-menu::-webkit-scrollbar-thumb{background:var(--hair-2);border-radius:5px}
   .ind-menu::-webkit-scrollbar-track{background:transparent}
-  .ind-menu[hidden]{display:none}
+  .ind-menu[hidden], #holderRow[hidden]{display:none}
   .ind-menu-title{
     font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.6px;
     text-transform:uppercase;color:var(--muted-2);padding:5px 4px 8px 8px;
@@ -607,6 +607,12 @@
           <span class="ind-params">período <input type="number" id="emaLen" value="21" min="2" max="400"></span>
         </div>
 
+        <div class="ind-row" id="holderRow">
+          <label class="sw"><input type="checkbox" id="holderOn" aria-label="Preço realizado dos holders de BTC" aria-describedby="holderStatus"><span></span></label>
+          <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,#18a58b,#b069e0)"></span>Holders BTC · LTH / STH</span>
+          <span class="ind-params" id="holderStatus" role="status" title="BGeometrics · dados diários em USD. LTH: 155 dias ou mais. STH: menos de 155 dias. A fonte gratuita tem atraso.">Preço realizado · BGeometrics</span>
+        </div>
+
         <div class="ind-row">
           <label class="sw"><input type="checkbox" id="obOn"><span></span></label>
           <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,var(--bull),var(--bear))"></span>Order Blocks</span>
@@ -1025,6 +1031,104 @@ chart.priceScale('vol').applyOptions({ scaleMargins:{top:.85, bottom:0} });
 /* série de linha reutilizável para indicadores de sobreposição (overlay) */
 const emaSeries = chart.addLineSeries({ color:'#f7931a', lineWidth:2, priceLineVisible:false, lastValueVisible:false });
 
+// Preço realizado diário em USD, calculado on-chain pela BGeometrics.
+const HOLDERS = {
+  cacheKey:'ib_btc_holders_v1',
+  data:null,
+  pending:null,
+  loadedAt:0,
+  candleSymbol:null,
+  groups:[
+    {id:'lth', label:'LTH', field:'lthRealizedPrice', color:'#18a58b'},
+    {id:'sth', label:'STH', field:'sthRealizedPrice', color:'#b069e0'},
+  ],
+  get enabled(){ return $('#holderOn').checked && S.symbol==='BTCUSDT'; },
+  init(){
+    for(const group of this.groups){
+      group.series = chart.addLineSeries({
+        title:group.label, color:group.color, lineWidth:2,
+        priceLineVisible:false, lastValueVisible:true, crosshairMarkerVisible:false,
+      });
+    }
+    const toggle = $('#holderOn');
+    try{ toggle.checked = localStorage.getItem('ib_btc_holders_on')==='1'; }catch{}
+    toggle.addEventListener('change', ()=>{
+      try{ localStorage.setItem('ib_btc_holders_on', toggle.checked?'1':'0'); }catch{}
+      this.refresh().then(()=>{ if(this.enabled && this.data) fitPriceOnce(chart); });
+    });
+    setInterval(()=>{ if(this.enabled) this.refresh(); }, 3600000);
+  },
+  async fetch(){
+    if(this.pending) return this.pending;
+    this.pending = Promise.all(this.groups.map(async group=>{
+      const response = await fetch('https://api.bitcoin-data.com/v1/'+group.id+'-realized-price', {
+        signal:AbortSignal.timeout(12000),
+      });
+      if(!response.ok) throw new Error('BGeometrics HTTP '+response.status);
+      const rows = await response.json();
+      const byTime = new Map();
+      for(const row of rows){
+        const time = Date.parse(row.d+'T00:00:00Z')/1000;
+        const value = Number(row[group.field]);
+        if(Number.isFinite(time) && Number.isFinite(value) && value>0) byTime.set(time,value);
+      }
+      if(!byTime.size) throw new Error('Série de holders vazia');
+      return [...byTime].sort(([a],[b])=>a-b).map(([time,value])=>({time,value}));
+    })).then(data=>{
+      this.data = data;
+      this.loadedAt = Date.now();
+      try{ localStorage.setItem(this.cacheKey,JSON.stringify({data,loadedAt:this.loadedAt})); }catch{}
+    }).finally(()=>{ this.pending=null; });
+    return this.pending;
+  },
+  async refresh(){
+    $('#holderRow').hidden = S.symbol!=='BTCUSDT';
+    if(!this.enabled){
+      this.render();
+      return;
+    }
+    if(!this.data){
+      try{
+        const cached=JSON.parse(localStorage.getItem(this.cacheKey));
+        if(cached?.data?.length===2 && cached.data.every(rows=>rows.length)){
+          this.data=cached.data;
+          this.loadedAt=cached.loadedAt;
+        }
+      }catch{}
+    }
+    this.render();
+    if(Date.now()-this.loadedAt < 6*3600000) return;
+    if(!this.data) $('#holderStatus').textContent='Carregando dados on-chain…';
+    try{
+      await this.fetch();
+      this.render();
+      if(this.enabled && this.candleSymbol==='BTCUSDT') fitPriceOnce(chart);
+    }catch{
+      if(this.enabled && !this.data) $('#holderStatus').textContent='Dados indisponíveis · tente mais tarde';
+    }
+  },
+  render(){
+    const candles = this.enabled && this.candleSymbol==='BTCUSDT' ? S.candles : [];
+    for(const [index,group] of this.groups.entries()){
+      const rows = this.data?.[index] || [];
+      const points = [];
+      let next=0;
+      for(const candle of candles){
+        while(next<rows.length && rows[next].time<=candle.time) next++;
+        if(next) points.push({time:candle.time,value:rows[next-1].value});
+      }
+      group.series.setData(points);
+    }
+    if(this.enabled && this.data){
+      const format = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'USD',maximumFractionDigits:0});
+      const lastRows = this.data.map(rows=>rows.at(-1));
+      const day = new Date(Math.min(...lastRows.map(row=>row.time))*1000).toLocaleDateString('pt-BR',{timeZone:'UTC'});
+      $('#holderStatus').textContent = 'LTH '+format.format(lastRows[0].value)+' · STH '+format.format(lastRows[1].value)+' · '+day;
+    }
+  },
+};
+HOLDERS.init();
+
 /* =========================================================================
    TEMA CLARO / ESCURO  — o botão sol/lua no topo troca a paleta inteira.
    O shell (CSS) troca via data-theme; o gráfico e a canvas de overlay leem
@@ -1320,15 +1424,21 @@ function aggregateYearly(monthly){
 }
 
 async function loadData(){
+  const candleSymbol = S.symbol;
+  HOLDERS.refresh();
   setStatus('', 'carregando…'); $('#banner').classList.remove('show');
   const src = SOURCES[S.source];
   try{
-    const candles = S.symbol==='BTCSOL'
-      ? await loadBtcSolCandles(S.tf)
-      : (S.tf==='1y' ? aggregateYearly(await src.rest('1M', S.symbol)) : await src.rest(S.tf, S.symbol));
+    const tf = S.tf;
+    const candles = candleSymbol==='BTCSOL'
+      ? await loadBtcSolCandles(tf)
+      : (tf==='1y' ? aggregateYearly(await src.rest('1M', candleSymbol)) : await src.rest(tf, candleSymbol));
+    if(candleSymbol!==S.symbol || tf!==S.tf || src!==SOURCES[S.source]) return;
     if(!candles.length) throw new Error('vazio');
     S.candles = candles;
     candleSeries.setData(candles);
+    HOLDERS.candleSymbol = candleSymbol;
+    HOLDERS.render();
     volSeries.setData(candles.map(c=>({time:c.time, value:c.volume, color:c.close>=c.open?'#26a69a55':'#ef535055'})));
     renderEMA();
     MA.render();
@@ -1376,6 +1486,8 @@ function onLiveCandle(c, closed){
     emaSeries.update({time:c.time, value:c.close*k + S.emaPrev*(1-k)});
     if(closed) S.emaPrev = c.close*k + S.emaPrev*(1-k);
   } else if(closed){ renderEMA(); }
+
+  if((!last || c.time>last.time) && HOLDERS.enabled && HOLDERS.data) HOLDERS.render();
 
   // Médias Móveis: último ponto ao vivo; recomputa tudo no fechamento
   MA.live(c);
