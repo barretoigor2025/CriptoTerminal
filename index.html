@@ -1118,6 +1118,22 @@ const HOLDERS = {
         if(next) points.push({time:candle.time,value:rows[next-1].value});
       }
       group.series.setData(points);
+
+      // Nível de referência atual, estendido por todo o gráfico.
+      const latest = candles.length ? rows.at(-1) : null;
+      if(latest){
+        if(group.referenceLine){
+          group.referenceLine.applyOptions({price:latest.value});
+        }else{
+          group.referenceLine = candleSeries.createPriceLine({
+            price:latest.value, color:group.color, lineWidth:1,
+            lineStyle:LightweightCharts.LineStyle.Dotted, axisLabelVisible:false,
+          });
+        }
+      }else if(group.referenceLine){
+        candleSeries.removePriceLine(group.referenceLine);
+        group.referenceLine = null;
+      }
     }
     if(this.enabled && this.data){
       const format = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'USD',maximumFractionDigits:0});
