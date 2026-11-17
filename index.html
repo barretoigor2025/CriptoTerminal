@@ -193,6 +193,14 @@
     background:var(--panel-2);border:1px solid var(--hair);color:var(--txt);
     border-radius:5px;font-family:inherit;font-size:11px;padding:3px 4px;cursor:pointer;
   }
+  .liq-profile{overflow:hidden;border:1px solid var(--hair);border-radius:8px;padding:9px;background:var(--panel)}
+  .liq-profile h3,.liq-profile p{margin:0}
+  .liq-profile h3{font-size:12px}
+  .liq-profile p,.liq-profile-level{font:10px "IBM Plex Mono",monospace}
+  .liq-profile p{color:var(--muted);margin-top:4px}
+  .liq-profile-grid{display:grid;gap:7px;margin-top:7px}
+  .liq-profile-level{display:grid;grid-template-columns:1fr auto;gap:3px 8px;margin-top:4px}
+  .liq-profile-level meter{width:100%;height:7px;grid-column:1/-1}
   .ob-sub{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--muted);cursor:pointer}
   .ob-sub input{accent-color:var(--btc);width:12px;height:12px;cursor:pointer}
   .ind-params input[type=date]{
@@ -661,6 +669,21 @@
         </div>
 
         <div class="ind-row">
+          <span class="ind-name">Faixas de liquidação</span>
+          <span class="ind-params">
+            <label>Perto
+              <select id="liqNearDays"><option value="1">24h</option><option value="7" selected>7 dias</option></select>
+            </label>
+            <label>Amplo
+              <select id="liqWidePct"><option value="15">±15%</option><option value="30">±30%</option><option value="50">±50%</option></select>
+            </label>
+            <select id="liqWideDays" aria-label="Histórico do mapa amplo">
+              <option value="30">30 dias</option><option value="90" selected>90 dias</option><option value="180">180 dias</option>
+            </select>
+          </span>
+        </div>
+
+        <div class="ind-row">
           <label class="sw"><input type="checkbox" id="flowOn"><span></span></label>
           <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,var(--bear),var(--bull))"></span>Fluxo de Posições</span>
           <span class="ind-params">card: Open Interest + funding reais (long × short × saída)</span>
@@ -785,6 +808,7 @@
   <!-- COLUNA DE MOSTRADORES: cards de leitura do mercado, à direita do gráfico -->
   <aside class="sidepanel" id="sidepanel">
     <div class="side-inner">
+      <section class="liq-profile" id="liqProfile" aria-label="Faixas de liquidação" hidden></section>
       <div class="cyclebox" id="cyclebox" hidden></div>
       <div class="mtfob" id="mtfob" hidden></div>
       <div class="fgbox" id="fgbox" hidden></div>
@@ -1494,6 +1518,7 @@ function aggregateYearly(monthly){
 async function loadData(){
   const candleSymbol = S.symbol;
   HOLDERS.refresh();
+  LIQ_PROFILE.loadingChart();
   setStatus('', 'carregando…'); $('#banner').classList.remove('show');
   const src = SOURCES[S.source];
   try{
@@ -1512,6 +1537,7 @@ async function loadData(){
     MA.render();
     OB.compute();
     LIQ.compute();
+    LIQ_PROFILE.loadedChart();
     RSI.compute();
     PATTERNS.detect();
     chart.timeScale().fitContent();
@@ -1625,7 +1651,7 @@ function heatColor(v){
   const l=stops[stops.length-1]; return [l[1],l[2],l[3],l[4]];
 }
 const LIQ = {
-  cfg:{ on:false, look:250, rows:132, gamma:0.6, levs:[10,25,50,100] },
+  cfg:{ on:false, look:250, rows:132, gamma:0.6, levs:[10,25,50,100], nearDays:7, widePct:15, wideDays:90 },
   ready:false, cols:0, rows:0, pMin:0, pMax:0, tMin:null, tMax:null, iMin:0, iMax:0,
   off:document.createElement('canvas'),
   compute(){
@@ -1708,6 +1734,153 @@ const LIQ = {
     ctx.save(); ctx.font="9px 'IBM Plex Mono', monospace"; ctx.fillStyle='rgba(255,184,80,.7)';
     ctx.fillText('Mapa de Liquidez · estimativa', Math.max(6,Math.min(leftX+6,W-160)), 12); ctx.restore();
   }
+};
+
+// Perfis por distância, com histórico independente do timeframe do gráfico.
+function estimateLiqBands(candles, price, maxDistance, step, interval, now){
+  const levels = [2,3,5,10,25,50,100];
+  const weights = new Map();
+  let laterLow = price;
+  let laterHigh = price;
+  for(let i=candles.length-1; i>=0; i--){
+    const {time, high, low, close, volume} = candles[i];
+    if(time + interval <= now && volume > 0){
+      const entry = (high + low + close) / 3;
+      for(const leverage of levels){
+        const margin = 0.985 / leverage;
+        const longLiq = entry * (1-margin);
+        const shortLiq = entry * (1+margin);
+        for(const target of [longLiq < laterLow ? longLiq : 0, shortLiq > laterHigh ? shortLiq : 0]){
+          if(!target) continue;
+          const distance = (target / price - 1) * 100;
+          if(Math.abs(distance) > maxDistance) continue;
+          const band = Math.sign(distance) * (Math.floor(Math.abs(distance) / step) + 1);
+          const bucket = weights.get(band) ?? {price:0, volume:0};
+          bucket.price += target * volume;
+          bucket.volume += volume;
+          weights.set(band,bucket);
+        }
+      }
+    }
+    laterLow = Math.min(laterLow,low);
+    laterHigh = Math.max(laterHigh,high);
+  }
+  return [...weights.values()].sort((a,b)=>b.volume-a.volume)
+    .map(bucket=>({price:bucket.price/bucket.volume, weight:bucket.volume}));
+}
+const LIQ_PROFILE = {
+  market:null, histories:new Map(), markedBands:[],
+  key(){ return S.source+':'+S.symbol; },
+  loadingChart(){ this.market=null; this.render(); },
+  loadedChart(){
+    const key=this.key();
+    if(this.cachedMarket!==key) this.histories=new Map();
+    this.cachedMarket=key;
+    this.market=key;
+    this.refresh();
+  },
+  views(){
+    const {nearDays,wideDays,widePct} = LIQ.cfg;
+    return [
+      {label:'Perto do preço', days:nearDays, range:3, step:0.25, tf:'1h', seconds:3600},
+      {label:'Mapa amplo', days:wideDays, range:widePct, step:widePct/30,
+        tf:wideDays===180?'12h':'4h', seconds:wideDays===180?43200:14400},
+    ];
+  },
+  refresh(){
+    this.render();
+    if(!LIQ.cfg.on || this.market!==this.key()) return;
+    const histories=this.histories, symbol=S.symbol, source=SOURCES[S.source];
+    for(const {tf} of this.views()){
+      const prior=histories.get(tf);
+      if(prior?.loading || Date.now()-(prior?.at??0)<60000) continue;
+      const history={candles:prior?.candles, loading:true};
+      histories.set(tf,history);
+      Promise.resolve().then(()=>symbol==='BTCSOL'?loadBtcSolCandles(tf):source.rest(tf,symbol))
+        .then(candles=>{
+          if(!candles.length) throw new Error('Histórico vazio');
+          history.candles=candles;
+        })
+        .catch(()=>{ history.failed=true; })
+        .finally(()=>{
+          history.at=Date.now();
+          history.loading=false;
+          if(histories===this.histories) this.render();
+        });
+    }
+  },
+  render(){
+    this.markedBands=[];
+    const card=$('#liqProfile');
+    card.hidden=!LIQ.cfg.on;
+    if(card.hidden) return;
+    if(this.market!==this.key()){
+      card.textContent='Aguardando dados para as faixas de liquidação…';
+      return;
+    }
+    const price=S.candles.at(-1)?.close;
+    if(!(price>0)) return;
+    const now=Date.now()/1000;
+    const number=new Intl.NumberFormat('pt-BR',{maximumSignificantDigits:7});
+    card.innerHTML='<h3>Faixas de liquidação</h3><p>Estimativa por candles e volume · 2× a 100×</p><div class="liq-profile-grid"></div>';
+    const grid=card.lastElementChild;
+    for(const {label,days,range,step,tf,seconds} of this.views()){
+      const group=document.createElement('div');
+      grid.append(group);
+      group.innerHTML='<h3>'+label+' · ±'+range+'%</h3>';
+      const history=this.histories.get(tf);
+      const note=document.createElement('p');
+      group.append(note);
+      if(!history?.candles){
+        note.textContent=history?.failed?'Histórico indisponível · tentando novamente':'Carregando histórico…';
+        continue;
+      }
+      const candles=history.candles.filter(c=>c.time>=now-days*86400-seconds);
+      const coverage=candles.length*seconds;
+      const windowLabel=days===1?'24h':days+' dias';
+      note.textContent=coverage>=days*86400?windowLabel:windowLabel+' solicitados · histórico parcial';
+      if(history.failed || now-(candles.at(-1)?.time??0)>2*seconds) note.textContent+=' · desatualizado';
+      const bands=estimateLiqBands(candles,price,range,step,seconds,now);
+      if(!bands.length){ note.textContent+=' · sem níveis estimados'; continue; }
+      const above=bands.filter(b=>b.price>price).slice(0,2);
+      const below=bands.filter(b=>b.price<price).slice(0,2);
+      for(const band of [...above,...below]){
+        const distance=(band.price/price-1)*100;
+        const side=distance>0?'Shorts':'Longs';
+        if(range===3 || Math.abs(distance)>3){
+          this.markedBands.push({price:band.price, color:range===3?'#e8a04f':'#a89bfa'});
+        }
+        const distanceLabel=(distance>0?'+':'')+distance.toFixed(2)+'%';
+        const row=document.createElement('div');
+        row.className='liq-profile-level';
+        row.innerHTML='<span>'+side+' '+distanceLabel+'</span><span>'+number.format(band.price)+'</span>';
+        const bar=document.createElement('meter');
+        bar.max=1;
+        bar.value=band.weight/bands[0].weight;
+        bar.setAttribute('aria-label','Intensidade relativa · '+side+' '+distanceLabel);
+        row.append(bar);
+        group.append(row);
+      }
+    }
+  },
+  draw(){
+    if(!this.markedBands.length) return;
+    const width=cv.clientWidth;
+    const bottom=RSI.cfg.on?RSI.band().v0:cv.clientHeight;
+    ctx.save();
+    ctx.setLineDash([4,5]);
+    ctx.globalAlpha=0.65;
+    for(const {price,color} of this.markedBands){
+      const y=yOf(price);
+      if(y==null || y<15 || y>=bottom) continue;
+      ctx.strokeStyle=color;
+      ctx.beginPath();
+      ctx.moveTo(Math.max(0,width-140),y);
+      ctx.lineTo(width-55,y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  },
 };
 
 /* =========================================================================
@@ -3409,6 +3582,7 @@ function redraw(){
   ctx.save();
   ctx.beginPath(); ctx.rect(0,0,cv.clientWidth,paneBot); ctx.clip();
   LIQ.draw();
+  LIQ_PROFILE.draw();
   CYCLE.draw();
   EVENTS.draw();
   OB.draw();
@@ -3711,9 +3885,12 @@ function syncLiq(){
   LIQ.cfg.on    = $('#liqOn').checked;
   LIQ.cfg.look  = Math.max(60, Math.min(600, +$('#liqLook').value||250));
   LIQ.cfg.gamma = Math.max(0.15, Math.min(1, (+$('#liqGamma').value||60)/100));
-  LIQ.compute(); store.save();
+  LIQ.cfg.nearDays=+$('#liqNearDays').value||7;
+  LIQ.cfg.widePct=+$('#liqWidePct').value||15;
+  LIQ.cfg.wideDays=+$('#liqWideDays').value||90;
+  LIQ.compute(); LIQ_PROFILE.refresh(); store.save();
 }
-['liqOn','liqLook','liqGamma'].forEach(id=>{ const el=$('#'+id); if(el) el.addEventListener('change', syncLiq); });
+['liqOn','liqLook','liqGamma','liqNearDays','liqWidePct','liqWideDays'].forEach(id=>{ const el=$('#'+id); if(el) el.addEventListener('change', syncLiq); });
 
 // ---- RSI (oscilador na faixa inferior) ----
 function syncRSI(){
@@ -3747,7 +3924,7 @@ setInterval(()=>{ if(OB.cfg.on && S.candles.length){ OB.compute(); OB.checkAlert
 // recomputa os padrões gráficos periodicamente (segue o preço ao vivo, sem refresh)
 setInterval(()=>{ if(PATTERNS.cfg.on && S.candles.length) PATTERNS.detect(); }, 15000);
 // recomputa o mapa de liquidez periodicamente (segue o volume/preço ao vivo)
-setInterval(()=>{ if(LIQ.cfg.on && S.candles.length) LIQ.compute(); }, 15000);
+setInterval(()=>{ if(LIQ.cfg.on && S.candles.length){ LIQ.compute(); LIQ_PROFILE.refresh(); } }, 15000);
 
 // ---- Médias Móveis (SMA/EMA + toggles 50/100/200/300/400) ----
 function syncMA(){
@@ -4085,6 +4262,9 @@ $('#cycleDays').addEventListener('change', syncCycle);
   PATTERNS.detect();
   if(saved.liq){ Object.assign(LIQ.cfg, saved.liq);
     $('#liqOn').checked=LIQ.cfg.on; if($('#liqLook'))$('#liqLook').value=LIQ.cfg.look; if($('#liqGamma'))$('#liqGamma').value=Math.round(LIQ.cfg.gamma*100); }
+  $('#liqNearDays').value=LIQ.cfg.nearDays;
+  $('#liqWidePct').value=LIQ.cfg.widePct;
+  $('#liqWideDays').value=LIQ.cfg.wideDays;
   LIQ.compute();
   if(saved.trump){ TRUMP.cfg.on=!!saved.trump.on; $('#trumpOn').checked=TRUMP.cfg.on; if(TRUMP.cfg.on) syncTrump(); }
   if(saved.events){ EVENTS.cfg.on=!!saved.events.on; $('#eventsOn').checked=EVENTS.cfg.on; syncEvents(); }
