@@ -185,6 +185,10 @@
     display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end;
     font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted);
   }
+  #ivrSettings{display:block;padding:6px 12px}
+  #ivrSettings[hidden]{display:none}
+  #ivrSettings .ind-row{justify-content:flex-start;flex-wrap:wrap;gap:6px 12px;padding-inline:0}
+  #ivrSettings summary{cursor:pointer}
   .ind-params input[type=number]{
     width:44px;background:var(--panel-2);border:1px solid var(--hair);color:var(--txt);
     border-radius:5px;font-family:inherit;font-size:11px;padding:3px 5px;
@@ -645,6 +649,34 @@
         </div>
 
         <div class="ind-row">
+          <label class="sw"><input type="checkbox" id="ivrOn" aria-label="Volume Institucional + RSI"><span></span></label>
+          <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,#2196f3,#fff,#ffeb3b,#ff9800,#f23645)"></span>Volume Institucional + RSI</span>
+          <span class="ind-params">NoobSharks</span>
+        </div>
+        <details class="ind-params" id="ivrSettings" hidden>
+          <summary>Configurar volume e RSI nas velas</summary>
+          <div class="ind-row">
+            <label><input type="checkbox" data-ivr="paint" checked> Colorir velas</label>
+            <label><input type="checkbox" data-ivr="signals" checked> Triângulos RSI</label>
+            <label><input type="checkbox" data-ivr="zones" checked> Losangos de tendência</label>
+          </div>
+          <div class="ind-row">
+            <label>Período volume <input type="number" data-ivr="volumeLen" min="2" value="55"></label>
+            <label style="color:#f23645">Extra alto <input type="number" data-ivr="extraHigh" step="any" value="4"></label>
+            <label style="color:#ff9800">Alto <input type="number" data-ivr="high" step="any" value="2.5"></label>
+            <label>Médio <input type="number" data-ivr="medium" step="any" value="1"></label>
+            <label>Normal <input type="number" data-ivr="normal" step="any" value="-0.5"></label>
+          </div>
+          <div class="ind-row">
+            <label>Período RSI <input type="number" data-ivr="rsiLen" min="1" value="14"></label>
+            <label>Sobrecompra <input type="number" data-ivr="overbought" min="1" value="70"></label>
+            <label>Sobrevenda <input type="number" data-ivr="oversold" min="1" value="30"></label>
+            <label>Centro <input type="number" data-ivr="center" min="1" value="50"></label>
+            <label>Lateral % <input type="number" data-ivr="sideways" min="0" max="100" value="5"></label>
+          </div>
+        </details>
+
+        <div class="ind-row">
           <label class="sw"><input type="checkbox" id="sumOn"><span></span></label>
           <span class="ind-name"><span class="dotc" style="background:linear-gradient(90deg,var(--bull),var(--bear))"></span>Resumo Multi-TF</span>
           <span class="ind-params">card: 1h · 4h · Diário · Semanal + síntese, com o BTC Cycle</span>
@@ -792,7 +824,7 @@ const S = {
 
 /* ---------- persistência (localStorage com proteção) ---------- */
 const store = {
-  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, symbol:S.symbol, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined), pat:(typeof PATTERNS!=='undefined'?PATTERNS.cfg:undefined), battle:(typeof BATTLE!=='undefined'?{on:BATTLE.cfg.on}:undefined), flow:(typeof FLOW!=='undefined'?{on:FLOW.cfg.on}:undefined), liq:(typeof LIQ!=='undefined'?LIQ.cfg:undefined), trump:(typeof TRUMP!=='undefined'?{on:TRUMP.cfg.on}:undefined), rsi:(typeof RSI!=='undefined'?RSI.cfg:undefined), sum:(typeof SUMMARY!=='undefined'?{on:SUMMARY.cfg.on}:undefined)})); }catch(e){} },
+  save(){ try{ localStorage.setItem('ib_term', JSON.stringify({tf:S.tf, source:S.source, symbol:S.symbol, drawings:S.drawings, ob:(typeof OB!=='undefined'?OB.cfg:undefined), ma:(typeof MA!=='undefined'?MA.cfg:undefined), grid:(typeof GRID!=='undefined'?{n:GRID.n, panes:GRID.saved}:undefined), sound:(typeof SOUND!=='undefined'?SOUND.on:undefined), cycle:(typeof CYCLE!=='undefined'?CYCLE.cfg:undefined), pat:(typeof PATTERNS!=='undefined'?PATTERNS.cfg:undefined), battle:(typeof BATTLE!=='undefined'?{on:BATTLE.cfg.on}:undefined), flow:(typeof FLOW!=='undefined'?{on:FLOW.cfg.on}:undefined), liq:(typeof LIQ!=='undefined'?LIQ.cfg:undefined), trump:(typeof TRUMP!=='undefined'?{on:TRUMP.cfg.on}:undefined), ivr:IVR.cfg, rsi:(typeof RSI!=='undefined'?RSI.cfg:undefined), sum:(typeof SUMMARY!=='undefined'?{on:SUMMARY.cfg.on}:undefined)})); }catch(e){} },
   load(){ try{ return JSON.parse(localStorage.getItem('ib_term')||'{}'); }catch(e){ return {}; } }
 };
 
@@ -1012,6 +1044,107 @@ const INDICATORS = {
       out.push({time:c.time, value:prev});
     }
     return out;
+  },
+  rsi(candles, length){
+    const values = new Array(candles.length).fill(null);
+    let gain = 0, loss = 0;
+    for(let i=1; i<candles.length; i++){
+      const change = candles[i].close - candles[i-1].close;
+      const up = Math.max(change, 0), down = Math.max(-change, 0);
+      if(i<=length){
+        gain += up;
+        loss += down;
+        if(i<length) continue;
+        gain /= length;
+        loss /= length;
+      } else {
+        gain = (gain*(length-1) + up)/length;
+        loss = (loss*(length-1) + down)/length;
+      }
+      values[i] = loss===0 ? 100 : gain===0 ? 0 : 100 - 100/(1 + gain/loss);
+    }
+    return values;
+  }
+};
+
+// Adaptado de [NB] Institutional Volume + RSI on Candles, © NoobSharks.
+// https://www.noobsharks.com · https://www.youtube.com/@NOOBSHARKS
+const IVR = {
+  cfg:{on:false, paint:true, signals:true, zones:true, volumeLen:55,
+    extraHigh:4, high:2.5, medium:1, normal:-0.5,
+    rsiLen:14, overbought:70, oversold:30, center:50, sideways:5},
+  values:[],
+  candle(candles, i){
+    const c = candles[i], cfg = this.cfg;
+    const start = i - cfg.volumeLen + 1;
+    if(!cfg.on || !cfg.paint || start<0) return c;
+
+    let sum = 0;
+    for(let j=start; j<=i; j++) sum += candles[j].volume;
+    const mean = sum/cfg.volumeLen;
+    let squared = 0;
+    for(let j=start; j<=i; j++) squared += (candles[j].volume - mean)**2;
+    if(!Number.isFinite(squared) || squared===0) return c;
+
+    const z = (c.volume - mean)/Math.sqrt(squared/cfg.volumeLen);
+    const color = z>cfg.extraHigh ? '#f23645' : z>cfg.high ? '#ff9800' :
+      z>cfg.medium ? '#ffeb3b' : z>cfg.normal ? '#ffffff' : '#2196f3';
+    return {...c, color, wickColor:color};
+  },
+  computeRSI(){
+    const {on, signals, zones, rsiLen} = this.cfg;
+    this.values = on && (signals || zones) ? INDICATORS.rsi(S.candles, rsiLen) : [];
+  },
+  render(){
+    candleSeries.setData(S.candles.map((_, i)=>this.candle(S.candles, i)));
+    this.computeRSI();
+  },
+  draw(){
+    if(!this.values.length) return;
+    const scale = chart.timeScale(), range = scale.getVisibleLogicalRange();
+    if(!range) return;
+    const cfg = this.cfg;
+    const bull = cfg.center*(1 + cfg.sideways/100), bear = cfg.center*(1 - cfg.sideways/100);
+    const right = scale.width(), bottom = RSI.cfg.on ? RSI.band().v0 : cv.clientHeight - scale.height();
+    const size = Math.min(5, Math.max(2, right/Math.max(1, range.to-range.from)*0.45));
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, right, bottom);
+    ctx.clip();
+    for(let i=Math.max(0, Math.floor(range.from)); i<=Math.min(this.values.length-1, Math.ceil(range.to)); i++){
+      const rsi = this.values[i];
+      if(rsi===null) continue;
+      const candle = S.candles[i], x = xOf(candle.time);
+      if(x===null) continue;
+      if(cfg.zones){
+        const color = rsi>bull ? '#2196f3' : rsi<bear ? '#ff9800' :
+          rsi>bear && rsi<bull ? '#787b86' : null;
+        if(color){
+          const y = 23, radius = Math.min(3, size);
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.moveTo(x, y-radius);
+          ctx.lineTo(x+radius, y);
+          ctx.lineTo(x, y+radius);
+          ctx.lineTo(x-radius, y);
+          ctx.fill();
+        }
+      }
+      const above = rsi>cfg.overbought, below = rsi<cfg.oversold;
+      if(cfg.signals && above) this.triangle(x, yOf(candle.high), -1, size, '#f23645');
+      if(cfg.signals && below) this.triangle(x, yOf(candle.low), 1, size, '#4caf50');
+    }
+    ctx.restore();
+  },
+  triangle(x, y, direction, size, color){
+    if(y===null) return;
+    const tip = y + direction*3, base = tip + direction*size*1.7;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x, tip);
+    ctx.lineTo(x-size, base);
+    ctx.lineTo(x+size, base);
+    ctx.fill();
   }
 };
 
@@ -1255,7 +1388,7 @@ async function loadData(){
       : (S.tf==='1y' ? aggregateYearly(await src.rest('1M', S.symbol)) : await src.rest(S.tf, S.symbol));
     if(!candles.length) throw new Error('vazio');
     S.candles = candles;
-    candleSeries.setData(candles);
+    IVR.render();
     volSeries.setData(candles.map(c=>({time:c.time, value:c.volume, color:c.close>=c.open?'#26a69a55':'#ef535055'})));
     renderEMA();
     MA.render();
@@ -1294,7 +1427,8 @@ function onLiveCandle(c, closed){
   else if(!last || c.time>last.time){ arr.push(c); }
   else { return; }
 
-  candleSeries.update(c);
+  candleSeries.update(IVR.candle(arr, arr.length-1));
+  IVR.computeRSI();
   volSeries.update({time:c.time, value:c.volume, color:c.close>=c.open?'#26a69a55':'#ef535055'});
 
   // EMA ao vivo (incremental sobre o último fechado)
@@ -1595,14 +1729,7 @@ const RSI = {
   compute(){
     this.vals=[]; this.ma1arr=[]; this.ma2arr=[];
     if(!this.cfg.on) return;
-    const c=S.candles, n=c.length, len=Math.max(2,this.cfg.len); if(n<len+1) return;
-    const out=new Array(n).fill(null);
-    let g=0,l=0; for(let i=1;i<=len;i++){ const d=c[i].close-c[i-1].close; g+=Math.max(d,0); l+=Math.max(-d,0); }
-    g/=len; l/=len; out[len]= l===0?100:100-100/(1+g/l);
-    for(let i=len+1;i<n;i++){ const d=c[i].close-c[i-1].close;
-      g=(g*(len-1)+Math.max(d,0))/len; l=(l*(len-1)+Math.max(-d,0))/len;
-      out[i]= l===0?100:100-100/(1+g/l); }
-    this.vals=out;
+    this.vals=INDICATORS.rsi(S.candles, Math.max(2,this.cfg.len));
     this.ma1arr=this.sma(this.cfg.ma1);   // média rápida do RSI
     this.ma2arr=this.sma(this.cfg.ma2);   // média lenta do RSI
   },
@@ -3044,6 +3171,7 @@ function redraw(){
   MALABELS.draw();
   POOL.draw();
   TRUMP.draw();
+  IVR.draw();
   EXPLOSION.draw();
   for(const d of S.drawings){
     if(d.type==='trend') drawTrend(d);
@@ -3279,6 +3407,27 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !$('#cmpModal')
 $('#src').addEventListener('change', e=>{ S.source=e.target.value; store.save(); loadData(); MTFOB.refresh().catch(()=>{}); SUMMARY.refresh().catch(()=>{}); });
 $('#emaOn').addEventListener('change', renderEMA);
 $('#emaLen').addEventListener('change', renderEMA);
+
+const ivrInputs = $('#ivrSettings').querySelectorAll('input[data-ivr]');
+$('#ivrOn').addEventListener('change', e=>{
+  IVR.cfg.on = e.target.checked;
+  $('#ivrSettings').hidden = !IVR.cfg.on;
+  IVR.render();
+  store.save();
+});
+for(const input of ivrInputs){
+  input.addEventListener('change', ()=>{
+    const key = input.dataset.ivr;
+    if(input.type==='checkbox') IVR.cfg[key] = input.checked;
+    else {
+      if(input.validity.valid && Number.isFinite(input.valueAsNumber)) IVR.cfg[key] = input.valueAsNumber;
+      input.value = IVR.cfg[key];
+    }
+    IVR.render();
+    store.save();
+  });
+}
+
 
 // ---- Order Blocks (toggle e parâmetros ao vivo, estilo TradingView) ----
 function syncOB(){
@@ -3683,6 +3832,16 @@ $('#cycleDays').addEventListener('change', syncCycle);
     $('#liqOn').checked=LIQ.cfg.on; if($('#liqLook'))$('#liqLook').value=LIQ.cfg.look; if($('#liqGamma'))$('#liqGamma').value=Math.round(LIQ.cfg.gamma*100); }
   LIQ.compute();
   if(saved.trump){ TRUMP.cfg.on=!!saved.trump.on; $('#trumpOn').checked=TRUMP.cfg.on; if(TRUMP.cfg.on) syncTrump(); }
+  if(saved.ivr){
+    Object.assign(IVR.cfg, saved.ivr);
+    $('#ivrOn').checked = IVR.cfg.on;
+    $('#ivrSettings').hidden = !IVR.cfg.on;
+    for(const input of ivrInputs){
+      const value = IVR.cfg[input.dataset.ivr];
+      if(input.type==='checkbox') input.checked = value;
+      else input.value = value;
+    }
+  }
   if(saved.rsi){ Object.assign(RSI.cfg, saved.rsi); $('#rsiOn').checked=RSI.cfg.on; if($('#rsiLen'))$('#rsiLen').value=RSI.cfg.len; RSI.panes(RSI.cfg.on); RSI.compute(); }
   if(saved.sum){ SUMMARY.cfg.on=!!saved.sum.on; $('#sumOn').checked=SUMMARY.cfg.on; if(SUMMARY.cfg.on){ SUMMARY.set(true); FG.set(true); } }
   if(saved.sound){ SOUND.on=true; $('#soundOn').checked=true; }  // áudio libera no 1º clique
