@@ -11,13 +11,18 @@ header,.controls,.legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap
 a{color:#ddd}h1{font-size:1.3rem;margin:0}header{margin-bottom:16px}
 label{display:flex;align-items:center;gap:6px;color:#ccc}
 select,button{font:inherit;color:inherit;background:#222;border:1px solid #555;border-radius:6px;padding:6px 9px}
-figure{margin:14px 0 8px;border:1px solid #3a3a3a;border-radius:8px;overflow:hidden;background:#171717}
+figure{position:relative;margin:14px 0 8px;border:1px solid #3a3a3a;border-radius:8px;overflow:hidden;background:#171717}
 canvas{width:100%;height:clamp(280px,59vh,650px);display:block}
 #chart{touch-action:none;cursor:grab}
 #chart.dragging{cursor:grabbing}
 figcaption{padding:8px 10px;color:#ccc;font-size:.83rem;border-top:1px solid #333}
 .legend{font-size:.8rem;color:#bbb;gap:8px}
-.ramp{width:75px;height:8px;background:linear-gradient(90deg,#342571,#af347d,#ffae44);border-radius:3px}
+.liq-tip{position:absolute;z-index:8;pointer-events:none;background:#050505;color:#fff;border:1px solid #606060;border-radius:10px;padding:10px 12px;font:11px/1.45 'IBM Plex Mono',monospace;max-width:240px;box-shadow:0 6px 20px #0009}
+.liq-tip strong,.liq-tip small,.liq-tip span{display:block}
+.liq-tip strong{font-size:13px}
+.liq-tip span+span{margin-top:6px;padding-top:6px;border-top:1px solid #414141}
+.liq-tip small{margin-top:6px;color:#dedede}
+.ramp{width:75px;height:8px;background:linear-gradient(90deg,#2d1482,#d62056,#faf7be);border-radius:3px}
 .asset-buttons{display:flex;gap:5px;flex-wrap:wrap}
 .asset-buttons button{min-width:46px;cursor:pointer}
 .asset-buttons button[aria-pressed="true"]{background:#153c39;border-color:#42e1cf;color:#bafff4}
@@ -47,7 +52,8 @@ figcaption{padding:8px 10px;color:#ccc;font-size:.83rem;border-top:1px solid #33
 <option value="120">2 h</option><option value="240">4 h</option><option value="360">6 h</option>
 <option value="720">12 h</option><option value="D">1 dia</option><option value="W">1 semana</option>
 </select></label>
-<label>Histórico <select id="history"><option value="120">120 velas</option><option value="250" selected>250 velas</option><option value="500">500 velas</option></select></label>
+<label>Histórico <select id="history"><option value="120">120 velas</option><option value="250">250 velas</option><option value="500" selected>500 velas</option><option value="1000">1.000 velas</option></select></label>
+<label>Faixa de preço <select id="price-range"><option value="3">±3%</option><option value="15" selected>±15%</option><option value="30">±30%</option><option value="50">±50%</option></select></label>
 <button id="refresh" type="button">Atualizar</button>
 <button id="reset-view" type="button">Recentralizar</button>
 </div>
@@ -63,16 +69,20 @@ figcaption{padding:8px 10px;color:#ccc;font-size:.83rem;border-top:1px solid #33
 </section>
 <figure>
 <canvas id="chart" role="img" aria-label="Gráfico de velas com intensidade estimada de liquidação por preço e horário"></canvas>
+<div id="liqTip" class="liq-tip" hidden></div>
 <figcaption id="status" role="status">Carregando cotações…</figcaption>
 </figure>
 <div class="legend"><span>Intensidade relativa baixa</span><span class="ramp"></span><span>alta</span><span>· Alta em verde · Queda em vermelho</span></div>
-<p class="legend">Zonas estimadas pelo volume das velas da fonte indicada abaixo do gráfico e alavancagens de 10×, 25×, 50× e 100×. A faixa perde intensidade quando o preço cruza o nível. O ponteiro avança conforme o preço se aproxima da zona e o contorno acende a 0,5% ou menos. Horários do Japão.</p>
+<p class="legend">Zonas estimadas pelo volume das velas da fonte indicada abaixo do gráfico e alavancagens de 2×, 3×, 5×, 10×, 25×, 50× e 100×. O mapa estima posições ainda abertas em cada vela. O ponteiro avança conforme o preço se aproxima da zona e o contorno acende a 0,5% ou menos. Horários do Japão.</p>
+<script src="liquidation-map.js"></script>
 <script>
 const assetButtons = Array.from(document.querySelectorAll('[data-asset]'));
 const initialAsset = new URLSearchParams(location.search).get('asset')?.toUpperCase();
 let asset = assetButtons.find(button => button.dataset.asset === initialAsset)?.dataset.asset ?? 'BTC';
 const interval = document.getElementById('interval');
 const historySize = document.getElementById('history');
+const priceRange = document.getElementById('price-range');
+const tooltip = document.getElementById('liqTip');
 const refresh = document.getElementById('refresh');
 const status = document.getElementById('status');
 const canvas = document.getElementById('chart');
@@ -115,30 +125,31 @@ function scheduleDraw() {
 }
 
 function buildMap(candles) {
-  const rows = 120;
-  const min = Math.min(...candles.map(candle => candle.low)) * 0.995;
-  const max = Math.max(...candles.map(candle => candle.high)) * 1.005;
+  const rows = 264;
+  const current = candles.at(-1).close;
+  const distance = Number(priceRange.value) / 100;
+  const min = Math.min(current * (1 - distance), ...candles.map(candle => candle.low * 0.995));
+  const max = Math.max(current * (1 + distance), ...candles.map(candle => candle.high * 1.005));
   const step = (max - min) / rows;
-  const volumeMax = Math.max(1, ...candles.map(candle => candle.volume));
-  const cells = candles.map(() => new Float64Array(rows));
-  let active = [];
+  const {G, notional, active} = calculateLiquidationGrid(candles, min, max, rows, liquidationLeverages, 'USDT');
   let peak = 0;
-  candles.forEach((candle, column) => {
-    active = active.filter(zone => zone.long ? candle.low > zone.price : candle.high < zone.price);
-    const entry = (candle.high + candle.low + candle.close) / 3;
-    for (const leverage of [10, 25, 50, 100]) {
-      for (const long of [true, false]) {
-        const price = entry * (1 + (long ? -1 : 1) * 0.985 / leverage);
-        const row = Math.floor((price - min) / step);
-        if (row >= 0 && row < rows) active.push({price, row, long, weight:candle.volume / volumeMax});
+  for (const value of G) peak = Math.max(peak, value);
+  const heatmap = document.createElement('canvas');
+  heatmap.width = candles.length;
+  heatmap.height = rows;
+  const heatContext = heatmap.getContext('2d');
+  const image = heatContext.createImageData(heatmap.width, rows);
+  const colors = Array.from({length:256}, (_, index) => heatColor(index / 255));
+  if (peak > 0) {
+    for (let row = 0; row < rows; row++) {
+      for (let column = 0; column < candles.length; column++) {
+        const value = G[row * candles.length + column];
+        const color = colors[Math.round(Math.pow(value / peak, 0.6) * 255)];
+        image.data.set(color, ((rows - 1 - row) * candles.length + column) * 4);
       }
     }
-    for (const zone of active) {
-      cells[column][zone.row] += zone.weight;
-      peak = Math.max(peak, cells[column][zone.row]);
-    }
-  });
-  const current = candles.at(-1).close;
+  }
+  heatContext.putImageData(image, 0, 0);
   const groups = {short:new Map(), long:new Map()};
   for (const zone of active) {
     const side = zone.long ? 'long' : 'short';
@@ -156,7 +167,7 @@ function buildMap(candles) {
       return {price, weight:group.weight, distance:Math.abs(price / current - 1) * 100};
     }).sort((a, b) => a.distance - b.distance);
   }
-  return {min, max, step, rows, peak, cells, candles, current, levels};
+  return {min, max, step, rows, heatmap, notional, candles, current, levels};
 }
 
 function priceLabel(price) {
@@ -212,11 +223,6 @@ function drawDial(side) {
     map ? 'Sem zona na faixa do gráfico' : 'Aguardando dados…';
 }
 
-function heatFill(strength) {
-  const hue = 258 - strength * 223;
-  return 'hsl(' + hue + ' 88% 58% / ' + strength * 0.78 + ')';
-}
-
 function draw() {
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
@@ -224,8 +230,9 @@ function draw() {
   canvas.width = Math.round(width * ratio);
   canvas.height = Math.round(height * ratio);
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  tooltip.hidden = true;
   if (!map || width < 100) return;
-  const {min, step, rows, peak, cells, candles} = map;
+  const {min, max, step, rows, heatmap, notional, candles} = map;
   const {top, left, right, bottom} = plotBounds();
   const {first, count, low, high} = chartView();
   const stride = (right - left) / count;
@@ -243,17 +250,11 @@ function draw() {
   ctx.beginPath();
   ctx.rect(left, top, right - left, bottom - top);
   ctx.clip();
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(heatmap, left - first * stride, y(max), candles.length * stride, y(min) - y(max));
   for (let column = firstColumn; column < endColumn; column++) {
     const candle = candles[column];
     const x = left + stride * (column - first);
-    const rowHeight = y(min) - y(min + step);
-    for (let row = 0; row < rows; row++) {
-      const strength = peak && Math.sqrt(cells[column][row] / peak);
-      if (strength < 0.03) continue;
-      ctx.fillStyle = heatFill(strength);
-      const rowTop = y(min + step * (row + 1));
-      if (rowTop + rowHeight >= top && rowTop < bottom) ctx.fillRect(x, rowTop, stride, rowHeight);
-    }
     const center = x + stride / 2;
     const bodyTop = Math.min(y(candle.open), y(candle.close));
     const bodyHeight = Math.max(1, Math.abs(y(candle.open) - y(candle.close)));
@@ -299,16 +300,14 @@ function draw() {
   if (!candles[column]) return;
   const price = high - (pointer.y - top) / (bottom - top) * (high - low);
   const row = Math.floor((price - min) / step);
-  const intensity = peak && row >= 0 && row < rows ? Math.round(cells[column][row] / peak * 100) : 0;
   ctx.fillStyle = '#aaa';
   ctx.fillRect(pointer.x, top, 1, bottom - top);
   ctx.fillRect(left, pointer.y, right - left, 1);
-  const detail = dateFormat.format(candles[column].time) + ' · ' + price.toFixed(price < 10 ? 4 : 2) + ' USDT · ' + intensity + '%';
-  const labelWidth = ctx.measureText(detail).width + 12;
-  ctx.fillStyle = '#101010';
-  ctx.fillRect(left, top, labelWidth, 21);
-  ctx.fillStyle = '#fff';
-  ctx.fillText(detail, left + 6, top + 14);
+  if (row < 0 || row >= rows) return;
+  if (!renderLiquidationTip(tooltip, notional, rows, candles.length, min, step, column, row, candles[column].close, 'USDT')) return;
+  tooltip.hidden = false;
+  tooltip.style.left = Math.max(left, Math.min(pointer.x + 12, width - tooltip.offsetWidth - 4)) + 'px';
+  tooltip.style.top = Math.max(top, Math.min(pointer.y + 12, bottom - tooltip.offsetHeight - 4)) + 'px';
 }
 
 const binanceIntervals = {
@@ -389,6 +388,13 @@ for (const button of assetButtons) {
 }
 markAsset();
 for (const control of [interval, historySize]) control.addEventListener('change', () => load(true));
+priceRange.addEventListener('change', () => {
+  viewport = null;
+  if (map) {
+    map = buildMap(map.candles);
+    render();
+  }
+});
 refresh.addEventListener('click', () => load());
 document.getElementById('reset-view').addEventListener('click', () => {
   viewport = null;

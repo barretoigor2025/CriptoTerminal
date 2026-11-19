@@ -801,7 +801,7 @@
     <button class="icon-btn" id="moreToolsBtn" type="button" title="Mais opções" aria-label="Mais opções" aria-controls="headerTools" aria-expanded="false">⋯</button>
     <div class="header-tools" id="headerTools">
     <a class="pool-link" href="portfolio-xstocks.html" title="Carteira de ações">STOCKS</a>
-    <a class="pool-link" href="liquidacoes.html?v=xrp-pan-2" title="Mapa estimado de liquidações">LIQUIDAÇÕES</a>
+    <a class="pool-link" href="liquidacoes.html?v=mapa-amplo" title="Mapa estimado de liquidações">LIQUIDAÇÕES</a>
     <a class="pool-link" href="pool-wbtc-sol-live.html" title="Pool cbBTC/SOL">POOL</a>
     <select class="hsel" id="src" title="Fonte de dados">
       <option value="hyperliquid">Hyperliquid</option>
@@ -901,6 +901,7 @@
   <div class="cmp-note" id="cmpNote">Todos os ativos começam em 100 no início do período — assim dá pra comparar a <b>movimentação relativa</b> na mesma escala. Mercado tradicional (NASDAQ, JPY…) não abre fim de semana/madrugada, então há buracos nos prazos curtos.</div>
 </div>
 
+<script src="liquidation-map.js"></script>
 <script>
 /* =========================================================================
    IB · BTC TERMINAL — MVP
@@ -1879,25 +1880,8 @@ const FIB = [0,0.236,0.382,0.5,0.618,0.786,1];
    o preço tocá-lo (aí é liquidado/consumido e some) — o que forma as manchas/
    nuvens térmicas de liquidez de repouso que costumam funcionar como ímã de preço.
    ========================================================================= */
-function heatColor(v){
-  if(v<=0.02) return [0,0,0,0];
-  const stops=[
-    [0.00, 30, 12, 60,   0],
-    [0.18, 45, 20,130,  40],
-    [0.38, 120,26,150,  92],
-    [0.58, 214,32, 86, 140],
-    [0.74, 244,96, 32, 168],
-    [0.88, 250,182,44, 196],
-    [1.00, 255,247,190,224]
-  ];
-  for(let i=1;i<stops.length;i++){
-    if(v<=stops[i][0]){ const a=stops[i-1],b=stops[i],t=(v-a[0])/((b[0]-a[0])||1);
-      return [Math.round(a[1]+(b[1]-a[1])*t),Math.round(a[2]+(b[2]-a[2])*t),Math.round(a[3]+(b[3]-a[3])*t),Math.round(a[4]+(b[4]-a[4])*t)]; }
-  }
-  const l=stops[stops.length-1]; return [l[1],l[2],l[3],l[4]];
-}
 const LIQ = {
-  cfg:{ on:false, look:250, rows:132, gamma:0.6, selectedLeverages:[2,3,5,10,25,50,100], nearDays:7, widePct:15, wideDays:90 },
+  cfg:{ on:false, look:250, rows:132, gamma:0.6, selectedLeverages:[...liquidationLeverages], nearDays:7, widePct:15, wideDays:90 },
   ready:false, cols:0, rows:0, pMin:0, pMax:0, tMin:null, tMax:null, iMin:0, iMax:0,
   off:document.createElement('canvas'),
   compute(){
@@ -1912,38 +1896,8 @@ const LIQ = {
     for(const c of win){ if(c.low<pMin)pMin=c.low; if(c.high>pMax)pMax=c.high; }
     const pad=(pMax-pMin)*0.04; pMin-=pad; pMax+=pad;
     if(!(pMax>pMin)) return;
-    const span=pMax-pMin;
-    const G=new Float32Array(R*cols);
-    const notional=new Float64Array(R*cols);
     const quoteUnit=S.symbol.endsWith('USDT') ? (S.source==='hyperliquid' ? 'USD' : 'USDT') : null;
-    const rowOf=p=>{ let r=Math.floor((p-pMin)/span*R); return r<0?0:(r>=R?R-1:r); };
-    let vmax=0; for(const c of win) if(c.volume>vmax)vmax=c.volume;
-    for(let i=0;i<cols;i++){
-      const c=win[i], w=vmax?(0.25+0.75*(c.volume/vmax)):1, e=(c.high+c.low+c.close)/3;
-      // Cenário de referência: 1% do giro da vela, dividido entre os lados
-      // e as sete alavancagens do mapa. Filtrar um nível não redistribui o giro.
-      const share=quoteUnit ? Math.max(0,c.volume||0)*e*0.01/14 : 0;
-      for(const lev of this.cfg.selectedLeverages){
-        const m=1/lev*0.985;
-        const longLiq=e*(1-m), shortLiq=e*(1+m);
-        if(longLiq>pMin&&longLiq<pMax){ const row=rowOf(longLiq); let end=cols-1;
-          for(let j=i+1;j<cols;j++){ if(win[j].low<=longLiq){ end=j; break; } }
-          for(let j=i;j<=end;j++){
-            const cell=row*cols+j;
-            G[cell]+=w;
-            notional[cell]+=share;
-          }
-        }
-        if(shortLiq>pMin&&shortLiq<pMax){ const row=rowOf(shortLiq); let end=cols-1;
-          for(let j=i+1;j<cols;j++){ if(win[j].high>=shortLiq){ end=j; break; } }
-          for(let j=i;j<=end;j++){
-            const cell=row*cols+j;
-            G[cell]+=w;
-            notional[cell]+=share;
-          }
-        }
-      }
-    }
+    const {G, notional}=calculateLiquidationGrid(win,pMin,pMax,R,this.cfg.selectedLeverages,quoteUnit);
     let mx=0; for(let k=0;k<G.length;k++) if(G[k]>mx)mx=G[k];
     if(mx<=0) return;
     this.off.width=cols; this.off.height=R;
@@ -1983,27 +1937,7 @@ const LIQ = {
     if(!Number.isInteger(column) || column<0 || column>=this.cols || row<0 || row>=this.rows) return hide();
     const value=this.notional[row*this.cols+column];
     const reference=this.referenceCloses[column];
-    const origin=Math.max(0,Math.min(this.rows-1,Math.floor((reference-this.pMin)/step)));
-    let total=0;
-    for(let bandRow=Math.min(origin,row);bandRow<=Math.max(origin,row);bandRow++){
-      total+=this.notional[bandRow*this.cols+column];
-    }
-    if(!(total>0)) return hide();
-    const format=new Intl.NumberFormat('pt-BR',{maximumSignificantDigits:7});
-    const amount=new Intl.NumberFormat('pt-BR',{notation:'compact',maximumFractionDigits:1});
-    const band=this.pMin+row*step;
-    const range=document.createElement('span');
-    range.textContent='Faixa '+format.format(band)+'–'+format.format(band+step);
-    const sum=document.createElement('span');
-    sum.textContent='Acumulado desde '+format.format(reference);
-    for(const [label,notional] of [[range,value],[sum,total]]){
-      const number=document.createElement('strong');
-      number.textContent='≈ '+amount.format(notional)+' '+this.quoteUnit;
-      label.append(number);
-    }
-    const method=document.createElement('small');
-    method.textContent='Nocional simulado · 1% do giro das velas';
-    el.replaceChildren(range,sum,method);
+    if(!renderLiquidationTip(el, this.notional, this.rows, this.cols, this.pMin, step, column, row, reference, this.quoteUnit)) return hide();
     el.hidden=false;
     el.style.left=Math.max(2,Math.min(point.x+12,stage.clientWidth-el.offsetWidth-4))+'px';
     el.style.top=Math.max(2,Math.min(point.y+12,bottom-el.offsetHeight-4))+'px';
