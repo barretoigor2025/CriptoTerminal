@@ -803,11 +803,12 @@
     <div class="header-tools" id="headerTools">
     <a class="pool-link" href="portfolio-xstocks.html" title="Carteira de ações">STOCKS</a>
     <a class="pool-link" id="liquidationsLink" href="liquidacoes.html" title="Mapa estimado de liquidações">LIQUIDAÇÕES</a>
-    <button class="pool-link" id="binanceBook" type="button" aria-haspopup="dialog">LIVRO BINANCE</button>
+    <button class="pool-link" id="binanceBook" type="button" aria-haspopup="dialog">LIVRO DE OFERTAS</button>
     <a class="pool-link" href="pool-wbtc-sol-live.html" title="Pool cbBTC/SOL">POOL</a>
     <select class="hsel" id="src" title="Fonte de dados">
       <option value="hyperliquid">Hyperliquid</option>
       <option value="binance">Binance</option>
+      <option value="coinbase">Coinbase</option>
       <option value="bybit">Bybit</option>
     </select>
 
@@ -904,7 +905,7 @@
 </div>
 
 <script src="liquidation-map.js"></script>
-<script src="binance-book.js"></script>
+<script src="exchange-books.js"></script>
 <script>
 /* =========================================================================
    IB · BTC TERMINAL — MVP
@@ -973,6 +974,7 @@ let GATE_PROXY = 'https://api.allorigins.win/raw?url=';
 try{ const pv=localStorage.getItem('ib_proxy'); if(pv!==null) GATE_PROXY=pv; }catch(e){}
 
 const SOURCES = {
+  coinbase: coinbaseChart,
   binance:{
     tfMap:{'1m':'1m','5m':'5m','15m':'15m','1h':'1h','4h':'4h','12h':'12h','1d':'1d','1w':'1w','1M':'1M'},
     async rest(tf, symbol='BTCUSDT'){
@@ -1767,6 +1769,7 @@ async function loadData(){
   $('#liquidationsLink').href = ['BTC','ETH','SOL','XRP','BNB'].includes(liquidationAsset)
     ? 'liquidacoes.html?asset=' + liquidationAsset
     : 'liquidacoes.html';
+  pauseSingle();
   HOLDERS.refresh();
   LIQ_PROFILE.loadingChart();
   setStatus('', 'carregando…'); $('#banner').classList.remove('show');
@@ -1799,6 +1802,7 @@ async function loadData(){
     else if(S.tf==='1y'){ setStatus('live','anual (histórico)'); }  // sem stream nativo p/ anual
     else { openSocket(); setStatus('live','ao vivo'); }
   }catch(err){
+    if(candleSymbol!==S.symbol || src!==SOURCES[S.source]) return;
     console.error(err);
     setStatus('err','falha na fonte');
     $('#bannerMsg').textContent = `Não consegui carregar de "${S.source}" (${err.message}). Pode ser bloqueio de região/CORS aí do Japão. Troque a fonte e tente de novo.`;
@@ -1913,7 +1917,7 @@ const LIQ = {
     for(const c of win){ if(c.low<pMin)pMin=c.low; if(c.high>pMax)pMax=c.high; }
     const pad=(pMax-pMin)*0.04; pMin-=pad; pMax+=pad;
     if(!(pMax>pMin)) return;
-    const quoteUnit=S.symbol.endsWith('USDT') ? (S.source==='hyperliquid' ? 'USD' : 'USDT') : null;
+    const quoteUnit=S.symbol.endsWith('USDT') ? (['hyperliquid','coinbase'].includes(S.source) ? 'USD' : 'USDT') : null;
     const {G, notional}=calculateLiquidationGrid(win,pMin,pMax,R,this.cfg.selectedLeverages,quoteUnit);
     let mx=0; for(let k=0;k<G.length;k++) if(G[k]>mx)mx=G[k];
     if(mx<=0) return;
@@ -4529,7 +4533,7 @@ $('#cycleDays').addEventListener('change', syncCycle);
 /* =========================================================================
    BOOT
    ========================================================================= */
-bindBinanceBook($('#binanceBook'), () => S.symbol);
+bindExchangeBook($('#binanceBook'), () => S.symbol, () => S.source);
 
 (function init(){
   const saved=store.load();
