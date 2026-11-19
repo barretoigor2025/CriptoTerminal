@@ -657,6 +657,7 @@
           <summary>Configurar volume e RSI nas velas</summary>
           <div class="ind-row">
             <label><input type="checkbox" data-ivr="paint" checked> Colorir velas</label>
+            <label><input type="checkbox" data-ivr="bubbles" checked> Balões de mudança de volume</label>
             <label><input type="checkbox" data-ivr="signals" checked> Triângulos RSI</label>
             <label><input type="checkbox" data-ivr="zones" checked> Losangos de tendência</label>
           </div>
@@ -1070,37 +1071,55 @@ const INDICATORS = {
 // Adaptado de [NB] Institutional Volume + RSI on Candles, © NoobSharks.
 // https://www.noobsharks.com · https://www.youtube.com/@NOOBSHARKS
 const IVR = {
-  cfg:{on:false, paint:true, signals:true, zones:true, volumeLen:55,
+  cfg:{on:false, paint:true, bubbles:true, signals:true, zones:true, volumeLen:55,
     extraHigh:4, high:2.5, medium:1, normal:-0.5,
     rsiLen:14, overbought:70, oversold:30, center:50, sideways:5},
+  volumeBands:[
+    {label:'Baixo', color:'#2196f3'},
+    {label:'Normal', color:'#ffffff', threshold:'normal'},
+    {label:'Médio', color:'#ffeb3b', threshold:'medium'},
+    {label:'Alto', color:'#ff9800', threshold:'high'},
+    {label:'Extra alto', color:'#f23645', threshold:'extraHigh'}
+  ],
   values:[],
+  bands:[],
   candle(candles, i){
+    const band = this.volumeBand(candles, i);
+    if(this.cfg.on && this.cfg.paint) this.bands[i] = band;
+    if(!band) return candles[i];
+    return {...candles[i], color:band.color, wickColor:band.color};
+  },
+  volumeBand(candles, i){
     const c = candles[i], cfg = this.cfg;
     const start = i - cfg.volumeLen + 1;
-    if(!cfg.on || !cfg.paint || start<0) return c;
+    if(!cfg.on || !cfg.paint || start<0) return null;
 
     let sum = 0;
     for(let j=start; j<=i; j++) sum += candles[j].volume;
     const mean = sum/cfg.volumeLen;
     let squared = 0;
     for(let j=start; j<=i; j++) squared += (candles[j].volume - mean)**2;
-    if(!Number.isFinite(squared) || squared===0) return c;
+    if(!Number.isFinite(squared) || squared===0) return null;
 
     const z = (c.volume - mean)/Math.sqrt(squared/cfg.volumeLen);
-    const color = z>cfg.extraHigh ? '#f23645' : z>cfg.high ? '#ff9800' :
-      z>cfg.medium ? '#ffeb3b' : z>cfg.normal ? '#ffffff' : '#2196f3';
-    return {...c, color, wickColor:color};
+    for(let j=this.volumeBands.length-1; j>0; j--){
+      const band = this.volumeBands[j];
+      if(z>cfg[band.threshold]) return band;
+    }
+    return this.volumeBands[0];
   },
   computeRSI(){
     const {on, signals, zones, rsiLen} = this.cfg;
     this.values = on && (signals || zones) ? INDICATORS.rsi(S.candles, rsiLen) : [];
   },
   render(){
-    candleSeries.setData(S.candles.map((_, i)=>this.candle(S.candles, i)));
+    this.bands = [];
+    candleSeries.setData(this.cfg.on && this.cfg.paint ? S.candles.map((_, i)=>this.candle(S.candles, i)) : S.candles);
     this.computeRSI();
   },
   draw(){
-    if(!this.values.length) return;
+    const showBubbles = this.cfg.bubbles && this.bands.length>1;
+    if(!this.values.length && !showBubbles) return;
     const scale = chart.timeScale(), range = scale.getVisibleLogicalRange();
     if(!range) return;
     const cfg = this.cfg;
@@ -1134,7 +1153,46 @@ const IVR = {
       if(cfg.signals && above) this.triangle(x, yOf(candle.high), -1, size, '#f23645');
       if(cfg.signals && below) this.triangle(x, yOf(candle.low), 1, size, '#4caf50');
     }
+    if(showBubbles) this.drawVolumeBubbles(range, right, bottom);
     ctx.restore();
+  },
+  drawVolumeBubbles(range, right, bottom){
+    const boxes = [], height = 20, gap = 4;
+    ctx.font = "10px 'IBM Plex Mono', monospace";
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 1;
+    // Prioriza mudanças mais recentes quando dois balões disputam o mesmo espaço.
+    for(let i=Math.min(this.bands.length-1, Math.floor(range.to)); i>=Math.max(1, Math.ceil(range.from)); i--){
+      const previous = this.bands[i-1], current = this.bands[i];
+      if(!previous || !current || previous===current) continue;
+      const candle = S.candles[i], x = xOf(candle.time), y = yOf(candle.high);
+      if(x===null || y===null || x<0 || x>right || y<0 || y>bottom) continue;
+      const label = `Volume: ${previous.label} → ${current.label}`;
+      const width = Math.ceil(ctx.measureText(label).width)+14;
+      if(width+2*gap>right || height+2*gap>bottom) continue;
+      const left = Math.max(gap, Math.min(x-width/2, right-width-gap));
+      const top = y>=height+47 ? y-height-19 : y+16;
+      if(top+height>bottom-gap || boxes.some(b=>
+        left<b.left+b.width+gap && left+width+gap>b.left &&
+        top<b.top+height+gap && top+height+gap>b.top)) continue;
+
+      const anchor = Math.max(left+6, Math.min(x, left+width-6));
+      ctx.strokeStyle = current.color;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(anchor, top<y ? top+height : top);
+      ctx.stroke();
+      ctx.fillStyle = '#111827';
+      ctx.beginPath();
+      if(ctx.roundRect) ctx.roundRect(left, top, width, height, 5);
+      else ctx.rect(left, top, width, height);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(label, left+7, top+height/2);
+      boxes.push({left, top, width});
+    }
   },
   triangle(x, y, direction, size, color){
     if(y===null) return;
