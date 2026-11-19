@@ -93,7 +93,7 @@ body.chart-overlay-open{overflow:hidden}
 </div>
 <div id="leverage-buttons" role="group" aria-label="Alavancagem estimada"></div>
 <div class="chart-actions" role="group" aria-label="Ações do gráfico">
-  <button id="binance-book" type="button" aria-label="Livro de ofertas da Binance" aria-haspopup="dialog" title="Livro de ofertas da Binance">
+  <button id="exchange-book" type="button" aria-label="Livros Binance e Coinbase" aria-haspopup="dialog" title="Livros Binance e Coinbase">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 9h11M4 13h8m-8 4h13m-13 4h16"/></svg>
   </button>
   <button id="refresh" type="button" aria-label="Atualizar" title="Atualizar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 8a8 8 0 1 0 .5 7M20 3v5h-5"/></svg></button>
@@ -131,12 +131,12 @@ body.chart-overlay-open{overflow:hidden}
 </figure>
 </section>
 <script src="liquidation-map.js"></script>
-<script src="binance-book.js"></script>
+<script src="exchange-books.js"></script>
 <script>
 const assetButtons = Array.from(document.querySelectorAll('[data-asset]'));
 const initialAsset = new URLSearchParams(location.search).get('asset')?.toUpperCase();
 let asset = assetButtons.find(button => button.dataset.asset === initialAsset)?.dataset.asset ?? 'BTC';
-bindBinanceBook(document.getElementById('binance-book'), () => asset + 'USDT');
+bindExchangeBook(document.getElementById('exchange-book'), () => asset + 'USDT');
 const interval = document.getElementById('interval');
 const historySize = document.getElementById('history');
 const priceRange = document.getElementById('price-range');
@@ -153,6 +153,58 @@ const tierColors = ['#ffd166', '#ff9f66', '#ff778a', '#e5a3ff', '#a5b4fc', '#68c
 const selectedLeverages = new Set(liquidationLeverages);
 const tierButtons = document.getElementById('leverage-buttons');
 let controller, map, pointer, viewport, pendingDraw, feedIndex, tapStart, loading;
+const bookVenues = [
+  {id:'binance', label:'Binance', unit:'USDT', limit:1000},
+  {id:'coinbase', label:'Coinbase', unit:'USD', limit:Infinity}
+];
+let bookRequest;
+const books = new Map();
+
+function refreshBooks() {
+  bookRequest?.abort();
+  const request = new AbortController();
+  bookRequest = request;
+  for (const venue of bookVenues) {
+    getExchangeBook(venue.id, asset + 'USDT', request.signal, venue.limit)
+      .then(book => {
+        if (bookRequest !== request) return;
+        books.set(venue.id, {book, ranges:new Map()});
+        if (pointer) scheduleDraw();
+      })
+      .catch(error => {
+        if (bookRequest !== request) return;
+        books.set(venue.id, {error:error.status === 404 ? 'par indisponível' : 'sem dados'});
+        if (pointer) scheduleDraw();
+      });
+  }
+}
+
+const bookAmount = new Intl.NumberFormat('pt-BR', {notation:'compact', maximumFractionDigits:2});
+function bookRangeLabel({bids, asks}, low, high, unit) {
+  const amount = side => side.reduce((sum, [p, q]) => p >= low && p < high ? sum + p * q : sum, 0);
+  const total = amount(bids) + amount(asks);
+  const covered = low >= bids.at(-1)[0] && high <= asks.at(-1)[0];
+  if (!total && !covered) return 'fora da profundidade';
+  return bookAmount.format(total) + ' ' + unit + (covered ? '' : ' (parcial)');
+}
+
+function appendBookComparison(low, high) {
+  const heading = document.createElement('span');
+  heading.textContent = 'Ordens à vista agora · nesta faixa';
+  tooltip.append(heading);
+  for (const venue of bookVenues) {
+    const line = document.createElement('small');
+    const snapshot = books.get(venue.id);
+    let message = snapshot?.error ?? 'carregando…';
+    if (snapshot?.book) {
+      const key = low + ':' + high;
+      if (!snapshot.ranges.has(key)) snapshot.ranges.set(key, bookRangeLabel(snapshot.book, low, high, venue.unit));
+      message = snapshot.ranges.get(key);
+    }
+    line.textContent = venue.label + ' · ' + message;
+    tooltip.append(line);
+  }
+}
 for (const [index, leverage] of liquidationLeverages.entries()) {
   const button = document.createElement('button');
   button.type = 'button';
@@ -436,7 +488,14 @@ function draw() {
   ctx.fillRect(pointer.x, top, 1, bottom - top);
   ctx.fillRect(left, pointer.y, right - left, 1);
   if (row < 0 || row >= rows) return;
-  if (!renderLiquidationTip(tooltip, notional, rows, candles.length, min, step, column, row, candles[column].close, 'USDT', bandBreakdown(column, row))) return;
+  const hasEstimate = renderLiquidationTip(tooltip, notional, rows, candles.length, min, step, column, row, candles[column].close, 'USDT', bandBreakdown(column, row));
+  const context = document.createElement('small');
+  context.textContent = hasEstimate
+    ? 'Fonte da estimativa · ' + feeds[feedIndex].name
+    : 'Faixa ' + priceLabel(min + row * step) + '–' + priceLabel(min + (row + 1) * step);
+  if (!hasEstimate) tooltip.replaceChildren();
+  tooltip.append(context);
+  appendBookComparison(min + row * step, min + (row + 1) * step);
   tooltip.hidden = false;
   tooltip.style.left = Math.max(left, Math.min(pointer.x + 12, width - tooltip.offsetWidth - 4)) + 'px';
   tooltip.style.top = Math.max(top, Math.min(pointer.y + 12, bottom - tooltip.offsetHeight - 4)) + 'px';
@@ -591,6 +650,8 @@ for (const button of assetButtons) {
   button.addEventListener('click', () => {
     if (button.dataset.asset === asset) return;
     asset = button.dataset.asset;
+    books.clear();
+    refreshBooks();
     markAsset();
     const url = new URL(location.href);
     url.searchParams.set('asset', asset);
@@ -751,6 +812,8 @@ function render() {
 }
 new ResizeObserver(render).observe(canvas);
 setInterval(() => { if (!document.hidden && !loading) load(); }, 30000);
+setInterval(() => { if (!document.hidden) refreshBooks(); }, 30000);
+refreshBooks();
 load();
 </script>
 </body>
