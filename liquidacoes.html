@@ -71,7 +71,7 @@ body.chart-overlay-open{overflow:hidden}
 </style>
 </head>
 <body>
-<header><a href="index.html">← Terminal</a><h1>Mapa de liquidações</h1></header>
+<header><a id="terminal-link" href="index.html">← Terminal</a><h1>Mapa de liquidações</h1></header>
 <section id="chart-panel" class="chart-panel" aria-label="Mapa interativo">
 <div class="controls">
 <div class="asset-buttons" role="group" aria-label="Ativo">
@@ -79,6 +79,7 @@ body.chart-overlay-open{overflow:hidden}
   <button type="button" data-asset="ETH" aria-pressed="false">ETH</button>
   <button type="button" data-asset="SOL" aria-pressed="false">SOL</button>
   <button type="button" data-asset="XRP" aria-pressed="false">XRP</button>
+  <button type="button" data-asset="BNB" aria-pressed="false">BNB</button>
 </div>
 <div class="filters" role="group" aria-label="Filtros do gráfico">
 <select id="interval" aria-label="Velas" title="Velas">
@@ -92,6 +93,9 @@ body.chart-overlay-open{overflow:hidden}
 </div>
 <div id="leverage-buttons" role="group" aria-label="Alavancagem estimada"></div>
 <div class="chart-actions" role="group" aria-label="Ações do gráfico">
+  <button id="binance-book" type="button" aria-label="Livro de ofertas da Binance" aria-haspopup="dialog" title="Livro de ofertas da Binance">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 9h11M4 13h8m-8 4h13m-13 4h16"/></svg>
+  </button>
   <button id="refresh" type="button" aria-label="Atualizar" title="Atualizar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 8a8 8 0 1 0 .5 7M20 3v5h-5"/></svg></button>
   <button id="reset-view" type="button" aria-label="Recentralizar" title="Recentralizar"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6"/><path d="M12 3v4m0 10v4M3 12h4m10 0h4"/></svg></button>
   <button id="fullscreen" type="button" aria-pressed="false" aria-label="Tela cheia" title="Tela cheia">
@@ -127,10 +131,12 @@ body.chart-overlay-open{overflow:hidden}
 </figure>
 </section>
 <script src="liquidation-map.js"></script>
+<script src="binance-book.js"></script>
 <script>
 const assetButtons = Array.from(document.querySelectorAll('[data-asset]'));
 const initialAsset = new URLSearchParams(location.search).get('asset')?.toUpperCase();
 let asset = assetButtons.find(button => button.dataset.asset === initialAsset)?.dataset.asset ?? 'BTC';
+bindBinanceBook(document.getElementById('binance-book'), () => asset + 'USDT');
 const interval = document.getElementById('interval');
 const historySize = document.getElementById('history');
 const priceRange = document.getElementById('price-range');
@@ -466,8 +472,8 @@ function bandBreakdown(column, row) {
 }
 
 const feeds = [
-  {name:'Bybit perpétuos', url:'https://api.bybit.com/v5/market/kline', end:'end', bybit:true},
   {name:'Binance perpétuos', url:'https://fapi.binance.com/fapi/v1/klines', end:'endTime'},
+  {name:'Bybit perpétuos', url:'https://api.bybit.com/v5/market/kline', end:'end', bybit:true},
   {name:'Binance spot (estimativa por volume à vista)', url:'https://data-api.binance.vision/api/v3/klines', end:'endTime'}
 ];
 
@@ -501,7 +507,11 @@ async function fetchPage(feed, symbol, period, limit, end, signal) {
 }
 
 async function fetchCandles(symbol, period, limit, signal) {
-  const order = feedIndex === undefined ? [0, 1, 2] : [feedIndex, ...[0, 1, 2].filter(index => index !== feedIndex)];
+  const order = feeds.map((_, index) => index);
+  if (feedIndex !== undefined) {
+    order.splice(feedIndex, 1);
+    order.unshift(feedIndex);
+  }
   for (const index of order) {
     const feed = feeds[index];
     let candles;
@@ -574,6 +584,7 @@ async function load(reset = false) {
   }
 }
 function markAsset() {
+  document.getElementById('terminal-link').href = 'index.html?asset=' + asset;
   for (const button of assetButtons) button.setAttribute('aria-pressed', String(button.dataset.asset === asset));
 }
 for (const button of assetButtons) {

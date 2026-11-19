@@ -590,6 +590,7 @@
       <option value="ETHUSDT">ETH</option>
       <option value="SOLUSDT">SOL</option>
       <option value="XRPUSDT">XRP</option>
+      <option value="BNBUSDT">BNB</option>
     </select>
     <span class="px mono" id="px">—</span>
     <span class="chg mono" id="chg">—</span>
@@ -801,7 +802,8 @@
     <button class="icon-btn" id="moreToolsBtn" type="button" title="Mais opções" aria-label="Mais opções" aria-controls="headerTools" aria-expanded="false">⋯</button>
     <div class="header-tools" id="headerTools">
     <a class="pool-link" href="portfolio-xstocks.html" title="Carteira de ações">STOCKS</a>
-    <a class="pool-link" href="liquidacoes.html?v=zoom-suave" title="Mapa estimado de liquidações">LIQUIDAÇÕES</a>
+    <a class="pool-link" id="liquidationsLink" href="liquidacoes.html" title="Mapa estimado de liquidações">LIQUIDAÇÕES</a>
+    <button class="pool-link" id="binanceBook" type="button" aria-haspopup="dialog">LIVRO BINANCE</button>
     <a class="pool-link" href="pool-wbtc-sol-live.html" title="Pool cbBTC/SOL">POOL</a>
     <select class="hsel" id="src" title="Fonte de dados">
       <option value="hyperliquid">Hyperliquid</option>
@@ -902,6 +904,7 @@
 </div>
 
 <script src="liquidation-map.js"></script>
+<script src="binance-book.js"></script>
 <script>
 /* =========================================================================
    IB · BTC TERMINAL — MVP
@@ -973,13 +976,13 @@ const SOURCES = {
   binance:{
     tfMap:{'1m':'1m','5m':'5m','15m':'15m','1h':'1h','4h':'4h','12h':'12h','1d':'1d','1w':'1w','1M':'1M'},
     async rest(tf, symbol='BTCUSDT'){
-      const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${this.tfMap[tf]}&limit=1000`;
+      const url = `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${this.tfMap[tf]}&limit=1000`;
       const r = await fetch(url); if(!r.ok) throw new Error('http '+r.status);
       const d = await r.json();
       return d.map(k=>({time:k[0]/1000, open:+k[1], high:+k[2], low:+k[3], close:+k[4], volume:+k[5]}));
     },
     ws(tf, onCandle, symbol='BTCUSDT'){
-      const sock = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${this.tfMap[tf]}`);
+      const sock = new WebSocket(`wss://data-stream.binance.vision/ws/${symbol.toLowerCase()}@kline_${this.tfMap[tf]}`);
       sock.onmessage = e=>{
         const k = JSON.parse(e.data).k;
         onCandle({time:k.t/1000, open:+k.o, high:+k.h, low:+k.l, close:+k.c, volume:+k.v}, k.x);
@@ -1760,6 +1763,10 @@ function aggregateYearly(monthly){
 
 async function loadData(){
   const candleSymbol = S.symbol;
+  const liquidationAsset = candleSymbol.replace(/USDT$/, '');
+  $('#liquidationsLink').href = ['BTC','ETH','SOL','XRP','BNB'].includes(liquidationAsset)
+    ? 'liquidacoes.html?asset=' + liquidationAsset
+    : 'liquidacoes.html';
   HOLDERS.refresh();
   LIQ_PROFILE.loadingChart();
   setStatus('', 'carregando…'); $('#banner').classList.remove('show');
@@ -4522,6 +4529,8 @@ $('#cycleDays').addEventListener('change', syncCycle);
 /* =========================================================================
    BOOT
    ========================================================================= */
+bindBinanceBook($('#binanceBook'), () => S.symbol);
+
 (function init(){
   const saved=store.load();
   if(saved.tf){ S.tf=saved.tf; }
