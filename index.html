@@ -584,6 +584,7 @@
       <option value="BTCSOL">BTC/SOL</option>
       <option value="ETHUSDT">ETH</option>
       <option value="SOLUSDT">SOL</option>
+      <option value="XRPUSDT">XRP</option>
     </select>
     <span class="px mono" id="px">—</span>
     <span class="chg mono" id="chg">—</span>
@@ -1264,7 +1265,8 @@ const HOLDERS = {
       const day = new Date(Math.min(...lastRows.map(row=>row.time))*1000).toLocaleDateString('pt-BR',{timeZone:'UTC'});
       $('#holderStatus').textContent = 'LTH '+format.format(lastRows[0].value)+' · STH '+format.format(lastRows[1].value)+' · '+day+(asset==='BTC'?'':' · 6 meses · Glassnode');
     }else{
-      $('#holderStatus').textContent=asset==='BTC'?'Preço realizado · BGeometrics':'Estimativa on-chain · 6 meses · Glassnode';
+      $('#holderStatus').textContent = !asset ? 'Dados de holders indisponíveis para este ativo'
+        : asset==='BTC' ? 'Preço realizado · BGeometrics' : 'Estimativa on-chain · 6 meses · Glassnode';
     }
   },
 };
@@ -1763,6 +1765,8 @@ async function loadData(){
     if(candleSymbol!==S.symbol || tf!==S.tf || src!==SOURCES[S.source]) return;
     if(!candles.length) throw new Error('vazio');
     S.candles = candles;
+    const precision = candleSymbol === 'XRPUSDT' ? 4 : 2;
+    candleSeries.applyOptions({priceFormat:{type:'price', precision, minMove:10 ** -precision}});
     IVR.render();
     HOLDERS.candleSymbol = candleSymbol;
     HOLDERS.render();
@@ -1835,7 +1839,8 @@ function onLiveCandle(c, closed){
 
 function updateTicker(cur, prev){
   if(!cur) return;
-  const px=$('#px'); px.textContent = cur.close.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const precision = S.symbol === 'XRPUSDT' ? 4 : 2;
+  const px=$('#px'); px.textContent = cur.close.toLocaleString('en-US',{minimumFractionDigits:precision,maximumFractionDigits:precision});
   px.classList.remove('flash'); void px.offsetWidth; px.classList.add('flash');
   if(prev){
     const d = cur.close-prev.close, pct = d/prev.close*100;
@@ -4035,7 +4040,7 @@ document.addEventListener('keydown', e=>{
 
 $('#tfSel').addEventListener('change', e=>{ S.tf=e.target.value; store.save(); loadData(); });
 
-// ---- ativo da tela principal (BTC / ETH / SOL) ----
+// ---- ativo da tela principal ----
 $('#mainAsset').addEventListener('change', e=>{ S.symbol=e.target.value; store.save(); loadData(); MTFOB.refresh().catch(()=>{}); SUMMARY.refresh().catch(()=>{}); PATTERNS.detect(); if(FLOW.on){ FLOW.samples=[]; FLOW.cur=null; FLOW.ls=null; FLOW.load(); } });
 
 // ---- tela cheia (entra/sai; o botão vira "voltar" quando em tela cheia) ----
@@ -4500,7 +4505,12 @@ $('#cycleDays').addEventListener('change', syncCycle);
   if(saved.tf){ S.tf=saved.tf; }
   $('#tfSel').value = S.tf;
   if(saved.source){ S.source=saved.source; $('#src').value=S.source; }
-  if(saved.symbol){ S.symbol=saved.symbol; $('#mainAsset').value=S.symbol; }
+  const mainAsset = $('#mainAsset');
+  const requestedAsset = new URLSearchParams(location.search).get('asset')?.toUpperCase();
+  const linkedAsset = Array.from(mainAsset.options).find(option =>
+    option.value === requestedAsset || option.value === requestedAsset + 'USDT');
+  if(linkedAsset || saved.symbol) S.symbol = linkedAsset?.value || saved.symbol;
+  mainAsset.value = S.symbol;
   if(Array.isArray(saved.drawings)) S.drawings=saved.drawings;
   if(saved.ob){ Object.assign(OB.cfg, saved.ob);
     $('#obOn').checked=OB.cfg.on; $('#obLen').value=OB.cfg.len;
@@ -4550,7 +4560,7 @@ $('#cycleDays').addEventListener('change', syncCycle);
   resizeOverlay();
   // restaura layout de painéis (GRID.set(1) carrega a tela única via resumeSingle→loadData)
   if(saved.grid && Array.isArray(saved.grid.panes)) GRID.saved = saved.grid.panes;
-  GRID.set(saved.grid && [2,4,6].includes(saved.grid.n) ? saved.grid.n : 1);
+  GRID.set(!linkedAsset && saved.grid && [2,4,6].includes(saved.grid.n) ? saved.grid.n : 1);
 })();
 </script>
 </body>
