@@ -571,9 +571,11 @@
     .ticker .asset-sel{width:62px}
     header .status{display:none}
   }
-.liq-tip{position:absolute;z-index:8;pointer-events:none;background:var(--panel);color:var(--txt);border:1px solid var(--hair-2);border-radius:7px;padding:7px 9px;font:11px/1.5 'IBM Plex Mono',monospace;max-width:240px;box-shadow:0 4px 15px #0005}
-.liq-tip strong,.liq-tip small{display:block}
-.liq-tip small{color:var(--muted)}
+.liq-tip{position:absolute;z-index:8;pointer-events:none;background:#050505;color:#fff;border:1px solid #606060;border-radius:10px;padding:10px 12px;font:11px/1.45 'IBM Plex Mono',monospace;max-width:240px;box-shadow:0 6px 20px #0009}
+.liq-tip strong,.liq-tip small,.liq-tip span{display:block}
+.liq-tip strong{font-size:13px}
+.liq-tip span+span{margin-top:6px;padding-top:6px;border-top:1px solid #414141}
+.liq-tip small{margin-top:6px;color:#dedede}
 </style>
 </head>
 <body>
@@ -1956,6 +1958,7 @@ const LIQ = {
     this.cols=cols; this.rows=R; this.pMin=pMin; this.pMax=pMax; this.tMin=win[0].time; this.tMax=win[cols-1].time;
     this.iMin=all.length-cols; this.iMax=all.length-1;   // índices lógicos (âncora estável no zoom/scroll)
     this.notional=notional;
+    this.referenceCloses=win.map(c=>c.close);
     this.quoteUnit=quoteUnit;
     this.market=S.source+':'+S.symbol+':'+S.tf;
     this.ready=true;
@@ -1979,17 +1982,28 @@ const LIQ = {
     const row=Math.floor((price-this.pMin)/step);
     if(!Number.isInteger(column) || column<0 || column>=this.cols || row<0 || row>=this.rows) return hide();
     const value=this.notional[row*this.cols+column];
-    if(!(value>0)) return hide();
+    const reference=this.referenceCloses[column];
+    const origin=Math.max(0,Math.min(this.rows-1,Math.floor((reference-this.pMin)/step)));
+    let total=0;
+    for(let bandRow=Math.min(origin,row);bandRow<=Math.max(origin,row);bandRow++){
+      total+=this.notional[bandRow*this.cols+column];
+    }
+    if(!(total>0)) return hide();
     const format=new Intl.NumberFormat('pt-BR',{maximumSignificantDigits:7});
     const amount=new Intl.NumberFormat('pt-BR',{notation:'compact',maximumFractionDigits:1});
     const band=this.pMin+row*step;
-    const title=document.createElement('strong');
-    title.textContent='≈ '+amount.format(value)+' '+this.quoteUnit+' nocionais';
     const range=document.createElement('span');
     range.textContent='Faixa '+format.format(band)+'–'+format.format(band+step);
+    const sum=document.createElement('span');
+    sum.textContent='Acumulado desde '+format.format(reference);
+    for(const [label,notional] of [[range,value],[sum,total]]){
+      const number=document.createElement('strong');
+      number.textContent='≈ '+amount.format(notional)+' '+this.quoteUnit;
+      label.append(number);
+    }
     const method=document.createElement('small');
-    method.textContent='Cenário com 1% do giro estimado das velas';
-    el.replaceChildren(title,range,method);
+    method.textContent='Nocional simulado · 1% do giro das velas';
+    el.replaceChildren(range,sum,method);
     el.hidden=false;
     el.style.left=Math.max(2,Math.min(point.x+12,stage.clientWidth-el.offsetWidth-4))+'px';
     el.style.top=Math.max(2,Math.min(point.y+12,bottom-el.offsetHeight-4))+'px';
