@@ -7,13 +7,23 @@
 <style>
 :root{color-scheme:dark;font:15px system-ui;background:#101010;color:#eee}
 *{box-sizing:border-box}body{max-width:1440px;margin:auto;padding:18px}
-header,.controls,.legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header,.legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 a{color:#ddd}h1{font-size:1.3rem;margin:0}header{margin-bottom:16px}
-label{display:flex;align-items:center;gap:6px;color:#ccc}
-select,button{font:inherit;color:inherit;background:#222;border:1px solid #555;border-radius:6px;padding:6px 9px}
-figure{position:relative;margin:14px 0 8px;border:1px solid #3a3a3a;border-radius:8px;overflow:hidden;background:#171717}
-canvas{width:100%;height:clamp(280px,59vh,650px);display:block}
-#chart{touch-action:none;cursor:grab}
+.controls{display:flex;flex-wrap:wrap;align-items:end;gap:10px 16px}
+.control-group{display:grid;gap:5px;min-width:0}
+.control-label{color:#bbb;font-size:.76rem}
+.filters,.chart-actions{display:grid;grid-auto-flow:column;gap:6px}
+.filters label{display:grid;gap:5px;min-width:0}
+select,button{min-height:44px;font:inherit;color:inherit;background:#222;border:1px solid #555;border-radius:6px;padding:6px 9px}
+select{width:100%}button{cursor:pointer}
+button:focus-visible,select:focus-visible{outline:2px solid #42e1cf;outline-offset:2px}
+.chart-actions{margin-left:auto}
+.chart-actions button{white-space:nowrap}
+#fullscreen[aria-pressed="true"]{border-color:#42e1cf;color:#bafff4}
+figure{position:relative;display:flex;flex-direction:column;min-height:0;margin:14px 0 8px;border:1px solid #3a3a3a;border-radius:8px;overflow:hidden;background:#171717}
+.chart-plot{position:relative;min-height:0}
+canvas{display:block}
+#chart{width:100%;height:clamp(280px,59vh,720px);height:clamp(280px,59dvh,720px);touch-action:none;cursor:grab}
 #chart.dragging{cursor:grabbing}
 #chart.scaling-price{cursor:ns-resize}
 figcaption{padding:8px 10px;color:#ccc;font-size:.83rem;border-top:1px solid #333}
@@ -24,11 +34,32 @@ figcaption{padding:8px 10px;color:#ccc;font-size:.83rem;border-top:1px solid #33
 .liq-tip span+span{margin-top:6px;padding-top:6px;border-top:1px solid #414141}
 .liq-tip small{margin-top:6px;color:#dedede}
 .ramp{width:75px;height:8px;background:linear-gradient(90deg,#2d1482,#d62056,#faf7be);border-radius:3px}
-.asset-buttons{display:flex;gap:5px;flex-wrap:wrap}
-.asset-buttons button{min-width:46px;cursor:pointer}
+.asset-buttons,#leverage-buttons{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:5px}
+.asset-buttons button,#leverage-buttons button{min-width:0}
 .asset-buttons button[aria-pressed="true"],#leverage-buttons button[aria-pressed="true"]{background:#153c39;border-color:#42e1cf;color:#bafff4}
-#leverage-buttons{margin-top:10px}
 #leverage-buttons button{border-left:3px solid var(--tier,#555)}
+.chart-panel.is-expanded{display:flex;flex-direction:column;gap:8px;box-sizing:border-box;width:100%;height:100%;padding:8px;background:#101010;overflow:auto}
+.chart-panel.is-expanded figure{flex:1 0 160px;margin:0}
+.chart-panel.is-expanded .chart-plot{flex:1}
+.chart-panel.is-expanded #chart{height:100%;position:absolute;inset:0}
+.chart-panel.is-expanded .gauges{display:none}
+.chart-panel.is-overlay{position:fixed;inset:0;z-index:30;height:100dvh}
+body.chart-overlay-open{overflow:hidden}
+@media(max-width:800px){.chart-actions{margin-left:0}}
+@media(max-width:600px){
+  body{padding:10px}
+  header{margin-bottom:12px}
+  .controls{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+  .filters,.chart-actions{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .filters select,.chart-actions button{padding-inline:5px;font-size:.82rem}
+  .chart-actions button{white-space:normal}
+  .asset-buttons button,#leverage-buttons button{padding-inline:3px}
+}
+@media(max-height:520px) and (orientation:landscape){
+  .chart-panel.is-expanded .controls{display:flex;gap:5px 9px}
+  .chart-panel.is-expanded .control-label{font-size:.7rem}
+  .chart-panel.is-expanded select,.chart-panel.is-expanded button{min-height:34px}
+}
 .gauges{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
 .gauge{--side:#42e1cf;display:flex;align-items:center;gap:12px;background:#181b24;border:1px solid #363b4b;border-radius:8px;padding:9px 12px;min-width:0}
 .gauge[data-side="long"]{--side:#ff778a}
@@ -42,25 +73,37 @@ figcaption{padding:8px 10px;color:#ccc;font-size:.83rem;border-top:1px solid #33
 </head>
 <body>
 <header><a href="index.html">← Terminal</a><h1>Mapa de liquidações</h1></header>
+<section id="chart-panel" class="chart-panel" aria-label="Mapa interativo">
 <div class="controls">
+<div class="control-group">
+<span class="control-label">Ativo</span>
 <div class="asset-buttons" role="group" aria-label="Ativo">
   <button type="button" data-asset="BTC" aria-pressed="true">BTC</button>
   <button type="button" data-asset="ETH" aria-pressed="false">ETH</button>
   <button type="button" data-asset="SOL" aria-pressed="false">SOL</button>
   <button type="button" data-asset="XRP" aria-pressed="false">XRP</button>
 </div>
-<label>Velas <select id="interval">
+</div>
+<div class="filters" role="group" aria-label="Filtros do gráfico">
+<label><span class="control-label">Velas</span><select id="interval">
 <option value="1">1 min</option><option value="3">3 min</option><option value="5">5 min</option>
 <option value="15" selected>15 min</option><option value="30">30 min</option><option value="60">1 h</option>
 <option value="120">2 h</option><option value="240">4 h</option><option value="360">6 h</option>
 <option value="720">12 h</option><option value="D">1 dia</option><option value="W">1 semana</option>
 </select></label>
-<label>Histórico <select id="history"><option value="120">120 velas</option><option value="250">250 velas</option><option value="500">500 velas</option><option value="1000" selected>1.000 velas</option><option value="5000">5.000 velas</option><option value="10000">10.000 velas</option></select></label>
-<label>Faixa de preço <select id="price-range"><option value="3">±3%</option><option value="15" selected>±15%</option><option value="30">±30%</option><option value="50">±50%</option><option value="all">Todas as zonas</option></select></label>
-<button id="refresh" type="button">Atualizar</button>
-<button id="reset-view" type="button">Recentralizar</button>
+<label><span class="control-label">Histórico</span><select id="history"><option value="120">120 velas</option><option value="250">250 velas</option><option value="500">500 velas</option><option value="1000" selected>1.000 velas</option><option value="5000">5.000 velas</option><option value="10000">10.000 velas</option></select></label>
+<label><span class="control-label">Faixa de preço</span><select id="price-range"><option value="3">±3%</option><option value="15" selected>±15%</option><option value="30">±30%</option><option value="50">±50%</option><option value="all">Todas as zonas</option></select></label>
 </div>
-<div id="leverage-buttons" class="asset-buttons" role="group" aria-label="Alavancagem estimada"></div>
+<div class="control-group">
+  <span class="control-label">Alavancagem</span>
+  <div id="leverage-buttons" role="group" aria-label="Alavancagem estimada"></div>
+</div>
+<div class="chart-actions" role="group" aria-label="Ações do gráfico">
+  <button id="refresh" type="button">Atualizar</button>
+  <button id="reset-view" type="button">Recentralizar</button>
+  <button id="fullscreen" type="button" aria-pressed="false">Tela cheia</button>
+</div>
+</div>
 <section class="gauges" aria-label="Distância até as zonas de liquidação mais próximas">
   <div class="gauge" data-side="short">
     <canvas id="short-dial" aria-hidden="true"></canvas>
@@ -72,10 +115,13 @@ figcaption{padding:8px 10px;color:#ccc;font-size:.83rem;border-top:1px solid #33
   </div>
 </section>
 <figure>
+<div class="chart-plot">
 <canvas id="chart" role="img" aria-label="Gráfico de velas com intensidade estimada de liquidação por preço e horário"></canvas>
 <div id="liqTip" class="liq-tip" hidden></div>
+</div>
 <figcaption id="status" role="status">Carregando cotações…</figcaption>
 </figure>
+</section>
 <div class="legend"><span>Intensidade relativa baixa</span><span class="ramp"></span><span>alta</span><span>· Alta em verde · Queda em vermelho</span><span>· Arraste a escala à direita para ajustar a altura · Dois cliques restauram a escala</span></div>
 <p class="legend">Zonas estimadas pelo volume das velas da fonte indicada abaixo do gráfico e alavancagens de 2×, 3×, 5×, 10×, 25×, 50× e 100×. Passe o mouse ou toque para ver os valores. As linhas coloridas marcam a zona mais forte de cada lado por alavancagem no último candle. O ponteiro avança conforme o preço se aproxima da zona e o contorno acende a 0,5% ou menos. Horários do Japão.</p>
 <script src="liquidation-map.js"></script>
@@ -118,6 +164,51 @@ for (const [index, leverage] of liquidationLeverages.entries()) {
 }
 const contacts = new Map();
 let priceDrag = null;
+
+const chartPanel = document.getElementById('chart-panel');
+const fullscreenButton = document.getElementById('fullscreen');
+let overlayOpen = false;
+const nativeFullscreen = () => (document.fullscreenElement ?? document.webkitFullscreenElement) === chartPanel;
+
+function syncFullscreen() {
+  const expanded = nativeFullscreen() || overlayOpen;
+  chartPanel.classList.toggle('is-expanded', expanded);
+  chartPanel.classList.toggle('is-overlay', overlayOpen);
+  document.body.classList.toggle('chart-overlay-open', overlayOpen);
+  fullscreenButton.setAttribute('aria-pressed', String(expanded));
+  fullscreenButton.textContent = expanded ? 'Sair da tela cheia' : 'Tela cheia';
+  pointer = null;
+  scheduleDraw();
+}
+
+fullscreenButton.addEventListener('click', async () => {
+  if (overlayOpen) overlayOpen = false;
+  else if (nativeFullscreen()) {
+    const exit = document.exitFullscreen ?? document.webkitExitFullscreen;
+    try {
+      await exit.call(document);
+    } catch {
+      return;
+    }
+  } else {
+    const enter = chartPanel.requestFullscreen ?? chartPanel.webkitRequestFullscreen;
+    try {
+      if (enter) await enter.call(chartPanel);
+      else overlayOpen = true;
+    } catch {
+      overlayOpen = true;
+    }
+  }
+  syncFullscreen();
+});
+document.addEventListener('fullscreenchange', syncFullscreen);
+document.addEventListener('webkitfullscreenchange', syncFullscreen);
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape' || !overlayOpen) return;
+  overlayOpen = false;
+  syncFullscreen();
+  fullscreenButton.focus();
+});
 
 function plotBounds() {
   return {left:8, top:14, right:canvas.clientWidth - 73, bottom:canvas.clientHeight - 30};
