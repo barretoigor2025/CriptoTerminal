@@ -15,6 +15,7 @@ figure{position:relative;margin:14px 0 8px;border:1px solid #3a3a3a;border-radiu
 canvas{width:100%;height:clamp(280px,59vh,650px);display:block}
 #chart{touch-action:none;cursor:grab}
 #chart.dragging{cursor:grabbing}
+#chart.scaling-price{cursor:ns-resize}
 figcaption{padding:8px 10px;color:#ccc;font-size:.83rem;border-top:1px solid #333}
 .legend{font-size:.8rem;color:#bbb;gap:8px}
 .liq-tip{position:absolute;z-index:8;pointer-events:none;background:#050505;color:#fff;border:1px solid #606060;border-radius:10px;padding:10px 12px;font:11px/1.45 'IBM Plex Mono',monospace;max-width:240px;box-shadow:0 6px 20px #0009}
@@ -72,7 +73,7 @@ figcaption{padding:8px 10px;color:#ccc;font-size:.83rem;border-top:1px solid #33
 <div id="liqTip" class="liq-tip" hidden></div>
 <figcaption id="status" role="status">Carregando cotações…</figcaption>
 </figure>
-<div class="legend"><span>Intensidade relativa baixa</span><span class="ramp"></span><span>alta</span><span>· Alta em verde · Queda em vermelho</span></div>
+<div class="legend"><span>Intensidade relativa baixa</span><span class="ramp"></span><span>alta</span><span>· Alta em verde · Queda em vermelho</span><span>· Arraste a escala à direita para ajustar a altura · Dois cliques restauram a escala</span></div>
 <p class="legend">Zonas estimadas pelo volume das velas da fonte indicada abaixo do gráfico e alavancagens de 2×, 3×, 5×, 10×, 25×, 50× e 100×. O mapa estima posições ainda abertas em cada vela. O ponteiro avança conforme o preço se aproxima da zona e o contorno acende a 0,5% ou menos. Horários do Japão.</p>
 <script src="liquidation-map.js"></script>
 <script>
@@ -93,6 +94,7 @@ const dateFormat = new Intl.DateTimeFormat('pt-BR', {
 });
 let controller, map, pointer, viewport, pendingDraw;
 const contacts = new Map();
+let priceDrag = null;
 
 function plotBounds() {
   return {left:8, top:14, right:canvas.clientWidth - 73, bottom:canvas.clientHeight - 30};
@@ -422,19 +424,43 @@ function transformView(before, after, factor, verticalFactor) {
     priceAnchor - (bottom - after.y) / height * nextSpan, nextSpan);
 }
 
+function onPriceScale(point) {
+  const {right, top, bottom} = plotBounds();
+  return point.x >= right && point.y >= top && point.y <= bottom;
+}
+
 canvas.addEventListener('pointerdown', event => {
-  if (!map || event.button !== 0 || contacts.size >= 2) return;
-  contacts.set(event.pointerId, localPoint(event));
+  if (!map || event.button !== 0 || priceDrag || contacts.size >= 2) return;
+  const point = localPoint(event);
+  if (onPriceScale(point)) {
+    if (contacts.size) return;
+    const {low, high} = chartView();
+    priceDrag = {id:event.pointerId, y:point.y, center:(low + high) / 2, span:high - low};
+    canvas.classList.add('scaling-price');
+  } else {
+    contacts.set(event.pointerId, point);
+    canvas.classList.add('dragging');
+  }
   canvas.setPointerCapture(event.pointerId);
-  canvas.classList.add('dragging');
   pointer = null;
   scheduleDraw();
 });
 canvas.addEventListener('pointermove', event => {
   const next = localPoint(event);
+  if (priceDrag) {
+    if (!map || priceDrag.id !== event.pointerId) return;
+    const {top, bottom} = plotBounds();
+    const {first, count} = chartView();
+    const zoom = Math.exp(clamp((next.y - priceDrag.y) / Math.max(1, bottom - top) * 3, -5, 5));
+    const dataSpan = map.max - map.min;
+    const span = clamp(priceDrag.span * zoom, dataSpan / 80, dataSpan * 4);
+    setView(first, count, priceDrag.center - span / 2, span);
+    return;
+  }
   const previous = contacts.get(event.pointerId);
   if (!previous) {
     if (!contacts.size && event.pointerType === 'mouse') {
+      canvas.classList.toggle('scaling-price', Boolean(map) && onPriceScale(next));
       pointer = next;
       scheduleDraw();
     }
@@ -453,11 +479,20 @@ canvas.addEventListener('pointermove', event => {
 });
 for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
   canvas.addEventListener(type, event => {
+    if (priceDrag?.id === event.pointerId) {
+      priceDrag = null;
+      canvas.classList.toggle('scaling-price', Boolean(map) && event.type === 'pointerup' &&
+        event.pointerType === 'mouse' && onPriceScale(localPoint(event)));
+    }
     contacts.delete(event.pointerId);
     if (!contacts.size) canvas.classList.remove('dragging');
   });
 }
-canvas.addEventListener('pointerleave', () => { pointer = null; scheduleDraw(); });
+canvas.addEventListener('pointerleave', () => {
+  if (!priceDrag) canvas.classList.remove('scaling-price');
+  pointer = null;
+  scheduleDraw();
+});
 canvas.addEventListener('wheel', event => {
   if (!map) return;
   event.preventDefault();
@@ -468,7 +503,13 @@ canvas.addEventListener('wheel', event => {
   const priceScale = event.shiftKey || point.x >= right;
   transformView(point, point, priceScale ? 1 : factor, priceScale ? factor : 1);
 }, {passive:false});
-canvas.addEventListener('dblclick', () => {
+canvas.addEventListener('dblclick', event => {
+  if (!map) return;
+  if (onPriceScale(localPoint(event))) {
+    const {first, count} = chartView();
+    setView(first, count, map.min, map.max - map.min);
+    return;
+  }
   viewport = null;
   scheduleDraw();
 });
