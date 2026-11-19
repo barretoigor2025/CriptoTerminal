@@ -13,6 +13,8 @@ label{display:flex;align-items:center;gap:6px;color:#ccc}
 select,button{font:inherit;color:inherit;background:#222;border:1px solid #555;border-radius:6px;padding:6px 9px}
 figure{margin:14px 0 8px;border:1px solid #3a3a3a;border-radius:8px;overflow:hidden;background:#171717}
 canvas{width:100%;height:clamp(280px,59vh,650px);display:block}
+#chart{touch-action:none;cursor:grab}
+#chart.dragging{cursor:grabbing}
 figcaption{padding:8px 10px;color:#ccc;font-size:.83rem;border-top:1px solid #333}
 .legend{font-size:.8rem;color:#bbb;gap:8px}
 .ramp{width:75px;height:8px;background:linear-gradient(90deg,#342571,#af347d,#ffae44);border-radius:3px}
@@ -39,6 +41,7 @@ figcaption{padding:8px 10px;color:#ccc;font-size:.83rem;border-top:1px solid #33
 </select></label>
 <label>Histórico <select id="history"><option value="120">120 velas</option><option value="250" selected>250 velas</option><option value="500">500 velas</option></select></label>
 <button id="refresh" type="button">Atualizar</button>
+<button id="reset-view" type="button">Recentralizar</button>
 </div>
 <section class="gauges" aria-label="Distância até as zonas de liquidação mais próximas">
   <div class="gauge" data-side="short">
@@ -68,7 +71,38 @@ const ctx = canvas.getContext('2d');
 const dateFormat = new Intl.DateTimeFormat('pt-BR', {
   timeZone:'Asia/Tokyo', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'
 });
-let controller, map, pointer;
+let controller, map, pointer, viewport, pendingDraw;
+const contacts = new Map();
+
+function plotBounds() {
+  return {left:8, top:14, right:canvas.clientWidth - 73, bottom:canvas.clientHeight - 30};
+}
+
+function chartView() {
+  return viewport ?? {first:0, count:map.candles.length, low:map.min, high:map.max};
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function setView(first, count, low, span) {
+  const dataSpan = map.max - map.min;
+  count = clamp(count, Math.min(8, map.candles.length), map.candles.length * 1.5);
+  span = clamp(span, dataSpan / 80, dataSpan * 4);
+  first = clamp(first, 1 - count, map.candles.length - 1);
+  low = clamp(low, map.min - span, map.max);
+  viewport = {first, count, low, high:low + span};
+  scheduleDraw();
+}
+
+function scheduleDraw() {
+  if (pendingDraw !== undefined) return;
+  pendingDraw = requestAnimationFrame(() => {
+    pendingDraw = undefined;
+    draw();
+  });
+}
 
 function buildMap(candles) {
   const rows = 120;
@@ -181,25 +215,34 @@ function draw() {
   canvas.height = Math.round(height * ratio);
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   if (!map || width < 100) return;
-  const {min, max, step, rows, peak, cells, candles} = map;
-  const top = 14, left = 8, right = width - 73, bottom = height - 30;
-  const stride = (right - left) / candles.length;
-  const y = price => bottom - (price - min) / (max - min) * (bottom - top);
+  const {min, step, rows, peak, cells, candles} = map;
+  const {top, left, right, bottom} = plotBounds();
+  const {first, count, low, high} = chartView();
+  const stride = (right - left) / count;
+  const firstColumn = Math.max(0, Math.floor(first));
+  const endColumn = Math.min(candles.length, Math.ceil(first + count));
+  const y = price => bottom - (price - low) / (high - low) * (bottom - top);
   ctx.font = '11px system-ui';
   ctx.fillStyle = '#bbb';
   for (let i = 0; i <= 5; i++) {
-    const price = min + (max - min) * i / 5;
+    const price = low + (high - low) * i / 5;
     ctx.fillRect(left, y(price), right - left, 0.3);
     ctx.fillText(priceLabel(price), right + 7, y(price) + 4);
   }
-  candles.forEach((candle, column) => {
-    const x = left + stride * column;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(left, top, right - left, bottom - top);
+  ctx.clip();
+  for (let column = firstColumn; column < endColumn; column++) {
+    const candle = candles[column];
+    const x = left + stride * (column - first);
     const rowHeight = y(min) - y(min + step);
     for (let row = 0; row < rows; row++) {
       const strength = peak && Math.sqrt(cells[column][row] / peak);
       if (strength < 0.03) continue;
       ctx.fillStyle = heatFill(strength);
-      ctx.fillRect(x, y(min + step * (row + 1)), stride, rowHeight);
+      const rowTop = y(min + step * (row + 1));
+      if (rowTop + rowHeight >= top && rowTop < bottom) ctx.fillRect(x, rowTop, stride, rowHeight);
     }
     const center = x + stride / 2;
     const bodyTop = Math.min(y(candle.open), y(candle.close));
@@ -208,12 +251,6 @@ function draw() {
     ctx.fillStyle = candle.close >= candle.open ? '#5ef5bb' : '#ff6579';
     ctx.fillRect(center - 0.4, y(candle.high), 0.8, y(candle.low) - y(candle.high));
     ctx.fillRect(center - bodyWidth / 2, bodyTop, bodyWidth, bodyHeight);
-  });
-  ctx.fillStyle = '#bbb';
-  const ticks = Math.max(1, Math.floor((right - left) / 105));
-  for (let i = 0; i < ticks; i++) {
-    const column = Math.floor(i * candles.length / ticks);
-    ctx.fillText(dateFormat.format(candles[column].time), left + column * stride, bottom + 19);
   }
   ctx.fillStyle = '#fff';
   for (let x = left; x < right; x += 6) ctx.fillRect(x, y(map.current), 3, 1);
@@ -223,6 +260,7 @@ function draw() {
     const strongest = nearby.slice(1).sort((a, b) => b.weight - a.weight).slice(0, 2);
     for (const level of [...nearby.slice(0, 1), ...strongest]) {
       const markerY = y(level.price);
+      if (markerY < top || markerY > bottom) continue;
       ctx.fillStyle = sideColors[side];
       for (let x = Math.max(left, right - 130); x < right; x += 6) ctx.fillRect(x, markerY, 3, 1);
       ctx.beginPath();
@@ -239,11 +277,19 @@ function draw() {
       occupied.push(markerY);
     }
   }
+  ctx.restore();
+  ctx.fillStyle = '#bbb';
+  const tickStep = Math.max(1, Math.ceil(105 / stride));
+  for (let column = firstColumn; column < endColumn; column += tickStep) {
+    const x = left + (column - first + 0.5) * stride;
+    if (x >= left && x + 94 <= width) ctx.fillText(dateFormat.format(candles[column].time), x, bottom + 19);
+  }
   if (!pointer || pointer.x < left || pointer.x >= right || pointer.y < top || pointer.y > bottom) return;
-  const column = Math.floor((pointer.x - left) / stride);
-  const price = max - (pointer.y - top) / (bottom - top) * (max - min);
-  const row = Math.min(rows - 1, Math.max(0, Math.floor((price - min) / step)));
-  const intensity = peak ? Math.round(cells[column][row] / peak * 100) : 0;
+  const column = Math.floor(first + (pointer.x - left) / stride);
+  if (!candles[column]) return;
+  const price = high - (pointer.y - top) / (bottom - top) * (high - low);
+  const row = Math.floor((price - min) / step);
+  const intensity = peak && row >= 0 && row < rows ? Math.round(cells[column][row] / peak * 100) : 0;
   ctx.fillStyle = '#aaa';
   ctx.fillRect(pointer.x, top, 1, bottom - top);
   ctx.fillRect(left, pointer.y, right - left, 1);
@@ -260,7 +306,7 @@ async function load(reset = false) {
   const request = new AbortController();
   controller = request;
   if (reset) {
-    map = pointer = null;
+    map = pointer = viewport = null;
     render();
   }
   const symbol = asset.value + 'USDT';
@@ -290,12 +336,82 @@ async function load(reset = false) {
 }
 for (const control of [asset, interval, historySize]) control.addEventListener('change', () => load(true));
 refresh.addEventListener('click', () => load());
-canvas.addEventListener('pointermove', event => {
-  const bounds = canvas.getBoundingClientRect();
-  pointer = {x:event.clientX - bounds.left, y:event.clientY - bounds.top};
-  draw();
+document.getElementById('reset-view').addEventListener('click', () => {
+  viewport = null;
+  scheduleDraw();
 });
-canvas.addEventListener('pointerleave', () => { pointer = null; draw(); });
+
+function localPoint(event) {
+  const bounds = canvas.getBoundingClientRect();
+  return {x:event.clientX - bounds.left, y:event.clientY - bounds.top};
+}
+
+function transformView(before, after, factor, verticalFactor) {
+  if (!map) return;
+  const {left, top, right, bottom} = plotBounds();
+  const {first, count, low, high} = chartView();
+  const width = right - left, height = bottom - top;
+  if (width <= 0 || height <= 0) return;
+  const span = high - low;
+  const dataSpan = map.max - map.min;
+  const nextCount = clamp(count * factor, Math.min(8, map.candles.length), map.candles.length * 1.5);
+  const nextSpan = clamp(span * verticalFactor, dataSpan / 80, dataSpan * 4);
+  const priceAnchor = low + (bottom - before.y) / height * span;
+  const candleAnchor = first + (before.x - left) / width * count;
+  setView(candleAnchor - (after.x - left) / width * nextCount, nextCount,
+    priceAnchor - (bottom - after.y) / height * nextSpan, nextSpan);
+}
+
+canvas.addEventListener('pointerdown', event => {
+  if (!map || event.button !== 0 || contacts.size >= 2) return;
+  contacts.set(event.pointerId, localPoint(event));
+  canvas.setPointerCapture(event.pointerId);
+  canvas.classList.add('dragging');
+  pointer = null;
+  scheduleDraw();
+});
+canvas.addEventListener('pointermove', event => {
+  const next = localPoint(event);
+  const previous = contacts.get(event.pointerId);
+  if (!previous) {
+    if (!contacts.size && event.pointerType === 'mouse') {
+      pointer = next;
+      scheduleDraw();
+    }
+    return;
+  }
+  const other = Array.from(contacts.entries()).find(([id]) => id !== event.pointerId)?.[1];
+  contacts.set(event.pointerId, next);
+  if (!other) {
+    transformView(previous, next, 1, 1);
+    return;
+  }
+  const midpoint = point => ({x:(point.x + other.x) / 2, y:(point.y + other.y) / 2});
+  const distance = point => Math.max(10, Math.hypot(point.x - other.x, point.y - other.y));
+  const ratio = distance(previous) / distance(next);
+  transformView(midpoint(previous), midpoint(next), ratio, ratio);
+});
+for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+  canvas.addEventListener(type, event => {
+    contacts.delete(event.pointerId);
+    if (!contacts.size) canvas.classList.remove('dragging');
+  });
+}
+canvas.addEventListener('pointerleave', () => { pointer = null; scheduleDraw(); });
+canvas.addEventListener('wheel', event => {
+  if (!map) return;
+  event.preventDefault();
+  const point = localPoint(event);
+  const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? canvas.clientHeight : 1);
+  const factor = Math.exp(clamp(delta, -200, 200) * 0.003);
+  const {right} = plotBounds();
+  const priceScale = event.shiftKey || point.x >= right;
+  transformView(point, point, priceScale ? 1 : factor, priceScale ? factor : 1);
+}, {passive:false});
+canvas.addEventListener('dblclick', () => {
+  viewport = null;
+  scheduleDraw();
+});
 function render() {
   draw();
   drawDial('short');
