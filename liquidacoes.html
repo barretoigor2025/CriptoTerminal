@@ -435,7 +435,9 @@ canvas.addEventListener('pointerdown', event => {
   if (onPriceScale(point)) {
     if (contacts.size) return;
     const {low, high} = chartView();
-    priceDrag = {id:event.pointerId, y:point.y, center:(low + high) / 2, span:high - low};
+    const {top, bottom} = plotBounds();
+    const margin = (bottom - top) * 0.2;
+    priceDrag = {id:event.pointerId, anchor:bottom - point.y + margin, margin, center:(low + high) / 2, span:high - low};
     canvas.classList.add('scaling-price');
   } else {
     contacts.set(event.pointerId, point);
@@ -451,7 +453,8 @@ canvas.addEventListener('pointermove', event => {
     if (!map || priceDrag.id !== event.pointerId) return;
     const {top, bottom} = plotBounds();
     const {first, count} = chartView();
-    const zoom = Math.exp(clamp((next.y - priceDrag.y) / Math.max(1, bottom - top) * 3, -5, 5));
+    const distance = bottom - clamp(next.y, top, bottom) + priceDrag.margin;
+    const zoom = priceDrag.anchor / Math.max(1, distance);
     const dataSpan = map.max - map.min;
     const span = clamp(priceDrag.span * zoom, dataSpan / 80, dataSpan * 4);
     setView(first, count, priceDrag.center - span / 2, span);
@@ -472,10 +475,10 @@ canvas.addEventListener('pointermove', event => {
     transformView(previous, next, 1, 1);
     return;
   }
-  const midpoint = point => ({x:(point.x + other.x) / 2, y:(point.y + other.y) / 2});
+  const midpoint = point => ({x:(point.x + other.x) / 2, y:other.y});
   const distance = point => Math.max(10, Math.hypot(point.x - other.x, point.y - other.y));
   const ratio = distance(previous) / distance(next);
-  transformView(midpoint(previous), midpoint(next), ratio, ratio);
+  transformView(midpoint(previous), midpoint(next), ratio, 1);
 });
 for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
   canvas.addEventListener(type, event => {
@@ -497,11 +500,18 @@ canvas.addEventListener('wheel', event => {
   if (!map) return;
   event.preventDefault();
   const point = localPoint(event);
-  const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? canvas.clientHeight : 1);
-  const factor = Math.exp(clamp(delta, -200, 200) * 0.003);
-  const {right} = plotBounds();
-  const priceScale = event.shiftKey || point.x >= right;
-  transformView(point, point, priceScale ? 1 : factor, priceScale ? factor : 1);
+  const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? canvas.clientHeight : 1;
+  const {left, right, top, bottom} = plotBounds();
+  const anchor = {x:clamp(point.x, left, right), y:clamp(point.y, top, bottom)};
+  const horizontal = !event.shiftKey && !onPriceScale(point) && Math.abs(event.deltaX) > Math.abs(event.deltaY);
+  if (horizontal) {
+    transformView(anchor, {...anchor, x:anchor.x - event.deltaX * unit}, 1, 1);
+    return;
+  }
+  const delta = clamp(event.deltaY * unit / 100, -1, 1);
+  const factor = 1 / (1 - 0.1 * delta);
+  const priceScale = event.shiftKey || onPriceScale(point);
+  transformView(anchor, anchor, priceScale ? 1 : factor, priceScale ? factor : 1);
 }, {passive:false});
 canvas.addEventListener('dblclick', event => {
   if (!map) return;

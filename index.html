@@ -801,7 +801,7 @@
     <button class="icon-btn" id="moreToolsBtn" type="button" title="Mais opções" aria-label="Mais opções" aria-controls="headerTools" aria-expanded="false">⋯</button>
     <div class="header-tools" id="headerTools">
     <a class="pool-link" href="portfolio-xstocks.html" title="Carteira de ações">STOCKS</a>
-    <a class="pool-link" href="liquidacoes.html?v=mapa-amplo" title="Mapa estimado de liquidações">LIQUIDAÇÕES</a>
+    <a class="pool-link" href="liquidacoes.html?v=zoom-suave" title="Mapa estimado de liquidações">LIQUIDAÇÕES</a>
     <a class="pool-link" href="pool-wbtc-sol-live.html" title="Pool cbBTC/SOL">POOL</a>
     <select class="hsel" id="src" title="Fonte de dados">
       <option value="hyperliquid">Hyperliquid</option>
@@ -1880,6 +1880,16 @@ const FIB = [0,0.236,0.382,0.5,0.618,0.786,1];
    o preço tocá-lo (aí é liquidado/consumido e some) — o que forma as manchas/
    nuvens térmicas de liquidez de repouso que costumam funcionar como ímã de preço.
    ========================================================================= */
+function liquidationBandColor(strength){
+  if(strength<0.03) return [0,0,0,0];
+  const hue=258-223*strength;
+  // HSL do mapa anterior de Liquidações: saturação 88%, luminosidade 58%.
+  const channel=n=>{
+    const k=(n+hue/30)%12;
+    return Math.round(255*(0.58-0.3696*Math.max(-1,Math.min(k-3,9-k,1))));
+  };
+  return [channel(0),channel(8),channel(4),Math.round(strength*0.78*255)];
+}
 const LIQ = {
   cfg:{ on:false, look:250, rows:132, gamma:0.6, selectedLeverages:[...liquidationLeverages], nearDays:7, widePct:15, wideDays:90 },
   ready:false, cols:0, rows:0, pMin:0, pMax:0, tMin:null, tMax:null, iMin:0, iMax:0,
@@ -1903,9 +1913,10 @@ const LIQ = {
     this.off.width=cols; this.off.height=R;
     const octx=this.off.getContext('2d'), img=octx.createImageData(cols,R);
     const g=Math.max(0.15,Math.min(1,this.cfg.gamma));
+    const colors=Array.from({length:256},(_,n)=>liquidationBandColor(n/255));
     for(let r=0;r<R;r++) for(let j=0;j<cols;j++){
       const v=Math.pow(G[r*cols+j]/mx, g), y=R-1-r, o=(y*cols+j)*4;
-      const col=THEME.name==='mono' ? [255,255,255,Math.round(175*v)] : heatColor(v);
+      const col=colors[Math.round(v*255)];
       img.data[o]=col[0]; img.data[o+1]=col[1]; img.data[o+2]=col[2]; img.data[o+3]=col[3];
     }
     octx.putImageData(img,0,0);
@@ -1967,14 +1978,14 @@ const LIQ = {
     // no fundo do painel de preço p/ ele NUNCA vazar sobre o volume/RSI.
     let clipBot=Hc; try{ if(typeof RSI!=='undefined' && RSI.cfg.on) clipBot=RSI.band().v0; }catch(_){}
     ctx.beginPath(); ctx.rect(0,0,W,clipBot); ctx.clip();   // nunca vaza da área do gráfico
-    ctx.imageSmoothingEnabled=true;
+    ctx.imageSmoothingEnabled=false;
     for(let r=0;r<R;r++){
       const yB=ys[r], yT=ys[r+1];               // yT (preço maior) fica acima de yB
       if(yT==null||yB==null) continue;
       const yTop=Math.min(yT,yB), yBot=Math.max(yT,yB);
       if(yBot<0||yTop>Hc) continue;             // faixa fora da tela na vertical
       const h=yBot-yTop; if(h<=0) continue;
-      ctx.drawImage(this.off, 0, R-1-r, this.cols, 1, leftX, yTop, rightX-leftX, h+1);
+      ctx.drawImage(this.off, 0, R-1-r, this.cols, 1, leftX, yTop, rightX-leftX, h);
     }
     ctx.restore();
     ctx.save(); ctx.font="9px 'IBM Plex Mono', monospace"; ctx.fillStyle='rgba(255,184,80,.7)';
