@@ -571,6 +571,9 @@
     .ticker .asset-sel{width:62px}
     header .status{display:none}
   }
+.liq-tip{position:absolute;z-index:8;pointer-events:none;background:var(--panel);color:var(--txt);border:1px solid var(--hair-2);border-radius:7px;padding:7px 9px;font:11px/1.5 'IBM Plex Mono',monospace;max-width:240px;box-shadow:0 4px 15px #0005}
+.liq-tip strong,.liq-tip small{display:block}
+.liq-tip small{color:var(--muted)}
 </style>
 </head>
 <body>
@@ -837,6 +840,7 @@
   <div class="stage">
     <div id="chart"></div>
     <canvas id="overlay"></canvas>
+    <div id="liqTip" class="liq-tip" hidden></div>
     <div class="trumptip" id="trumptip" hidden></div>
     <div class="eventstip" id="eventstip" hidden></div>
     <div class="evleg" id="eventslegend" hidden>
@@ -1896,6 +1900,7 @@ const LIQ = {
   off:document.createElement('canvas'),
   compute(){
     this.ready=false;
+    this.tip();
     if(!this.cfg.on) return;
     const all=S.candles; if(!all||all.length<30) return;
     const look=Math.max(40,Math.min(this.cfg.look, all.length));
@@ -1907,19 +1912,34 @@ const LIQ = {
     if(!(pMax>pMin)) return;
     const span=pMax-pMin;
     const G=new Float32Array(R*cols);
+    const notional=new Float64Array(R*cols);
+    const quoteUnit=S.symbol.endsWith('USDT') ? (S.source==='hyperliquid' ? 'USD' : 'USDT') : null;
     const rowOf=p=>{ let r=Math.floor((p-pMin)/span*R); return r<0?0:(r>=R?R-1:r); };
     let vmax=0; for(const c of win) if(c.volume>vmax)vmax=c.volume;
     for(let i=0;i<cols;i++){
       const c=win[i], w=vmax?(0.25+0.75*(c.volume/vmax)):1, e=(c.high+c.low+c.close)/3;
+      // Cenário de referência: 1% do giro da vela, dividido entre os lados
+      // e as sete alavancagens do mapa. Filtrar um nível não redistribui o giro.
+      const share=quoteUnit ? Math.max(0,c.volume||0)*e*0.01/14 : 0;
       for(const lev of this.cfg.selectedLeverages){
         const m=1/lev*0.985;
         const longLiq=e*(1-m), shortLiq=e*(1+m);
         if(longLiq>pMin&&longLiq<pMax){ const row=rowOf(longLiq); let end=cols-1;
           for(let j=i+1;j<cols;j++){ if(win[j].low<=longLiq){ end=j; break; } }
-          for(let j=i;j<=end;j++) G[row*cols+j]+=w; }
+          for(let j=i;j<=end;j++){
+            const cell=row*cols+j;
+            G[cell]+=w;
+            notional[cell]+=share;
+          }
+        }
         if(shortLiq>pMin&&shortLiq<pMax){ const row=rowOf(shortLiq); let end=cols-1;
           for(let j=i+1;j<cols;j++){ if(win[j].high>=shortLiq){ end=j; break; } }
-          for(let j=i;j<=end;j++) G[row*cols+j]+=w; }
+          for(let j=i;j<=end;j++){
+            const cell=row*cols+j;
+            G[cell]+=w;
+            notional[cell]+=share;
+          }
+        }
       }
     }
     let mx=0; for(let k=0;k<G.length;k++) if(G[k]>mx)mx=G[k];
@@ -1935,7 +1955,44 @@ const LIQ = {
     octx.putImageData(img,0,0);
     this.cols=cols; this.rows=R; this.pMin=pMin; this.pMax=pMax; this.tMin=win[0].time; this.tMax=win[cols-1].time;
     this.iMin=all.length-cols; this.iMax=all.length-1;   // índices lógicos (âncora estável no zoom/scroll)
+    this.notional=notional;
+    this.quoteUnit=quoteUnit;
+    this.market=S.source+':'+S.symbol+':'+S.tf;
     this.ready=true;
+  },
+  tip(point){
+    const el=$('#liqTip');
+    const hide=()=>{ el.hidden=true; };
+    if(!point || !this.cfg.on || !this.ready || !this.quoteUnit ||
+      this.market!==S.source+':'+S.symbol+':'+S.tf) return hide();
+    const scale=chart.timeScale();
+    const bottom=RSI.cfg.on ? RSI.band().v0 : stage.clientHeight-scale.height();
+    if(point.x<0 || point.x>=scale.width() || point.y<0 || point.y>=bottom) return hide();
+    const center=scale.logicalToCoordinate(this.iMin);
+    const last=scale.logicalToCoordinate(this.iMax);
+    if(center==null || last==null || last<=center) return hide();
+    const width=(last-center)/(this.cols-1);
+    const column=Math.floor((point.x-center)/width+0.5);
+    const price=candleSeries.coordinateToPrice(point.y);
+    const step=(this.pMax-this.pMin)/this.rows;
+    if(price==null) return hide();
+    const row=Math.floor((price-this.pMin)/step);
+    if(!Number.isInteger(column) || column<0 || column>=this.cols || row<0 || row>=this.rows) return hide();
+    const value=this.notional[row*this.cols+column];
+    if(!(value>0)) return hide();
+    const format=new Intl.NumberFormat('pt-BR',{maximumSignificantDigits:7});
+    const amount=new Intl.NumberFormat('pt-BR',{notation:'compact',maximumFractionDigits:1});
+    const band=this.pMin+row*step;
+    const title=document.createElement('strong');
+    title.textContent='≈ '+amount.format(value)+' '+this.quoteUnit+' nocionais';
+    const range=document.createElement('span');
+    range.textContent='Faixa '+format.format(band)+'–'+format.format(band+step);
+    const method=document.createElement('small');
+    method.textContent='Cenário com 1% do giro estimado das velas';
+    el.replaceChildren(title,range,method);
+    el.hidden=false;
+    el.style.left=Math.max(2,Math.min(point.x+12,stage.clientWidth-el.offsetWidth-4))+'px';
+    el.style.top=Math.max(2,Math.min(point.y+12,bottom-el.offsetHeight-4))+'px';
   },
   draw(){
     if(!this.cfg.on||!this.ready) return;
@@ -4179,7 +4236,13 @@ function syncTrump(){
 }
 $('#trumpOn').addEventListener('change', syncTrump);
 // tooltip ao passar o cursor sobre o marcador
+stage.addEventListener('pointerup', event=>{
+  if(event.pointerType!=='touch') return;
+  const rect=stage.getBoundingClientRect();
+  LIQ.tip({x:event.clientX-rect.left,y:event.clientY-rect.top});
+});
 chart.subscribeCrosshairMove(param=>{
+  LIQ.tip(param?.point);
   if(param&&param.point){ TRUMP.tip(param.point.x, param.point.y); EVENTS.tip(param.point.x, param.point.y); }
   else { const t=$('#trumptip'); if(t) t.hidden=true; const e=$('#eventstip'); if(e) e.hidden=true; }
 });
