@@ -15,7 +15,16 @@ figure{margin:14px 0 8px;border:1px solid #3a3a3a;border-radius:8px;overflow:hid
 canvas{width:100%;height:clamp(280px,59vh,650px);display:block}
 figcaption{padding:8px 10px;color:#ccc;font-size:.83rem;border-top:1px solid #333}
 .legend{font-size:.8rem;color:#bbb;gap:8px}
-.ramp{width:75px;height:8px;background:linear-gradient(90deg,#252525,#a0a0a0);border-radius:3px}
+.ramp{width:75px;height:8px;background:linear-gradient(90deg,#342571,#af347d,#ffae44);border-radius:3px}
+.gauges{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+.gauge{--side:#42e1cf;display:flex;align-items:center;gap:12px;background:#181b24;border:1px solid #363b4b;border-radius:8px;padding:9px 12px;min-width:0}
+.gauge[data-side="long"]{--side:#ff778a}
+.gauge canvas{width:96px;height:62px;flex:none}
+.gauge strong,.gauge small{display:block}
+.gauge strong{color:var(--side);font-size:.83rem}
+.gauge small{color:#c4c7d2;font-size:.77rem}
+.gauge[data-near="true"]{border-color:var(--side)}
+@media(max-width:560px){.gauge{padding:6px;gap:4px;flex-direction:column;text-align:center}.gauge canvas{width:76px;height:49px}}
 </style>
 </head>
 <body>
@@ -31,12 +40,22 @@ figcaption{padding:8px 10px;color:#ccc;font-size:.83rem;border-top:1px solid #33
 <label>Histórico <select id="history"><option value="120">120 velas</option><option value="250" selected>250 velas</option><option value="500">500 velas</option></select></label>
 <button id="refresh" type="button">Atualizar</button>
 </div>
+<section class="gauges" aria-label="Distância até as zonas de liquidação mais próximas">
+  <div class="gauge" data-side="short">
+    <canvas id="short-dial" aria-hidden="true"></canvas>
+    <div><strong>SHORT ↑</strong><small id="short-zone">Aguardando dados…</small></div>
+  </div>
+  <div class="gauge" data-side="long">
+    <canvas id="long-dial" aria-hidden="true"></canvas>
+    <div><strong>LONG ↓</strong><small id="long-zone">Aguardando dados…</small></div>
+  </div>
+</section>
 <figure>
 <canvas id="chart" role="img" aria-label="Gráfico de velas com intensidade estimada de liquidação por preço e horário"></canvas>
 <figcaption id="status" role="status">Carregando cotações…</figcaption>
 </figure>
-<div class="legend"><span>Intensidade relativa baixa</span><span class="ramp"></span><span>alta</span><span>· Candle preenchido indica queda</span></div>
-<p class="legend">Zonas estimadas pelo volume das velas dos perpétuos USDT da Bybit e alavancagens de 10×, 25×, 50× e 100×. A faixa perde intensidade quando o preço cruza o nível. Horários do Japão.</p>
+<div class="legend"><span>Intensidade relativa baixa</span><span class="ramp"></span><span>alta</span><span>· Alta em verde · Queda em vermelho</span></div>
+<p class="legend">Zonas estimadas pelo volume das velas dos perpétuos USDT da Bybit e alavancagens de 10×, 25×, 50× e 100×. A faixa perde intensidade quando o preço cruza o nível. O ponteiro avança conforme o preço se aproxima da zona e o contorno acende a 0,5% ou menos. Horários do Japão.</p>
 <script>
 const asset = document.getElementById('asset');
 const interval = document.getElementById('interval');
@@ -44,6 +63,7 @@ const historySize = document.getElementById('history');
 const refresh = document.getElementById('refresh');
 const status = document.getElementById('status');
 const canvas = document.getElementById('chart');
+const sideColors = {short:'#42e1cf', long:'#ff778a'};
 const ctx = canvas.getContext('2d');
 const dateFormat = new Intl.DateTimeFormat('pt-BR', {
   timeZone:'Asia/Tokyo', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'
@@ -74,7 +94,83 @@ function buildMap(candles) {
       peak = Math.max(peak, cells[column][zone.row]);
     }
   });
-  return {min, max, step, rows, peak, cells, candles};
+  const current = candles.at(-1).close;
+  const groups = {short:new Map(), long:new Map()};
+  for (const zone of active) {
+    const side = zone.long ? 'long' : 'short';
+    if (zone.long ? zone.price >= current : zone.price <= current) continue;
+    if (!zone.weight) continue;
+    const group = groups[side].get(zone.row) || {weight:0, weightedPrice:0};
+    group.weight += zone.weight;
+    group.weightedPrice += zone.price * zone.weight;
+    groups[side].set(zone.row, group);
+  }
+  const levels = {};
+  for (const side of ['short', 'long']) {
+    levels[side] = Array.from(groups[side].values(), group => {
+      const price = group.weightedPrice / group.weight;
+      return {price, weight:group.weight, distance:Math.abs(price / current - 1) * 100};
+    }).sort((a, b) => a.distance - b.distance);
+  }
+  return {min, max, step, rows, peak, cells, candles, current, levels};
+}
+
+function priceLabel(price) {
+  return price.toLocaleString('en-US', {maximumFractionDigits:price < 10 ? 4 : 2});
+}
+
+function drawDial(side) {
+  const dial = document.getElementById(side + '-dial');
+  const label = document.getElementById(side + '-zone');
+  const zone = map?.levels[side][0];
+  const ratio = window.devicePixelRatio || 1;
+  const width = dial.clientWidth, height = dial.clientHeight;
+  dial.width = Math.round(width * ratio);
+  dial.height = Math.round(height * ratio);
+  const pen = dial.getContext('2d');
+  pen.setTransform(width * ratio / 96, 0, 0, height * ratio / 62, 0, 0);
+  const start = Math.PI * 0.85, sweep = Math.PI * 1.3;
+  const progress = zone ? Math.max(0, 1 - zone.distance / 5) : 0;
+  const angle = start + progress * sweep;
+  const x = 48, y = 43, radius = 33;
+  pen.lineWidth = 5;
+  pen.beginPath();
+  pen.strokeStyle = '#414754';
+  pen.arc(x, y, radius, start, start + sweep);
+  pen.stroke();
+  pen.beginPath();
+  pen.strokeStyle = sideColors[side];
+  pen.arc(x, y, radius, start, angle);
+  pen.stroke();
+  for (let tick = 0; tick <= 10; tick++) {
+    const at = start + tick / 10 * sweep;
+    pen.beginPath();
+    pen.lineWidth = tick % 5 === 0 ? 1.5 : 0.8;
+    pen.strokeStyle = '#afb3bd';
+    pen.moveTo(x + Math.cos(at) * 24, y + Math.sin(at) * 24);
+    pen.lineTo(x + Math.cos(at) * 28, y + Math.sin(at) * 28);
+    pen.stroke();
+  }
+  if (zone) {
+    pen.beginPath();
+    pen.lineWidth = 2;
+    pen.strokeStyle = sideColors[side];
+    pen.moveTo(x, y);
+    pen.lineTo(x + Math.cos(angle) * 24, y + Math.sin(angle) * 24);
+    pen.stroke();
+    pen.fillStyle = sideColors[side];
+    pen.beginPath();
+    pen.arc(x, y, 3, 0, Math.PI * 2);
+    pen.fill();
+  }
+  label.parentElement.parentElement.dataset.near = String(Boolean(zone && zone.distance <= 0.5));
+  label.textContent = zone ? priceLabel(zone.price) + ' USDT · ' + zone.distance.toFixed(2) + '% de distância' :
+    map ? 'Sem zona na faixa do gráfico' : 'Aguardando dados…';
+}
+
+function heatFill(strength) {
+  const hue = 258 - strength * 223;
+  return 'hsl(' + hue + ' 88% 58% / ' + strength * 0.78 + ')';
 }
 
 function draw() {
@@ -94,7 +190,7 @@ function draw() {
   for (let i = 0; i <= 5; i++) {
     const price = min + (max - min) * i / 5;
     ctx.fillRect(left, y(price), right - left, 0.3);
-    ctx.fillText(price.toLocaleString('en-US', {maximumFractionDigits: price < 10 ? 4 : 2}), right + 7, y(price) + 4);
+    ctx.fillText(priceLabel(price), right + 7, y(price) + 4);
   }
   candles.forEach((candle, column) => {
     const x = left + stride * column;
@@ -102,26 +198,46 @@ function draw() {
     for (let row = 0; row < rows; row++) {
       const strength = peak && Math.sqrt(cells[column][row] / peak);
       if (strength < 0.03) continue;
-      ctx.fillStyle = 'rgba(210,210,210,' + strength * 0.63 + ')';
+      ctx.fillStyle = heatFill(strength);
       ctx.fillRect(x, y(min + step * (row + 1)), stride, rowHeight);
     }
     const center = x + stride / 2;
     const bodyTop = Math.min(y(candle.open), y(candle.close));
     const bodyHeight = Math.max(1, Math.abs(y(candle.open) - y(candle.close)));
     const bodyWidth = Math.max(0.7, stride * 0.66);
-    ctx.fillStyle = '#eee';
+    ctx.fillStyle = candle.close >= candle.open ? '#5ef5bb' : '#ff6579';
     ctx.fillRect(center - 0.4, y(candle.high), 0.8, y(candle.low) - y(candle.high));
     ctx.fillRect(center - bodyWidth / 2, bodyTop, bodyWidth, bodyHeight);
-    if (candle.close >= candle.open && bodyWidth > 2 && bodyHeight > 2) {
-      ctx.fillStyle = '#171717';
-      ctx.fillRect(center - bodyWidth / 2 + 1, bodyTop + 1, bodyWidth - 2, bodyHeight - 2);
-    }
   });
   ctx.fillStyle = '#bbb';
   const ticks = Math.max(1, Math.floor((right - left) / 105));
   for (let i = 0; i < ticks; i++) {
     const column = Math.floor(i * candles.length / ticks);
     ctx.fillText(dateFormat.format(candles[column].time), left + column * stride, bottom + 19);
+  }
+  ctx.fillStyle = '#fff';
+  for (let x = left; x < right; x += 6) ctx.fillRect(x, y(map.current), 3, 1);
+  const occupied = [];
+  for (const side of ['short', 'long']) {
+    const nearby = map.levels[side];
+    const strongest = nearby.slice(1).sort((a, b) => b.weight - a.weight).slice(0, 2);
+    for (const level of [...nearby.slice(0, 1), ...strongest]) {
+      const markerY = y(level.price);
+      ctx.fillStyle = sideColors[side];
+      for (let x = Math.max(left, right - 130); x < right; x += 6) ctx.fillRect(x, markerY, 3, 1);
+      ctx.beginPath();
+      ctx.arc(right, markerY, 3, 0, Math.PI * 2);
+      ctx.fill();
+      if (occupied.some(other => Math.abs(markerY - other) < 14)) continue;
+      const label = side.toUpperCase() + ' ' + priceLabel(level.price);
+      const labelWidth = ctx.measureText(label).width + 10;
+      const labelX = right - labelWidth - 9;
+      ctx.fillStyle = '#171923';
+      ctx.fillRect(labelX, markerY - 7, labelWidth, 14);
+      ctx.fillStyle = sideColors[side];
+      ctx.fillText(label, labelX + 5, markerY + 4);
+      occupied.push(markerY);
+    }
   }
   if (!pointer || pointer.x < left || pointer.x >= right || pointer.y < top || pointer.y > bottom) return;
   const column = Math.floor((pointer.x - left) / stride);
@@ -145,7 +261,7 @@ async function load(reset = false) {
   controller = request;
   if (reset) {
     map = pointer = null;
-    draw();
+    render();
   }
   const symbol = asset.value + 'USDT';
   status.textContent = 'Carregando ' + symbol + '…';
@@ -164,7 +280,7 @@ async function load(reset = false) {
     map = buildMap(candles);
     status.textContent = symbol + ' · ' + candles.length + ' velas · atualizado às ' +
       new Date().toLocaleTimeString('pt-BR', {timeZone:'Asia/Tokyo'}) + ' JST';
-    draw();
+    render();
   } catch (error) {
     if (controller !== request) return;
     status.textContent = 'Falha ao atualizar ' + symbol + ' pela Bybit. Use Atualizar para tentar de novo.';
@@ -180,7 +296,12 @@ canvas.addEventListener('pointermove', event => {
   draw();
 });
 canvas.addEventListener('pointerleave', () => { pointer = null; draw(); });
-new ResizeObserver(draw).observe(canvas);
+function render() {
+  draw();
+  drawDial('short');
+  drawDial('long');
+}
+new ResizeObserver(render).observe(canvas);
 setInterval(() => { if (!document.hidden) load(); }, 30000);
 load();
 </script>
