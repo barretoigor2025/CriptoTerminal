@@ -26,7 +26,9 @@ figcaption{padding:8px 10px;color:#ccc;font-size:.83rem;border-top:1px solid #33
 .ramp{width:75px;height:8px;background:linear-gradient(90deg,#2d1482,#d62056,#faf7be);border-radius:3px}
 .asset-buttons{display:flex;gap:5px;flex-wrap:wrap}
 .asset-buttons button{min-width:46px;cursor:pointer}
-.asset-buttons button[aria-pressed="true"]{background:#153c39;border-color:#42e1cf;color:#bafff4}
+.asset-buttons button[aria-pressed="true"],#leverage-buttons button[aria-pressed="true"]{background:#153c39;border-color:#42e1cf;color:#bafff4}
+#leverage-buttons{margin-top:10px}
+#leverage-buttons button{border-left:3px solid var(--tier,#555)}
 .gauges{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
 .gauge{--side:#42e1cf;display:flex;align-items:center;gap:12px;background:#181b24;border:1px solid #363b4b;border-radius:8px;padding:9px 12px;min-width:0}
 .gauge[data-side="long"]{--side:#ff778a}
@@ -53,11 +55,12 @@ figcaption{padding:8px 10px;color:#ccc;font-size:.83rem;border-top:1px solid #33
 <option value="120">2 h</option><option value="240">4 h</option><option value="360">6 h</option>
 <option value="720">12 h</option><option value="D">1 dia</option><option value="W">1 semana</option>
 </select></label>
-<label>Histórico <select id="history"><option value="120">120 velas</option><option value="250">250 velas</option><option value="500" selected>500 velas</option><option value="1000">1.000 velas</option></select></label>
-<label>Faixa de preço <select id="price-range"><option value="3">±3%</option><option value="15" selected>±15%</option><option value="30">±30%</option><option value="50">±50%</option></select></label>
+<label>Histórico <select id="history"><option value="120">120 velas</option><option value="250">250 velas</option><option value="500">500 velas</option><option value="1000" selected>1.000 velas</option><option value="5000">5.000 velas</option><option value="10000">10.000 velas</option></select></label>
+<label>Faixa de preço <select id="price-range"><option value="3">±3%</option><option value="15" selected>±15%</option><option value="30">±30%</option><option value="50">±50%</option><option value="all">Todas as zonas</option></select></label>
 <button id="refresh" type="button">Atualizar</button>
 <button id="reset-view" type="button">Recentralizar</button>
 </div>
+<div id="leverage-buttons" class="asset-buttons" role="group" aria-label="Alavancagem estimada"></div>
 <section class="gauges" aria-label="Distância até as zonas de liquidação mais próximas">
   <div class="gauge" data-side="short">
     <canvas id="short-dial" aria-hidden="true"></canvas>
@@ -74,7 +77,7 @@ figcaption{padding:8px 10px;color:#ccc;font-size:.83rem;border-top:1px solid #33
 <figcaption id="status" role="status">Carregando cotações…</figcaption>
 </figure>
 <div class="legend"><span>Intensidade relativa baixa</span><span class="ramp"></span><span>alta</span><span>· Alta em verde · Queda em vermelho</span><span>· Arraste a escala à direita para ajustar a altura · Dois cliques restauram a escala</span></div>
-<p class="legend">Zonas estimadas pelo volume das velas da fonte indicada abaixo do gráfico e alavancagens de 2×, 3×, 5×, 10×, 25×, 50× e 100×. O mapa estima posições ainda abertas em cada vela. O ponteiro avança conforme o preço se aproxima da zona e o contorno acende a 0,5% ou menos. Horários do Japão.</p>
+<p class="legend">Zonas estimadas pelo volume das velas da fonte indicada abaixo do gráfico e alavancagens de 2×, 3×, 5×, 10×, 25×, 50× e 100×. Passe o mouse ou toque para ver os valores. As linhas coloridas marcam a zona mais forte de cada lado por alavancagem no último candle. O ponteiro avança conforme o preço se aproxima da zona e o contorno acende a 0,5% ou menos. Horários do Japão.</p>
 <script src="liquidation-map.js"></script>
 <script>
 const assetButtons = Array.from(document.querySelectorAll('[data-asset]'));
@@ -92,7 +95,27 @@ const ctx = canvas.getContext('2d');
 const dateFormat = new Intl.DateTimeFormat('pt-BR', {
   timeZone:'Asia/Tokyo', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'
 });
-let controller, map, pointer, viewport, pendingDraw;
+const tierColors = ['#ffd166', '#ff9f66', '#ff778a', '#e5a3ff', '#a5b4fc', '#68cbff', '#42e1cf'];
+const selectedLeverages = new Set(liquidationLeverages);
+const tierButtons = document.getElementById('leverage-buttons');
+let controller, map, pointer, viewport, pendingDraw, feedIndex, tapStart, loading;
+for (const [index, leverage] of liquidationLeverages.entries()) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = leverage + '×';
+  button.setAttribute('aria-pressed', 'true');
+  button.style.setProperty('--tier', tierColors[index]);
+  button.addEventListener('click', () => {
+    if (selectedLeverages.has(leverage)) selectedLeverages.delete(leverage);
+    else selectedLeverages.add(leverage);
+    button.setAttribute('aria-pressed', String(selectedLeverages.has(leverage)));
+    if (map) {
+      map = buildMap(map.candles);
+      render();
+    }
+  });
+  tierButtons.append(button);
+}
 const contacts = new Map();
 let priceDrag = null;
 
@@ -127,13 +150,18 @@ function scheduleDraw() {
 }
 
 function buildMap(candles) {
-  const rows = 264;
+  const rows = priceRange.value === 'all' ? 440 : 264;
   const current = candles.at(-1).close;
-  const distance = Number(priceRange.value) / 100;
-  const min = Math.min(current * (1 - distance), ...candles.map(candle => candle.low * 0.995));
-  const max = Math.max(current * (1 + distance), ...candles.map(candle => candle.high * 1.005));
+  const all = priceRange.value === 'all';
+  const distance = all ? 0 : Number(priceRange.value) / 100;
+  let min = current * (1 - distance), max = current * (1 + distance);
+  for (const candle of candles) {
+    const entry = (candle.high + candle.low + candle.close) / 3;
+    min = Math.min(min, candle.low * 0.995, all ? entry * 0.5075 * 0.995 : Infinity);
+    max = Math.max(max, candle.high * 1.005, all ? entry * 1.4925 * 1.005 : 0);
+  }
   const step = (max - min) / rows;
-  const {G, notional, active} = calculateLiquidationGrid(candles, min, max, rows, liquidationLeverages, 'USDT');
+  const {G, notional, active} = calculateLiquidationGrid(candles, min, max, rows, selectedLeverages, 'USDT');
   let peak = 0;
   for (const value of G) peak = Math.max(peak, value);
   const heatmap = document.createElement('canvas');
@@ -153,6 +181,7 @@ function buildMap(candles) {
   }
   heatContext.putImageData(image, 0, 0);
   const groups = {short:new Map(), long:new Map()};
+  const tierGroups = new Map();
   for (const zone of active) {
     const side = zone.long ? 'long' : 'short';
     if (zone.long ? zone.price >= current : zone.price <= current) continue;
@@ -161,6 +190,13 @@ function buildMap(candles) {
     group.weight += zone.weight;
     group.weightedPrice += zone.price * zone.weight;
     groups[side].set(zone.row, group);
+    const key = side + ':' + zone.leverage;
+    const bands = tierGroups.get(key) ?? new Map();
+    const band = bands.get(zone.row) ?? {weight:0, weightedPrice:0, leverage:zone.leverage};
+    band.weight += zone.weight;
+    band.weightedPrice += zone.price * zone.weight;
+    bands.set(zone.row, band);
+    tierGroups.set(key, bands);
   }
   const levels = {};
   for (const side of ['short', 'long']) {
@@ -169,7 +205,10 @@ function buildMap(candles) {
       return {price, weight:group.weight, distance:Math.abs(price / current - 1) * 100};
     }).sort((a, b) => a.distance - b.distance);
   }
-  return {min, max, step, rows, heatmap, notional, candles, current, levels};
+  const markers = Array.from(tierGroups.values(), bands =>
+    Array.from(bands.values()).reduce((best, band) => band.weight > best.weight ? band : best));
+  markers.sort((a, b) => b.weight - a.weight);
+  return {min, max, step, rows, heatmap, notional, candles, current, levels, markers};
 }
 
 function priceLabel(price) {
@@ -268,27 +307,17 @@ function draw() {
   ctx.fillStyle = '#fff';
   for (let x = left; x < right; x += 6) ctx.fillRect(x, y(map.current), 3, 1);
   const occupied = [];
-  for (const side of ['short', 'long']) {
-    const nearby = map.levels[side];
-    const strongest = nearby.slice(1).sort((a, b) => b.weight - a.weight).slice(0, 2);
-    for (const level of [...nearby.slice(0, 1), ...strongest]) {
-      const markerY = y(level.price);
-      if (markerY < top || markerY > bottom) continue;
-      ctx.fillStyle = sideColors[side];
-      for (let x = Math.max(left, right - 130); x < right; x += 6) ctx.fillRect(x, markerY, 3, 1);
-      ctx.beginPath();
-      ctx.arc(right, markerY, 3, 0, Math.PI * 2);
-      ctx.fill();
-      if (occupied.some(other => Math.abs(markerY - other) < 14)) continue;
-      const label = side.toUpperCase() + ' ' + priceLabel(level.price);
-      const labelWidth = ctx.measureText(label).width + 10;
-      const labelX = right - labelWidth - 9;
-      ctx.fillStyle = '#171923';
-      ctx.fillRect(labelX, markerY - 7, labelWidth, 14);
-      ctx.fillStyle = sideColors[side];
-      ctx.fillText(label, labelX + 5, markerY + 4);
-      occupied.push(markerY);
-    }
+  for (const marker of map.markers) {
+    const price = marker.weightedPrice / marker.weight;
+    const markerY = y(price);
+    if (markerY < top || markerY > bottom || candles.length < first || candles.length > first + count) continue;
+    const edge = left + (candles.length - first) * stride;
+    ctx.fillStyle = tierColors[liquidationLeverages.indexOf(marker.leverage)];
+    for (let x = Math.max(left, edge - 112); x < edge; x += 6) ctx.fillRect(x, markerY, 3, 1);
+    if (occupied.some(other => Math.abs(markerY - other) < 13)) continue;
+    const label = marker.leverage + '× ' + (price > map.current ? 'SHORT' : 'LONG') + ' ' + priceLabel(price);
+    ctx.fillText(label, Math.max(left, edge - ctx.measureText(label).width - 5), markerY - 3);
+    occupied.push(markerY);
   }
   ctx.restore();
   ctx.fillStyle = '#bbb';
@@ -306,7 +335,7 @@ function draw() {
   ctx.fillRect(pointer.x, top, 1, bottom - top);
   ctx.fillRect(left, pointer.y, right - left, 1);
   if (row < 0 || row >= rows) return;
-  if (!renderLiquidationTip(tooltip, notional, rows, candles.length, min, step, column, row, candles[column].close, 'USDT')) return;
+  if (!renderLiquidationTip(tooltip, notional, rows, candles.length, min, step, column, row, candles[column].close, 'USDT', bandBreakdown(column, row))) return;
   tooltip.hidden = false;
   tooltip.style.left = Math.max(left, Math.min(pointer.x + 12, width - tooltip.offsetWidth - 4)) + 'px';
   tooltip.style.top = Math.max(top, Math.min(pointer.y + 12, bottom - tooltip.offsetHeight - 4)) + 'px';
@@ -317,37 +346,96 @@ const binanceIntervals = {
   360:'6h', 720:'12h', D:'1d', W:'1w'
 };
 
+function bandBreakdown(column, row) {
+  const {candles, min, step} = map;
+  const values = new Map();
+  let low = Infinity, high = -Infinity;
+  for (let index = column; index >= 0; index--) {
+    const candle = candles[index];
+    const entry = (candle.high + candle.low + candle.close) / 3;
+    const share = Math.max(0, candle.volume) * entry * 0.01 / (2 * liquidationLeverages.length);
+    for (const leverage of selectedLeverages) {
+      const margin = 0.985 / leverage;
+      const long = entry * (1 - margin), short = entry * (1 + margin);
+      const hits = Number(low > long && Math.floor((long - min) / step) === row) +
+        Number(high < short && Math.floor((short - min) / step) === row);
+      if (hits && share) values.set(leverage, (values.get(leverage) ?? 0) + hits * share);
+    }
+    if (index < column) {
+      low = Math.min(low, candle.low);
+      high = Math.max(high, candle.high);
+    }
+  }
+  return liquidationLeverages.filter(leverage => values.has(leverage))
+    .map(leverage => ({leverage, value:values.get(leverage)}));
+}
+
+const feeds = [
+  {name:'Bybit perpétuos', url:'https://api.bybit.com/v5/market/kline', end:'end', bybit:true},
+  {name:'Binance perpétuos', url:'https://fapi.binance.com/fapi/v1/klines', end:'endTime'},
+  {name:'Binance spot (estimativa por volume à vista)', url:'https://data-api.binance.vision/api/v3/klines', end:'endTime'}
+];
+
+async function fetchPage(feed, symbol, period, limit, end, signal) {
+  const params = new URLSearchParams({symbol, interval:feed.bybit ? period : binanceIntervals[period], limit});
+  if (feed.bybit) params.set('category', 'linear');
+  if (end !== undefined) params.set(feed.end, end);
+  if (signal.aborted) throw signal.reason;
+  const attempt = new AbortController();
+  const cancel = () => attempt.abort();
+  signal.addEventListener('abort', cancel, {once:true});
+  const timeout = setTimeout(cancel, 4500);
+  try {
+    const response = await fetch(feed.url + '?' + params, {signal:attempt.signal, cache:'no-store'});
+    if (!response.ok) throw new Error('Fonte indisponível');
+    const data = await response.json();
+    const list = feed.bybit ? data.retCode === 0 && data.result?.list : data;
+    if (!Array.isArray(list)) throw new Error('Resposta inválida');
+    const candles = list.map(row => {
+      const [time, open, high, low, close, volume] = row.slice(0, 6).map(Number);
+      return {time, open, high, low, close, volume};
+    });
+    if (!candles.every(candle => Object.values(candle).every(Number.isFinite) && candle.low > 0)) {
+      throw new Error('Velas inválidas');
+    }
+    return candles.sort((a, b) => a.time - b.time);
+  } finally {
+    clearTimeout(timeout);
+    signal.removeEventListener('abort', cancel);
+  }
+}
+
 async function fetchCandles(symbol, period, limit, signal) {
-  const bybit = new URLSearchParams({category:'linear', symbol, interval:period, limit});
-  const binance = new URLSearchParams({symbol, interval:binanceIntervals[period], limit});
-  const feeds = [
-    {name:'Bybit perpétuos', url:'https://api.bybit.com/v5/market/kline?' + bybit, rows:data => data.retCode === 0 && data.result?.list?.slice().reverse()},
-    {name:'Binance perpétuos', url:'https://fapi.binance.com/fapi/v1/klines?' + binance, rows:data => data},
-    {name:'Binance spot (estimativa por volume à vista)', url:'https://data-api.binance.vision/api/v3/klines?' + binance, rows:data => data}
-  ];
-  for (const feed of feeds) {
-    if (signal.aborted) throw signal.reason;
-    const attempt = new AbortController();
-    const cancel = () => attempt.abort();
-    signal.addEventListener('abort', cancel, {once:true});
-    const timeout = setTimeout(cancel, 4500);
+  const order = feedIndex === undefined ? [0, 1, 2] : [feedIndex, ...[0, 1, 2].filter(index => index !== feedIndex)];
+  for (const index of order) {
+    const feed = feeds[index];
+    let candles;
     try {
-      const response = await fetch(feed.url, {signal:attempt.signal, cache:'no-store'});
-      if (!response.ok) continue;
-      const list = feed.rows(await response.json());
-      if (!Array.isArray(list) || list.length < 2) continue;
-      const candles = list.map(row => {
-        const [time, open, high, low, close, volume] = row.slice(0, 6).map(Number);
-        return {time, open, high, low, close, volume};
-      });
-      if (!candles.every(candle => Object.values(candle).every(Number.isFinite) && candle.low > 0)) continue;
-      return {candles, source:feed.name};
+      candles = await fetchPage(feed, symbol, period, Math.min(1000, limit), undefined, signal);
     } catch {
       if (signal.aborted) throw signal.reason;
-    } finally {
-      clearTimeout(timeout);
-      signal.removeEventListener('abort', cancel);
+      continue;
     }
+    if (candles.length < 2) continue;
+    if (index === feedIndex && map) {
+      const cutoff = candles[0].time;
+      candles = [...map.candles.filter(candle => candle.time < cutoff), ...candles].slice(-limit);
+    }
+    let partial = false;
+    while (candles.length < limit) {
+      const end = candles[0].time - 1;
+      try {
+        const older = (await fetchPage(feed, symbol, period, Math.min(1000, limit - candles.length), end, signal))
+          .filter(candle => candle.time <= end);
+        if (!older.length) break;
+        candles = [...older, ...candles];
+      } catch {
+        if (signal.aborted) throw signal.reason;
+        partial = true;
+        break;
+      }
+    }
+    return {candles, index, partial};
   }
   throw new Error('Nenhuma fonte retornou velas');
 }
@@ -356,22 +444,38 @@ async function load(reset = false) {
   controller?.abort();
   const request = new AbortController();
   controller = request;
+  loading = true;
   if (reset) {
     map = pointer = viewport = null;
+    feedIndex = undefined;
     render();
   }
   const symbol = asset + 'USDT';
   status.textContent = 'Carregando ' + symbol + '…';
   try {
-    const {candles, source} = await fetchCandles(symbol, interval.value, historySize.value, request.signal);
+    const {candles, index, partial} = await fetchCandles(symbol, interval.value, Number(historySize.value), request.signal);
     if (controller !== request) return;
+    if (map && viewport) {
+      const oldStart = map.candles[0].time;
+      const newStart = candles[0].time;
+      const shift = newStart <= oldStart
+        ? candles.findIndex(candle => candle.time === oldStart)
+        : -map.candles.findIndex(candle => candle.time === newStart);
+      if (index === feedIndex && (newStart <= oldStart ? shift >= 0 : shift < 0)) viewport.first += shift;
+      else viewport = null;
+    }
+    feedIndex = index;
     map = buildMap(candles);
-    status.textContent = symbol + ' · ' + source + ' · ' + candles.length + ' velas · atualizado às ' +
+    status.textContent = symbol + ' · ' + feeds[index].name + ' · ' + candles.length.toLocaleString('pt-BR') +
+      ' velas desde ' + new Date(candles[0].time).toLocaleDateString('pt-BR', {timeZone:'Asia/Tokyo'}) +
+      (partial ? ' · histórico parcial' : '') + ' · atualizado às ' +
       new Date().toLocaleTimeString('pt-BR', {timeZone:'Asia/Tokyo'}) + ' JST';
     render();
   } catch (error) {
     if (controller !== request) return;
     status.textContent = 'Falha ao carregar ' + symbol + '. Use Atualizar para tentar de novo.';
+  } finally {
+    if (controller === request) loading = false;
   }
 }
 function markAsset() {
@@ -440,6 +544,7 @@ canvas.addEventListener('pointerdown', event => {
     priceDrag = {id:event.pointerId, anchor:bottom - point.y + margin, margin, center:(low + high) / 2, span:high - low};
     canvas.classList.add('scaling-price');
   } else {
+    tapStart = event.pointerType === 'touch' && !contacts.size ? {id:event.pointerId, ...point} : null;
     contacts.set(event.pointerId, point);
     canvas.classList.add('dragging');
   }
@@ -469,6 +574,8 @@ canvas.addEventListener('pointermove', event => {
     }
     return;
   }
+  if (tapStart && Math.hypot(next.x - tapStart.x, next.y - tapStart.y) > 8) tapStart = null;
+  if (tapStart) return;
   const other = Array.from(contacts.entries()).find(([id]) => id !== event.pointerId)?.[1];
   contacts.set(event.pointerId, next);
   if (!other) {
@@ -487,11 +594,19 @@ for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
       canvas.classList.toggle('scaling-price', Boolean(map) && event.type === 'pointerup' &&
         event.pointerType === 'mouse' && onPriceScale(localPoint(event)));
     }
+    if (tapStart?.id === event.pointerId) {
+      if (type === 'pointerup') {
+        pointer = localPoint(event);
+        scheduleDraw();
+      }
+      tapStart = null;
+    }
     contacts.delete(event.pointerId);
     if (!contacts.size) canvas.classList.remove('dragging');
   });
 }
-canvas.addEventListener('pointerleave', () => {
+canvas.addEventListener('pointerleave', event => {
+  if (event.pointerType === 'touch') return;
   if (!priceDrag) canvas.classList.remove('scaling-price');
   pointer = null;
   scheduleDraw();
@@ -529,7 +644,7 @@ function render() {
   drawDial('long');
 }
 new ResizeObserver(render).observe(canvas);
-setInterval(() => { if (!document.hidden) load(); }, 30000);
+setInterval(() => { if (!document.hidden && !loading) load(); }, 30000);
 load();
 </script>
 </body>

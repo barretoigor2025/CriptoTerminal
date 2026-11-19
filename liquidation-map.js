@@ -21,10 +21,19 @@ function calculateLiquidationGrid(candles, min, max, rows, leverages, quoteUnit)
   const columns = candles.length;
   const last = columns - 1;
   const step = (max - min) / rows;
-  const G = new Float32Array(rows * columns);
+  const G = new Float64Array(rows * columns);
   const notional = new Float64Array(rows * columns);
   const active = [];
   const volumeMax = Math.max(0, ...candles.map(candle => candle.volume));
+
+  // Skip whole blocks when looking for the first candle that hits a price.
+  const blockSize = 32;
+  const lows = [], highs = [];
+  candles.forEach((candle, column) => {
+    const block = Math.floor(column / blockSize);
+    lows[block] = Math.min(lows[block] ?? Infinity, candle.low);
+    highs[block] = Math.max(highs[block] ?? -Infinity, candle.high);
+  });
 
   candles.forEach((candle, column) => {
     const weight = volumeMax ? 0.25 + 0.75 * candle.volume / volumeMax : 1;
@@ -37,21 +46,42 @@ function calculateLiquidationGrid(candles, min, max, rows, leverages, quoteUnit)
         const price = entry * (1 + (long ? -margin : margin));
         if (price <= min || price >= max) continue;
         const row = Math.min(rows - 1, Math.floor((price - min) / step));
-        for (let next = column; next < columns; next++) {
-          const cell = row * columns + next;
-          G[cell] += weight;
-          notional[cell] += share;
-          const crossed = next > column && (long ? candles[next].low <= price : candles[next].high >= price);
-          if (crossed) break;
-          if (next === last) active.push({price, row, long, weight:share});
+        let next = column + 1;
+        while (next < columns) {
+          const block = Math.floor(next / blockSize);
+          if (next % blockSize === 0 && (long ? lows[block] > price : highs[block] < price)) {
+            next += blockSize;
+            continue;
+          }
+          if (long ? candles[next].low <= price : candles[next].high >= price) break;
+          next++;
+        }
+        const offset = row * columns;
+        G[offset + column] += weight;
+        notional[offset + column] += share;
+        if (next < last) {
+          G[offset + next + 1] -= weight;
+          notional[offset + next + 1] -= share;
+        } else if (next > last) {
+          active.push({price, row, long, weight:share, leverage});
         }
       }
     }
   });
+  for (let row = 0; row < rows; row++) {
+    let weight = 0, amount = 0;
+    const end = (row + 1) * columns;
+    for (let cell = row * columns; cell < end; cell++) {
+      weight += G[cell];
+      amount += notional[cell];
+      G[cell] = weight > 1e-8 ? weight : 0;
+      notional[cell] = G[cell] ? Math.max(0, amount) : 0;
+    }
+  }
   return {G, notional, active};
 }
 
-function renderLiquidationTip(el, notional, rows, cols, min, step, column, row, reference, unit) {
+function renderLiquidationTip(el, notional, rows, cols, min, step, column, row, reference, unit, details = []) {
     const value = notional[row * cols + column];
     const origin=Math.max(0,Math.min(rows-1,Math.floor((reference-min)/step)));
     let total=0;
@@ -73,6 +103,11 @@ function renderLiquidationTip(el, notional, rows, cols, min, step, column, row, 
     }
     const method=document.createElement('small');
     method.textContent='Nocional simulado · 1% do giro das velas';
-    el.replaceChildren(range,sum,method);
+    const breakdown = details.map(({leverage, value}) => {
+      const item = document.createElement('small');
+      item.textContent = leverage + '× · ≈ ' + amount.format(value) + ' ' + unit;
+      return item;
+    });
+    el.replaceChildren(range,sum,...breakdown,method);
     return true;
 }
