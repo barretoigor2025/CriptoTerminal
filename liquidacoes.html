@@ -82,7 +82,7 @@ body.chart-overlay-open{overflow:hidden}
   <button type="button" data-asset="BNB" aria-pressed="false">BNB</button>
 </div>
 <div class="filters" role="group" aria-label="Filtros do gráfico">
-<select id="interval" aria-label="Velas" title="Velas">
+<select id="interval" aria-label="Período das velas usadas na estimativa" title="Período das velas usadas na estimativa">
 <option value="1">1 min</option><option value="3">3 min</option><option value="5">5 min</option>
 <option value="15" selected>15 min</option><option value="30">30 min</option><option value="60">1 h</option>
 <option value="120">2 h</option><option value="240">4 h</option><option value="360">6 h</option>
@@ -106,7 +106,7 @@ body.chart-overlay-open{overflow:hidden}
     <summary aria-label="Legenda e ajuda" title="Legenda e ajuda">?</summary>
     <div class="chart-help-content">
       <div class="legend">Intensidade baixa <span class="ramp"></span> alta</div>
-      <p>Verde indica alta e vermelho indica queda. Os níveis são estimados pelo volume das velas. As linhas marcam a zona mais forte de cada lado por alavancagem na última vela.</p>
+      <p>Cada mapa é recalculado com as velas do período selecionado. Uma faixa de preço pode aparecer em períodos diferentes. As linhas à direita mostram a zona mais forte por alavancagem e lado na última vela.</p>
       <p>Toque ou passe o mouse para ver os valores. Arraste o eixo direito para ajustar a escala. O contorno do indicador acende a 0,5% da zona ou menos. Horários do Japão.</p>
     </div>
   </details>
@@ -302,7 +302,7 @@ function scheduleDraw() {
   });
 }
 
-function buildMap(candles) {
+function buildMap(candles, origin = map?.origin) {
   const rows = priceRange.value === 'all' ? 440 : 264;
   const current = candles.at(-1).close;
   const all = priceRange.value === 'all';
@@ -345,7 +345,7 @@ function buildMap(candles) {
     groups[side].set(zone.row, group);
     const key = side + ':' + zone.leverage;
     const bands = tierGroups.get(key) ?? new Map();
-    const band = bands.get(zone.row) ?? {weight:0, weightedPrice:0, leverage:zone.leverage};
+    const band = bands.get(zone.row) ?? {weight:0, weightedPrice:0, leverage:zone.leverage, side, row:zone.row};
     band.weight += zone.weight;
     band.weightedPrice += zone.price * zone.weight;
     bands.set(zone.row, band);
@@ -361,7 +361,7 @@ function buildMap(candles) {
   const markers = Array.from(tierGroups.values(), bands =>
     Array.from(bands.values()).reduce((best, band) => band.weight > best.weight ? band : best));
   markers.sort((a, b) => b.weight - a.weight);
-  return {min, max, step, rows, heatmap, notional, candles, current, levels, markers};
+  return {min, max, step, rows, heatmap, notional, candles, current, levels, markers, origin};
 }
 
 function priceLabel(price) {
@@ -460,16 +460,21 @@ function draw() {
   ctx.fillStyle = '#fff';
   for (let x = left; x < right; x += 6) ctx.fillRect(x, y(map.current), 3, 1);
   const occupied = [];
+  const markerHits = [];
   for (const marker of map.markers) {
     const price = marker.weightedPrice / marker.weight;
     const markerY = y(price);
     if (markerY < top || markerY > bottom || candles.length < first || candles.length > first + count) continue;
     const edge = left + (candles.length - first) * stride;
     ctx.fillStyle = tierColors[liquidationLeverages.indexOf(marker.leverage)];
-    for (let x = Math.max(left, edge - 112); x < edge; x += 6) ctx.fillRect(x, markerY, 3, 1);
+    const lineStart = Math.max(left, edge - 112);
+    for (let x = lineStart; x < edge; x += 6) ctx.fillRect(x, markerY, 3, 1);
+    const hit = {marker, y:markerY, left:lineStart, right:edge};
+    markerHits.push(hit);
     if (occupied.some(other => Math.abs(markerY - other) < 13)) continue;
-    const label = marker.leverage + '× ' + (price > map.current ? 'SHORT' : 'LONG') + ' ' + priceLabel(price);
-    ctx.fillText(label, Math.max(left, edge - ctx.measureText(label).width - 5), markerY - 3);
+    const label = marker.leverage + '× ' + marker.side.toUpperCase() + ' ' + priceLabel(price);
+    hit.labelLeft = Math.max(left, edge - ctx.measureText(label).width - 5);
+    ctx.fillText(label, hit.labelLeft, markerY - 3);
     occupied.push(markerY);
   }
   ctx.restore();
@@ -480,21 +485,33 @@ function draw() {
     if (x >= left && x + 94 <= width) ctx.fillText(dateFormat.format(candles[column].time), x, bottom + 19);
   }
   if (!pointer || pointer.x < left || pointer.x >= right || pointer.y < top || pointer.y > bottom) return;
-  const column = Math.floor(first + (pointer.x - left) / stride);
+  const hitDistance = hit => Math.abs(pointer.y - hit.y);
+  const hits = markerHits.filter(hit => pointer.x < hit.right &&
+    ((pointer.x >= hit.left && hitDistance(hit) <= 4) ||
+    (pointer.x >= hit.labelLeft && pointer.y >= hit.y - 13 && pointer.y <= hit.y - 4)));
+  const marker = hits.sort((a, b) => hitDistance(a) - hitDistance(b))[0]?.marker;
+  const column = marker ? candles.length - 1 : Math.floor(first + (pointer.x - left) / stride);
   if (!candles[column]) return;
   const price = high - (pointer.y - top) / (bottom - top) * (high - low);
-  const row = Math.floor((price - min) / step);
+  const row = marker?.row ?? Math.floor((price - min) / step);
   ctx.fillStyle = '#aaa';
   ctx.fillRect(pointer.x, top, 1, bottom - top);
   ctx.fillRect(left, pointer.y, right - left, 1);
   if (row < 0 || row >= rows) return;
   const hasEstimate = renderLiquidationTip(tooltip, notional, rows, candles.length, min, step, column, row, candles[column].close, 'USDT', bandBreakdown(column, row));
-  const context = document.createElement('small');
-  context.textContent = hasEstimate
-    ? 'Fonte da estimativa · ' + feeds[feedIndex].name
-    : 'Faixa ' + priceLabel(min + row * step) + '–' + priceLabel(min + (row + 1) * step);
-  if (!hasEstimate) tooltip.replaceChildren();
-  tooltip.append(context);
+  if (!hasEstimate) {
+    tooltip.replaceChildren();
+    const range = document.createElement('span');
+    range.textContent = 'Faixa ' + priceLabel(min + row * step) + '–' + priceLabel(min + (row + 1) * step);
+    tooltip.append(range);
+  }
+  const context = document.createElement('span');
+  context.textContent = (marker ? marker.leverage + '× ' + marker.side.toUpperCase() + ' · última vela' : 'Vela apontada') +
+    ' · ' + originDate.format(candles[column].time) + ' JST';
+  const source = document.createElement('small');
+  source.textContent = 'Base da estimativa · ' + map.origin.period + ' · ' + map.origin.feed;
+  context.append(source);
+  tooltip.prepend(context);
   appendBookComparison(min + row * step, min + (row + 1) * step);
   tooltip.hidden = false;
   tooltip.style.left = Math.max(left, Math.min(pointer.x + 12, width - tooltip.offsetWidth - 4)) + 'px';
@@ -506,6 +523,11 @@ const binanceIntervals = {
   360:'6h', 720:'12h', D:'1d', W:'1w'
 };
 
+const originDate = new Intl.DateTimeFormat('pt-BR', {
+  timeZone:'Asia/Tokyo', day:'2-digit', month:'2-digit', year:'2-digit',
+  hour:'2-digit', minute:'2-digit', hourCycle:'h23'
+});
+
 function bandBreakdown(column, row) {
   const {candles, min, step} = map;
   const values = new Map();
@@ -516,18 +538,27 @@ function bandBreakdown(column, row) {
     const share = Math.max(0, candle.volume) * entry * 0.01 / (2 * liquidationLeverages.length);
     for (const leverage of selectedLeverages) {
       const margin = 0.985 / leverage;
-      const long = entry * (1 - margin), short = entry * (1 + margin);
-      const hits = Number(low > long && Math.floor((long - min) / step) === row) +
-        Number(high < short && Math.floor((short - min) / step) === row);
-      if (hits && share) values.set(leverage, (values.get(leverage) ?? 0) + hits * share);
+      for (const side of ['LONG', 'SHORT']) {
+        const price = entry * (1 + (side === 'LONG' ? -margin : margin));
+        const intact = side === 'LONG' ? low > price : high < price;
+        if (!share || !intact || Math.floor((price - min) / step) !== row) continue;
+        const key = leverage + side;
+        const group = values.get(key) ?? {leverage, side, value:0, newest:candle.time};
+        group.value += share;
+        group.oldest = candle.time;
+        values.set(key, group);
+      }
     }
     if (index < column) {
       low = Math.min(low, candle.low);
       high = Math.max(high, candle.high);
     }
   }
-  return liquidationLeverages.filter(leverage => values.has(leverage))
-    .map(leverage => ({leverage, value:values.get(leverage)}));
+  return [...values.values()].sort((a, b) => a.leverage - b.leverage || a.side.localeCompare(b.side))
+    .map(({oldest, newest, ...group}) => ({
+      ...group,
+      origin:originDate.format(oldest) + (newest === oldest ? '' : ' → ' + originDate.format(newest))
+    }));
 }
 
 const feeds = [
@@ -615,9 +646,11 @@ async function load(reset = false) {
     render();
   }
   const symbol = asset + 'USDT';
-  status.textContent = 'Carregando ' + symbol + '…';
+  const period = interval.value;
+  const periodLabel = interval.selectedOptions[0].textContent;
+  status.textContent = 'Carregando ' + symbol + ' · velas de ' + periodLabel + '…';
   try {
-    const {candles, index, partial} = await fetchCandles(symbol, interval.value, Number(historySize.value), request.signal);
+    const {candles, index, partial} = await fetchCandles(symbol, period, Number(historySize.value), request.signal);
     if (controller !== request) return;
     if (map && viewport) {
       const oldStart = map.candles[0].time;
@@ -629,8 +662,8 @@ async function load(reset = false) {
       else viewport = null;
     }
     feedIndex = index;
-    map = buildMap(candles);
-    status.textContent = symbol + ' · ' + feeds[index].name + ' · ' + candles.length.toLocaleString('pt-BR') +
+    map = buildMap(candles, {period:periodLabel, feed:feeds[index].name});
+    status.textContent = symbol + ' · ' + periodLabel + ' · ' + feeds[index].name + ' · ' + candles.length.toLocaleString('pt-BR') +
       ' velas desde ' + new Date(candles[0].time).toLocaleDateString('pt-BR', {timeZone:'Asia/Tokyo'}) +
       (partial ? ' · histórico parcial' : '') + ' · atualizado às ' +
       new Date().toLocaleTimeString('pt-BR', {timeZone:'Asia/Tokyo'}) + ' JST';
