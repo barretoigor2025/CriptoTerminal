@@ -31,7 +31,7 @@ dt{color:var(--muted);font-size:.78rem}dd{margin:3px 0 0;font-weight:650;font-va
 #status{margin:0;font-size:.75rem}
 </style>
 <main id="dashboard">
-<header><a href="index.html">← Cripto Terminal</a><small>COINBASE · BTC/USD · 1D · UTC</small></header>
+<header><a href="index.html">← Cripto Terminal</a><small>BINANCE SPOT · BTC/USDT · 1D · UTC</small></header>
 <h1><span>BTC</span> Diário</h1>
 <section aria-label="Gráfico de Bitcoin">
 <div class="chart-top"><div class="quote"><span id="price" class="price">—</span><span id="change" class="change">—</span></div><span id="verdict" class="verdict" aria-live="polite">Carregando candle…</span></div>
@@ -44,21 +44,21 @@ dt{color:var(--muted);font-size:.78rem}dd{margin:3px 0 0;font-weight:650;font-va
 </div>
 <dl><div><dt>Abertura</dt><dd id="open">—</dd></div><div><dt>Máxima</dt><dd id="high">—</dd></div><div><dt>Mínima</dt><dd id="low">—</dd></div></dl>
 </section>
-<p id="status" class="muted" role="status">Buscando dados da Coinbase…</p>
+<p id="status" class="muted" role="status">Buscando dados da Binance…</p>
 </main>
 <script>
 const element = id => document.getElementById(id);
 const chart = element('chart');
 const context = chart.getContext('2d');
 const reaction = element('reaction');
-const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'USD' });
+const priceFormat = new Intl.NumberFormat('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
 const axis = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const date = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
 const clock = new Intl.DateTimeFormat('pt-BR', { timeStyle: 'medium', timeZone: 'Asia/Tokyo' });
 const palette = { up: '#49e9ad', down: '#ff7189', flat: '#a0afc0' };
 const day = 86400000;
-const api = 'https://api.exchange.coinbase.com/products/BTC-USD';
-const feed = 'wss://ws-feed.exchange.coinbase.com';
+const api = 'https://data-api.binance.vision/api/v3';
+const feed = 'wss://data-stream.binance.vision/ws/btcusdt@trade';
 const staleAfter = 12000;
 const percent = new Intl.NumberFormat('pt-BR', {
   style:'percent', signDisplay:'exceptZero', minimumFractionDigits:2, maximumFractionDigits:2
@@ -96,10 +96,8 @@ function applyTrade() {
   row[4] = trade.price;
 }
 
-function acceptTrade(update, fromSocket) {
-  const time = Date.parse(update.time);
-  const price = Number(update.price);
-  const id = Number(update.trade_id);
+function acceptTrade({time, price: rawPrice, id}, fromSocket) {
+  const price = Number(rawPrice);
   const now = Date.now();
   if (utcDay(time) !== utcDay(now) || !Number.isFinite(price) || price <= 0 ||
       !Number.isSafeInteger(id) || id <= 0) return;
@@ -127,10 +125,13 @@ async function refreshTicker() {
   if (tickerBusy || Date.now() - lastLiveAt <= staleAfter) return;
   tickerBusy = true;
   try {
-    const response = await fetch(api + '/ticker', {
+    const response = await fetch(api + '/trades?symbol=BTCUSDT&limit=1', {
       cache:'no-store', signal:AbortSignal.timeout(5000)
     });
-    if (response.ok) acceptTrade(await response.json(), false);
+    if (response.ok) {
+      const [latest] = await response.json();
+      if (latest) acceptTrade(latest, false);
+    }
   } catch {
     // Preserve the last trade while the next request retries.
   } finally {
@@ -142,13 +143,12 @@ async function refreshTicker() {
 function connect() {
   const connection = new WebSocket(feed);
   socket = connection;
-  connection.addEventListener('open', () => {
-    connection.send(JSON.stringify({type:'subscribe', product_ids:['BTC-USD'], channels:['ticker']}));
-  });
   connection.addEventListener('message', event => {
     if (socket !== connection) return;
     const message = JSON.parse(event.data);
-    if (message.type === 'ticker' && message.product_id === 'BTC-USD') acceptTrade(message, true);
+    if (message.e === 'trade' && message.s === 'BTCUSDT') {
+      acceptTrade({time:message.T, price:message.p, id:message.t}, true);
+    }
   });
   connection.addEventListener('error', () => connection.close());
   connection.addEventListener('close', () => {
@@ -192,7 +192,7 @@ function draw() {
     context.fillStyle = '#293442';
     context.fillRect(axisWidth, y(level), plotWidth, 1);
     context.fillStyle = '#a0afc0';
-    context.fillText('$' + axis.format(level), 3, y(level) + 4);
+    context.fillText(axis.format(level), 3, y(level) + 4);
   }
   visible.forEach(([time, low, high, open, close], i) => {
     const today = i === visible.length - 1;
@@ -225,13 +225,13 @@ function render() {
   const verdict = element('verdict');
   const label = {up:'Walter tem razão', down:'Dr. tem razão', flat:'Na abertura do dia'}[mood];
   if (verdict.textContent !== label) verdict.textContent = label;
-  element('price').textContent = currency.format(close);
+  element('price').textContent = priceFormat.format(close);
   element('change').textContent = percent.format((close - open) / open);
-  for (const [id, value] of Object.entries({open, high, low})) element(id).textContent = currency.format(value);
+  for (const [id, value] of Object.entries({open, high, low})) element(id).textContent = priceFormat.format(value);
   element('up').hidden = mood !== 'up';
   element('down').hidden = mood !== 'down';
-  chart.setAttribute('aria-label', 'BTC/USD diário em ' + date.format(time * 1000) +
-    '. Abertura ' + currency.format(open) + '. Último preço ' + currency.format(close));
+  chart.setAttribute('aria-label', 'BTC/USDT diário em ' + date.format(time * 1000) +
+    '. Abertura ' + priceFormat.format(open) + '. Último preço ' + priceFormat.format(close));
   updateStatus();
   draw();
 }
@@ -239,16 +239,15 @@ function render() {
 async function refresh() {
   try {
     const start = new Date(Math.floor(Date.now() / day) * day);
-    const from = new Date(+start - 23 * day);
-    const end = new Date(+start + day);
-    const parameters = new URLSearchParams({granularity:86400,start:from.toISOString(),end:end.toISOString()});
-    const response = await fetch(api + '/candles?' + parameters, {
+    const parameters = new URLSearchParams({symbol:'BTCUSDT', interval:'1d', limit:24});
+    const response = await fetch(api + '/klines?' + parameters, {
       cache:'no-store', signal:AbortSignal.timeout(10000)
     });
-    if (!response.ok) throw new Error('Coinbase indisponível');
+    if (!response.ok) throw new Error('Binance indisponível');
     const rows = await response.json();
-    const next = rows.filter(row => Array.isArray(row) && row.length >= 5 &&
-      row.slice(0,5).every(Number.isFinite) && row[0] <= +start / 1000 &&
+    const next = rows.filter(row => Array.isArray(row) && row.length >= 5)
+      .map(([time, open, high, low, close]) => [time / 1000, Number(low), Number(high), Number(open), Number(close)])
+      .filter(row => row.every(Number.isFinite) && row[0] <= +start / 1000 &&
       row[1] > 0 && row[1] <= Math.min(row[3], row[4]) && row[2] >= Math.max(row[3], row[4]))
       .sort((a,b) => a[0]-b[0]);
     if (next.at(-1)?.[0] !== +start / 1000 || Math.floor(Date.now() / day) * day !== +start) {
