@@ -806,7 +806,8 @@
     <button class="pool-link" id="binanceBook" type="button" aria-haspopup="dialog">LIVRO DE OFERTAS</button>
     <a class="pool-link" href="pool-wbtc-sol-live.html" title="Pool cbBTC/SOL">POOL</a>
     <select class="hsel" id="src" title="Fonte de dados">
-      <option value="hyperliquid">Hyperliquid</option>
+      <option value="consolidated">Consolidado</option>
+      <option value="hyperliquid" selected>Hyperliquid</option>
       <option value="binance">Binance</option>
       <option value="coinbase">Coinbase</option>
       <option value="bybit">Bybit</option>
@@ -906,6 +907,7 @@
 
 <script src="liquidation-map.js"></script>
 <script src="exchange-books.js"></script>
+<script src="consolidated-market.js"></script>
 <script>
 /* =========================================================================
    IB · BTC TERMINAL — MVP
@@ -1065,6 +1067,8 @@ const SOURCES = {
     }
   }
 };
+
+SOURCES.consolidated = createConsolidatedSource(SOURCES);
 
 // Gate has no native 12H spot candles: aggregate real 4H history and update the full bucket live.
 function aggregate12hCandles(rows){
@@ -1743,7 +1747,11 @@ async function loadBtcSolCandles(tf){
    ========================================================================= */
 function setStatus(state, txt){
   const led=$('#led'); led.className='led'+(state==='live'?' live':state==='err'?' err':'');
-  $('#statusTxt').textContent = txt;
+  const label = $('#statusTxt');
+  label.textContent = txt;
+  label.title = S.source === 'consolidated'
+    ? 'Binance, Bybit, Coinbase e Hyperliquid · USD e USDT aproximados a 1:1'
+    : '';
 }
 
 // com autoScale desligado (escala manual), faz UM fit de preço na carga e depois trava
@@ -1800,7 +1808,7 @@ async function loadData(){
     updateTicker(candles[candles.length-1], candles[candles.length-2]);
     if(S.symbol==='BTCSOL'){ pauseSingle(); setStatus('live','BTC/SOL calculado'); }
     else if(S.tf==='1y'){ setStatus('live','anual (histórico)'); }  // sem stream nativo p/ anual
-    else { openSocket(); setStatus('live','ao vivo'); }
+    else { openSocket(); setLiveStatus(candles.at(-1)); }
   }catch(err){
     if(candleSymbol!==S.symbol || src!==SOURCES[S.source]) return;
     console.error(err);
@@ -1852,7 +1860,13 @@ function onLiveCandle(c, closed){
   if(OB.cfg.on){ OB.checkAlerts(); OB.sweepDead(); MTFOB.render(); }   // alertas + remove mortos + confluência MTF ao vivo
 
   updateTicker(c, arr[arr.length-2]);
-  setStatus('live','ao vivo');
+  setLiveStatus(c);
+}
+
+function setLiveStatus(candle){
+  if(S.source==='consolidated'){
+    setStatus(candle.venues===4?'live':'', 'Consolidado · '+candle.venues+'/4 fontes');
+  }else setStatus('live','ao vivo');
 }
 
 function updateTicker(cur, prev){
@@ -1917,7 +1931,7 @@ const LIQ = {
     for(const c of win){ if(c.low<pMin)pMin=c.low; if(c.high>pMax)pMax=c.high; }
     const pad=(pMax-pMin)*0.04; pMin-=pad; pMax+=pad;
     if(!(pMax>pMin)) return;
-    const quoteUnit=S.symbol.endsWith('USDT') ? (['hyperliquid','coinbase'].includes(S.source) ? 'USD' : 'USDT') : null;
+    const quoteUnit=S.symbol.endsWith('USDT') ? (S.source==='consolidated' ? 'USD eq.' : ['hyperliquid','coinbase'].includes(S.source) ? 'USD' : 'USDT') : null;
     const {G, notional}=calculateLiquidationGrid(win,pMin,pMax,R,this.cfg.selectedLeverages,quoteUnit);
     let mx=0; for(let k=0;k<G.length;k++) if(G[k]>mx)mx=G[k];
     if(mx<=0) return;
