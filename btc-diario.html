@@ -57,7 +57,108 @@ const date = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit'
 const clock = new Intl.DateTimeFormat('pt-BR', { timeStyle: 'medium', timeZone: 'Asia/Tokyo' });
 const palette = { up: '#49e9ad', down: '#ff7189', flat: '#a0afc0' };
 const day = 86400000;
+const api = 'https://api.exchange.coinbase.com/products/BTC-USD';
+const feed = 'wss://ws-feed.exchange.coinbase.com';
+const staleAfter = 12000;
+const percent = new Intl.NumberFormat('pt-BR', {
+  style:'percent', signDisplay:'exceptZero', minimumFractionDigits:2, maximumFractionDigits:2
+});
+const utcDay = time => Math.floor(time / day) * day;
 let candles = [];
+let trade;
+let liveLow = Infinity;
+let liveHigh = -Infinity;
+let socket;
+let lastLiveAt = 0;
+let tickerBusy = false;
+let quoteFrame = 0;
+
+function updateStatus() {
+  const now = Date.now();
+  if (candles.at(-1)?.[0] !== utcDay(now) / 1000) {
+    element('status').textContent = 'Aguardando a abertura de hoje · 09:00 JST';
+    return;
+  }
+  if (!trade || utcDay(trade.time) !== utcDay(now)) {
+    element('status').textContent = 'Candle de referência · aguardando cotação atual';
+    return;
+  }
+  const mode = now - trade.time > staleAfter ? 'Último negócio disponível' :
+    now - lastLiveAt <= staleAfter ? 'Ao vivo' : 'Atualização de reserva';
+  element('status').textContent = mode + ' · ' + clock.format(trade.time) + ' JST · abertura 09:00 JST';
+}
+
+function applyTrade() {
+  const row = candles.at(-1);
+  if (!row || !trade || row[0] !== utcDay(trade.time) / 1000) return;
+  row[1] = Math.min(row[1], liveLow);
+  row[2] = Math.max(row[2], liveHigh);
+  row[4] = trade.price;
+}
+
+function acceptTrade(update, fromSocket) {
+  const time = Date.parse(update.time);
+  const price = Number(update.price);
+  const id = Number(update.trade_id);
+  const now = Date.now();
+  if (utcDay(time) !== utcDay(now) || !Number.isFinite(price) || price <= 0 ||
+      !Number.isSafeInteger(id) || id <= 0) return;
+  if (fromSocket && now - time <= staleAfter) lastLiveAt = now;
+  if (trade && id <= trade.id) {
+    updateStatus();
+    return;
+  }
+  if (!trade || utcDay(trade.time) !== utcDay(time)) {
+    liveLow = Infinity;
+    liveHigh = -Infinity;
+  }
+  trade = {time, price, id};
+  liveLow = Math.min(liveLow, price);
+  liveHigh = Math.max(liveHigh, price);
+  if (candles.at(-1)?.[0] !== utcDay(time) / 1000) return;
+  applyTrade();
+  if (!quoteFrame) quoteFrame = requestAnimationFrame(() => {
+    quoteFrame = 0;
+    if (candles.at(-1)?.[0] === utcDay(Date.now()) / 1000) render();
+  });
+}
+
+async function refreshTicker() {
+  if (tickerBusy || Date.now() - lastLiveAt <= staleAfter) return;
+  tickerBusy = true;
+  try {
+    const response = await fetch(api + '/ticker', {
+      cache:'no-store', signal:AbortSignal.timeout(5000)
+    });
+    if (response.ok) acceptTrade(await response.json(), false);
+  } catch {
+    // Preserve the last trade while the next request retries.
+  } finally {
+    tickerBusy = false;
+    updateStatus();
+  }
+}
+
+function connect() {
+  const connection = new WebSocket(feed);
+  socket = connection;
+  connection.addEventListener('open', () => {
+    connection.send(JSON.stringify({type:'subscribe', product_ids:['BTC-USD'], channels:['ticker']}));
+  });
+  connection.addEventListener('message', event => {
+    if (socket !== connection) return;
+    const message = JSON.parse(event.data);
+    if (message.type === 'ticker' && message.product_id === 'BTC-USD') acceptTrade(message, true);
+  });
+  connection.addEventListener('error', () => connection.close());
+  connection.addEventListener('close', () => {
+    if (socket !== connection) return;
+    lastLiveAt = 0;
+    updateStatus();
+    refreshTicker();
+    setTimeout(connect, 2500);
+  });
+}
 
 function direction(open, close) {
   return close > open ? 'up' : close < open ? 'down' : 'flat';
@@ -121,17 +222,17 @@ function render() {
   const [time, low, high, open, close] = candles.at(-1);
   const mood = direction(open, close);
   element('dashboard').dataset.direction = mood;
-  element('verdict').textContent = {up:'Walter tem razão', down:'Dr. tem razão', flat:'Na abertura do dia'}[mood];
+  const verdict = element('verdict');
+  const label = {up:'Walter tem razão', down:'Dr. tem razão', flat:'Na abertura do dia'}[mood];
+  if (verdict.textContent !== label) verdict.textContent = label;
   element('price').textContent = currency.format(close);
-  element('change').textContent = new Intl.NumberFormat('pt-BR', {
-    style:'percent', signDisplay:'exceptZero', minimumFractionDigits:2, maximumFractionDigits:2
-  }).format((close - open) / open);
+  element('change').textContent = percent.format((close - open) / open);
   for (const [id, value] of Object.entries({open, high, low})) element(id).textContent = currency.format(value);
   element('up').hidden = mood !== 'up';
   element('down').hidden = mood !== 'down';
   chart.setAttribute('aria-label', 'BTC/USD diário em ' + date.format(time * 1000) +
     '. Abertura ' + currency.format(open) + '. Último preço ' + currency.format(close));
-  element('status').textContent = 'Atualizado às ' + clock.format(Date.now()) + ' no Japão · abertura diária às 09:00 JST';
+  updateStatus();
   draw();
 }
 
@@ -141,7 +242,7 @@ async function refresh() {
     const from = new Date(+start - 23 * day);
     const end = new Date(+start + day);
     const parameters = new URLSearchParams({granularity:86400,start:from.toISOString(),end:end.toISOString()});
-    const response = await fetch('https://api.exchange.coinbase.com/products/BTC-USD/candles?' + parameters, {
+    const response = await fetch(api + '/candles?' + parameters, {
       cache:'no-store', signal:AbortSignal.timeout(10000)
     });
     if (!response.ok) throw new Error('Coinbase indisponível');
@@ -153,13 +254,18 @@ async function refresh() {
     if (next.at(-1)?.[0] !== +start / 1000 || Math.floor(Date.now() / day) * day !== +start) {
       throw new Error('Candle diário indisponível');
     }
+    const previous = candles.at(-1);
+    const current = next.at(-1);
+    if (previous?.[0] === current[0]) {
+      current[1] = Math.min(current[1], previous[1]);
+      current[2] = Math.max(current[2], previous[2]);
+    }
     candles = next;
+    applyTrade();
     render();
   } catch {
     const sameDay = candles.at(-1)?.[0] === Math.floor(Date.now() / day) * day / 1000;
-    element('status').textContent = sameDay ?
-      'Conexão temporariamente indisponível · exibindo a última leitura.' :
-      'Aguardando o candle de hoje · nova tentativa automática.';
+    updateStatus();
     if (!sameDay) {
       element('dashboard').dataset.direction = 'flat';
       element('verdict').textContent = 'Aguardando candle…';
@@ -171,11 +277,20 @@ async function refresh() {
       }
     }
   } finally {
-    setTimeout(refresh, 15000);
+    setTimeout(refresh, Math.max(500, Math.min(15000, utcDay(Date.now()) + day - Date.now())));
   }
 }
 
 new ResizeObserver(draw).observe(chart);
 refresh();
+refreshTicker();
+setInterval(() => {
+  updateStatus();
+  refreshTicker();
+}, 4000);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) refreshTicker();
+});
+connect();
 </script>
 </html>
