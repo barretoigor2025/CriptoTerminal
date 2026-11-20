@@ -22,8 +22,10 @@ canvas{display:block;width:100%;height:100%}
 dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0}
 dt{color:var(--muted);font-size:.78rem}dd{margin:3px 0 0;font-weight:650;font-variant-numeric:tabular-nums;font-size:clamp(.82rem,1.4vw,1.13rem)}
 .reaction{position:absolute;inset:0 0 0 auto;width:var(--reaction-width,40%);pointer-events:none}
-.reaction img{position:absolute;left:0;top:var(--reaction-top,50%);width:var(--reaction-size,100%);height:var(--reaction-size,100%);object-fit:contain;transform:translateY(-50%);filter:drop-shadow(0 0 22px var(--glow,#1c2938))}
-.speech{position:absolute;z-index:1;left:calc(var(--reaction-size,100%) / 2);top:calc(var(--reaction-top,50%) - var(--reaction-size,100%) / 2 - 4px);transform:translate(-50%,-100%);display:none;width:max-content;max-width:calc(100% - 8px);padding:5px 9px;border:1px solid var(--tone,var(--muted));border-radius:12px;background:var(--panel);font-size:clamp(.72rem,2.2vw,1rem);line-height:1.15;text-align:center;font-weight:650}
+.reaction .verdict-art{position:absolute;left:calc((var(--fight-size) - var(--reaction-size)) / 2);top:var(--reaction-top,50%);width:var(--reaction-size,100%);height:var(--reaction-size,100%);object-fit:contain;transform:translateY(-50%);filter:drop-shadow(0 0 22px var(--glow,#1c2938))}
+.fight{position:absolute;top:var(--fight-top,0);left:0;width:var(--fight-size,100%);aspect-ratio:1;object-fit:contain;display:none}
+[data-direction="up"] .fight-up,[data-direction="down"] .fight-down{display:block}
+.speech{position:absolute;z-index:1;left:calc(var(--fight-size,100%) / 2);top:calc(var(--reaction-top,50%) - var(--reaction-size,100%) / 2 - 4px);transform:translate(-50%,-100%);display:none;width:max-content;max-width:calc(100% - 8px);padding:5px 9px;border:1px solid var(--tone,var(--muted));border-radius:12px;background:var(--panel);font-size:clamp(.72rem,2.2vw,1rem);line-height:1.15;text-align:center;font-weight:650}
 .speech::after{content:"";position:absolute;top:100%;left:50%;width:6px;height:6px;transform:translate(-50%,-50%) rotate(45deg);background:var(--panel);border-right:1px solid var(--tone);border-bottom:1px solid var(--tone)}
 [data-direction="up"] .speech-up,[data-direction="down"] .speech-down{display:block}
 .verdict{color:var(--tone,var(--muted));font-weight:750;font-size:clamp(.78rem,2.8vw,1.35rem);text-align:right}
@@ -41,10 +43,12 @@ dt{color:var(--muted);font-size:.78rem}dd{margin:3px 0 0;font-weight:650;font-va
 <div class="chart-stage">
 <canvas id="chart" role="img" aria-label="Gráfico diário de Bitcoin"></canvas>
 <div id="reaction" class="reaction" role="group" aria-label="Reação ao candle de hoje">
+<img class="fight fight-up" src="assets/btc-diario/boxe-walter.webp" alt="Walter ataca com soco no ar, barrigada e perfume">
+<img class="fight fight-down" src="assets/btc-diario/boxe-dr.webp" alt="Dr. ataca com soco, cabeçada e martelada cômica">
 <span class="speech speech-up">Aiiinnn... A contagem</span>
 <span class="speech speech-down">Aóóóóó</span>
-<img id="up" hidden src="assets/btc-diario/walter.webp" alt="Walter ri e aponta para o Dr., que está de joelhos">
-<img id="down" hidden src="assets/btc-diario/dr.webp" alt="Dr. comemora com uma placa de acerto enquanto Walter fica furioso">
+<img class="verdict-art" id="up" hidden src="assets/btc-diario/walter.webp" alt="Walter ri e aponta para o Dr., que está de joelhos">
+<img class="verdict-art" id="down" hidden src="assets/btc-diario/dr.webp" alt="Dr. comemora com uma placa de acerto enquanto Walter fica furioso">
 </div>
 </div>
 <dl><div><dt>Abertura</dt><dd id="open">—</dd></div><div><dt>Máxima</dt><dd id="high">—</dd></div><div><dt>Mínima</dt><dd id="low">—</dd></div></dl>
@@ -187,7 +191,10 @@ function draw() {
   const plotEnd = width - reactionWidth;
   const plotWidth = plotEnd - axisWidth;
   const speechSpace = 43;
-  const artSize = Math.min(reactionWidth, Math.max(1, height - speechSpace - 6));
+  const fightRatio = 1.2;
+  const artSize = Math.max(1, Math.min(reactionWidth / fightRatio, (height - speechSpace - 8) / (1 + fightRatio)));
+  const fightSize = artSize * fightRatio;
+  reaction.style.setProperty('--fight-size', fightSize + 'px');
   reaction.style.setProperty('--reaction-width', reactionWidth + 'px');
   reaction.style.setProperty('--reaction-size', artSize + 'px');
   const y = price => 10 + (top - price) / (top - bottom) * plotHeight;
@@ -206,8 +213,9 @@ function draw() {
     const body = today ? Math.min(step * 1.16, 36) : Math.min(step * .46, 13);
     if (today) {
       const center = y((open + close) / 2);
-      const artCenter = Math.min(height - artSize / 2, Math.max(speechSpace + artSize / 2, center));
+      const artCenter = Math.min(height - artSize / 2, Math.max(fightSize + speechSpace + artSize / 2, center));
       reaction.style.setProperty('--reaction-top', artCenter + 'px');
+      reaction.style.setProperty('--fight-top', Math.max(0, artCenter - artSize / 2 - speechSpace - fightSize) + 'px');
       context.fillStyle = '#ffffff0e';
       const band = Math.max(9, body / 2 + 5);
       context.fillRect(x - band, 0, Math.min(band * 2, plotEnd - x + band), height - 19);
