@@ -103,9 +103,12 @@ function renderLiquidationTip(el, notional, rows, cols, min, step, column, row, 
     }
     const method=document.createElement('small');
     method.textContent='Nocional simulado · 1% do giro das velas';
-    const breakdown = details.map(({leverage, value}) => {
+    const breakdown = details.map(({leverage, side, value, origin}) => {
       const item = document.createElement('small');
-      item.textContent = leverage + '× · ≈ ' + amount.format(value) + ' ' + unit;
+      item.textContent = leverage + '×' + (side ? ' ' + side : '') + ' · ≈ ' + amount.format(value) + ' ' + unit;
+      if (origin) {
+        item.append(document.createElement('br'), 'Velas de origem · ' + origin);
+      }
       return item;
     });
     el.replaceChildren(range,sum,...breakdown,method);
