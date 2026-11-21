@@ -1,0 +1,41 @@
+name: Refresh pool transaction ledger
+on:
+  push:
+    branches: [main]
+    paths:
+      - tools/pool-ledger.mjs
+      - tools/refresh-pool-ledger.mjs
+      - .github/workflows/pool-ledger.yml
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: pool-ledger
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Open ledger storage branch
+        run: |
+          git fetch origin market-data
+          git worktree add /tmp/pool-ledger-data origin/market-data
+      - name: Read finalized Solana transactions
+        run: node tools/refresh-pool-ledger.mjs /tmp/pool-ledger-data/pool-ledger.json
+      - name: Save transaction history
+        working-directory: /tmp/pool-ledger-data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pool-ledger.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Refresh confirmed pool transactions"
+          git pull --rebase origin market-data
+          git push origin HEAD:market-data
