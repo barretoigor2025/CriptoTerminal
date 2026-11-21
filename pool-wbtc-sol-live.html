@@ -1101,11 +1101,18 @@
     const STORAGE_KEY = "wbtc_sol_pool_20261121_afternoon_v1";
     const LEDGER_KEY="pool_confirmed_ledger_"+POOL.position;
     const LEDGER_URL="https://raw.githubusercontent.com/barretoigor2025/CriptoTerminal/market-data/pool-ledger.json";
+    const REPORTED_EXIT={"id":"user-reported-net-exit-20261121","time":1795268716,"timeSource":"Horário do registro; saída informada pelo usuário","baseUsd":4100,"proceedsUsd":4312,"pnlUsd":212,"pnlPercent":5.170731707317073,"unpriced":0,"source":"user-reported-net","valuation":"Saída líquida informada pelo usuário: US$ 4.312; inclui taxas, não descontar novamente"};
+    function applyReportedExit(ledger){
+      ledger=ledger||{position:POOL.position,events:[],signatures:[],prices:{},summary:{collectedUsd:0,depositedUsd:0,reinvestmentCompatibleUsd:0,withdrawnUsd:0,netFlowUsd:0,unpriced:0}};
+      return {...ledger,status:"closed",closure:REPORTED_EXIT,closures:[...(ledger.closures||[]).filter(item=>item.id!==REPORTED_EXIT.id),REPORTED_EXIT]};
+    }
     let ledgerState=null,ledgerModule=null,ledgerBusy=false,ledgerMessage="Consultando histórico…";
     try{
       const cached=JSON.parse(localStorage.getItem(LEDGER_KEY)||"null");
       if(cached?.position===POOL.position && Array.isArray(cached.events) && cached.summary)ledgerState=cached;
     }catch(error){}
+
+    ledgerState=applyReportedExit(ledgerState);
 
     const PREVIOUS_STORAGE_KEY = "eth_sol_pool_20261121_v1";
     const POOL_STARTED_AT = new Date("2026-11-21T14:43:48+09:00").getTime();
@@ -1844,10 +1851,10 @@
       if(ledgerBusy)return;
       ledgerBusy=true;
       try{
-        ledgerModule=await import("./tools/pool-ledger.mjs?v=2");
+        ledgerModule=await import("./tools/pool-ledger.mjs?v=3");
         try{
           const response=await fetch(LEDGER_URL+"?v="+Math.floor(Date.now()/30000),{signal:AbortSignal.timeout(9000)});
-          if(response.ok)ledgerState=mergeLedgers(ledgerState,await response.json());
+          if(response.ok)ledgerState=applyReportedExit(mergeLedgers(ledgerState,await response.json()));
         }catch(error){}
         try{
           ledgerState=await ledgerModule.scanLedger(ledgerState,solanaRpc,ledgerModule.hourlyPrices);
@@ -1861,6 +1868,7 @@
         }
       }catch(error){ledgerMessage="Leitura automática indisponível · tentando novamente";}
       finally{
+        ledgerState=applyReportedExit(ledgerState);
         ledgerBusy=false;
         renderLedger();
         if(state.candles.length)drawOverlay();
@@ -1882,7 +1890,7 @@
       const summary=ledgerState.summary;
       if(ledgerState.closure){
         const record=document.createElement("div");
-        record.textContent="POSIÇÃO ENCERRADA · "+new Date(ledgerState.closure.time*1000).toLocaleString("pt-BR",{timeZone:"Asia/Tokyo"})+" JST · Valor líquido ajustado ≈ "+usd(ledgerState.closure.proceedsUsd)+" · PnL sobre US$ 4.100 ≈ "+usd(ledgerState.closure.pnlUsd)+" ("+pct(ledgerState.closure.pnlPercent/100)+"). Resultado em USD estimado na retirada dos tokens; não confirma venda por dólares. A simulação ao vivo não altera este registro.";
+        record.textContent=ledgerState.closure.source==="user-reported-net" ? "SAÍDA LÍQUIDA REGISTRADA: "+usd(ledgerState.closure.proceedsUsd)+" · PnL sobre US$ 4.100: +"+usd(ledgerState.closure.pnlUsd)+" ("+pct(ledgerState.closure.pnlPercent/100)+"). Valor líquido informado por você; taxas não são descontadas novamente. A simulação ao vivo não altera este resultado." : "POSIÇÃO ENCERRADA · "+new Date(ledgerState.closure.time*1000).toLocaleString("pt-BR",{timeZone:"Asia/Tokyo"})+" JST · Valor líquido ajustado ≈ "+usd(ledgerState.closure.proceedsUsd)+" · PnL sobre US$ 4.100 ≈ "+usd(ledgerState.closure.pnlUsd)+" ("+pct(ledgerState.closure.pnlPercent/100)+"). Resultado em USD estimado na retirada dos tokens; não confirma venda por dólares. A simulação ao vivo não altera este registro.";
         totals.append(record);
       }
       if(summary.unpriced)$("ledgerStatus").textContent+=" · "+summary.unpriced+" movimentações com USD pendente";
@@ -2143,7 +2151,7 @@
       $("totalCapitalYen").textContent = state.usdJpy ? jpy(generatedFees() * state.usdJpy) : "¥ —";
       $("investmentPnlPct").textContent = pct(pnlPct);
       $("totalPnlYen").textContent = state.usdJpy ? jpy(pnl * state.usdJpy) : "¥ —";
-      const ledgerComplete=ledgerState && ledgerState.summary.unpriced===0;
+      const ledgerComplete=ledgerState?.closure?.source==="user-reported-net" || (ledgerState && ledgerState.summary.unpriced===0);
       $("rowPnl").querySelector(".label").textContent=(closed ? "PnL encerrado · base US$ 4.100" : "PnL sobre US$ 4.100")+(ledgerComplete ? "" : " (parcial)");
       $("metricPnl").title="Base inicial US$ 4.100. Liquidez + taxas pendentes + valores coletados/retirados − depósitos posteriores. Valores históricos USD estimados pela referência horária. A retirada pessoal anterior de US$ 34 já saiu do saldo reinvestido.";
       $("ledgerCollected").textContent=ledgerState ? usd(ledgerState.summary.collectedUsd) : "—";
