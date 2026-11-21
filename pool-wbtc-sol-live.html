@@ -1024,7 +1024,7 @@
           <div class="primary-pair"><div class="metric-row no-btn" id="rowLiquidity"><span class="label">Liquidez da pool</span><span class="value" id="metricLiquidity">--</span><span class="yen-value" id="liquidityYen">—</span></div><div class="pnl-stack"><div class="metric-row no-btn hero-pnl" id="rowPoolPnl"><span class="label">PnL desta etapa (est.)</span><span class="value" id="currentPoolPnl">—</span><span class="hero-percent" id="poolPnlPct">—</span><span class="yen-value" id="poolPnlYen">—</span></div><div class="metric-row no-btn hero-pnl" id="rowPnl"><span class="label">PnL do investimento</span><span class="value" id="metricPnl">—</span><span class="hero-percent" id="investmentPnlPct">—</span><span class="yen-value" id="totalPnlYen">¥ —</span></div></div></div>
           <div class="metric-row" id="rowUncollected"><span class="label">Taxas pendentes</span><span class="value fee-value-with-ring"><span id="metricUncollected">--</span><span id="feeRefreshRing" class="fee-refresh-ring" role="img" aria-label="Aguardando consulta das taxas" title="Próxima consulta em 5 segundos"><svg viewBox="0 0 20 20" aria-hidden="true"><circle class="ring-track" cx="10" cy="10" r="7.5"/><circle class="ring-progress" cx="10" cy="10" r="7.5" pathLength="100"/></svg></span></span><span class="yen-value" id="pendingYen">—</span><span class="fee-actions"><button class="fee-withdraw" id="collectFeesBtn" type="button">Histórico</button></span></div>
           <div class="metric-row no-btn" id="rowFeeApr"><span class="label">APR taxas</span><span class="value" id="metricFeeApr">--</span></div>
-          <div id="solEquivalent"></div><div class="position-basis" title="Base estimada pelo print Orca: saldo + taxas − PnL."><span>Base desta posição</span> <span id="poolCostBasis">US$ 4.034,74</span><span class="capital-yen" id="poolBasisYen">¥ —</span></div>
+          <div id="solEquivalent"></div><div class="position-basis" title="Base estimada pelo print Orca: saldo + taxas − PnL."><span id="positionBasisLabel">Base desta posição</span> <span id="poolCostBasis">US$ 4.034,74</span><span class="capital-yen" id="poolBasisYen">¥ —</span></div>
         </div>
         <div class="detail-grid active-position">
           <section class="subcard capital-card"><h2>CAPITAL</h2><div class="metric-row no-btn" id="rowCapital"><span class="label">Capital inicial</span><span class="value" id="metricCapital">--</span><span class="capital-yen" id="initialCapitalYen">¥ —</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowTotalCapital"><span class="label">Taxas geradas nesta posição</span><span class="value" id="metricTotalCapital">--</span><span class="capital-yen" id="totalCapitalYen">—</span></div></section>
@@ -2133,18 +2133,19 @@
       const poolCostBasis = POOL.currentCostBasis;
       const closed=ledgerState?.status==="closed";
       const poolPnl = (closed ? ledgerState.closure.proceedsUsd : liq + displayedUncollectedFees() + availableCollectedFees()) - poolCostBasis;
-      $("rowLiquidity").querySelector(".label").textContent=closed ? "Se tivesse mantido (sim.)" : "Liquidez da pool";
+      $("rowLiquidity").querySelector(".label").textContent=closed ? "Saída líquida · encerrada" : "Liquidez da pool";
       $("rowPoolPnl").querySelector(".label").textContent=closed ? "Resultado da etapa (est.)" : "PnL desta etapa (est.)";
-      $("poolCostBasis").textContent = usd(poolCostBasis);
+      $("positionBasisLabel").textContent=closed ? "Se tivesse mantido (sim.)" : "Base desta posição";
+      $("poolCostBasis").textContent = usd(closed ? liq : poolCostBasis);
       setMetric("rowPoolPnl", "currentPoolPnl", usd(poolPnl), poolPnl >= 0 ? "positive" : "negative");
       $("poolPnlPct").textContent = pct(poolPnl / poolCostBasis);
       $("poolPnlYen").textContent = state.usdJpy ? jpy(poolPnl * state.usdJpy) : "¥ —";
-      $("liquidityYen").textContent = state.usdJpy ? jpy(liq * state.usdJpy) : "¥ —";
+      $("liquidityYen").textContent = state.usdJpy ? jpy((closed ? ledgerState.closure.proceedsUsd : liq) * state.usdJpy) : "¥ —";
       $("pendingYen").textContent = state.usdJpy ? jpy(displayedUncollectedFees() * state.usdJpy) : "¥ —";
       const pendingFees = displayedUncollectedFees();
       const pendingLabel = usd(pendingFees);
 
-      setMetric("rowLiquidity", "metricLiquidity", usd(liq));
+      setMetric("rowLiquidity", "metricLiquidity", usd(closed ? ledgerState.closure.proceedsUsd : liq));
       setMetric("rowPnl", "metricPnl", usd(pnl), pnlTone);
       setMetric("rowCapital", "metricCapital", usd(POOL.capital));
       setMetric("rowTotalCapital", "metricTotalCapital", usd(generatedFees()));
@@ -2176,7 +2177,7 @@
         ["migrationYen",4034.59],
         ["solCompositionYen",comp.solValue],
         ["btcCompositionYen",comp.btcValue],
-        ["poolBasisYen",poolCostBasis]
+        ["poolBasisYen",closed ? liq : poolCostBasis]
       ]){
         $(id).textContent=state.usdJpy ? jpy(value*state.usdJpy) : "¥ —";
       }
