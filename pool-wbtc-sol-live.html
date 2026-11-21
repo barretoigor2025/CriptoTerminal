@@ -758,6 +758,19 @@
     @media(max-width:680px) and (orientation:portrait){
       .pool-card #metricLiquidity{font-size:20px}
     }
+    .side-panel{overflow-y:auto;overflow-x:hidden}
+    .pool-card #metricLiquidity,.pool-card #currentPoolPnl,.pool-card #metricPnl{
+      font-size:24px;line-height:30px;
+    }
+    .side-content .yen-value,.side-content .capital-yen,.pool-card #liquidityYen{
+      font-size:14px;line-height:20px;min-height:20px;
+    }
+    .detail-grid .metric-row{min-height:42px}
+    .detail-grid #rowAge{min-height:32px}
+    @media(orientation:landscape) and (max-height:560px){
+      .pool-card #metricLiquidity,.pool-card #currentPoolPnl,.pool-card #metricPnl{font-size:22px;line-height:27px}
+      .side-content .yen-value,.side-content .capital-yen,.pool-card #liquidityYen{font-size:13px;line-height:19px}
+    }
 </style>
 </head>
 <body>
@@ -1101,12 +1114,9 @@
     }
 
     function fitDataPanel(){
-      const outer=document.querySelector('.side-panel'),inner=$('sideContent');
-      inner.style.transform='none';inner.style.width='100%';
-      const natural=inner.scrollHeight,available=outer.clientHeight;
-      if(!natural||!available)return;
-      const scale=Math.min(1,(available-1)/natural);
-      if(scale<1){inner.style.width=(100/scale)+'%';inner.style.transform=`scale(${scale})`;}
+      const inner=$('sideContent');
+      inner.style.transform='none';
+      inner.style.width='100%';
     }
     new ResizeObserver(fitDataPanel).observe(document.querySelector('.side-panel'));
     if(document.fonts)document.fonts.ready.then(fitDataPanel);
