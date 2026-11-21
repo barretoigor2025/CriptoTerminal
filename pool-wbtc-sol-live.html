@@ -687,6 +687,16 @@
     #closedSummary .primary-pair { grid-template-columns:repeat(2,minmax(0,1fr)); }
     #closedSummary .value { font-size:clamp(13px,2vw,21px); }
     #closedSummary .close-detail { margin:5px 0 0; color:#8b97a9; font-size:9px; line-height:1.4; }
+    .pool-card #liquidityYen {
+      color:#f4cf55;
+      font-size:14px;
+      line-height:19px;
+      font-weight:600;
+      margin-top:3px;
+    }
+    @media (orientation:landscape) and (max-height:560px) {
+      .pool-card #liquidityYen { font-size:12px; line-height:16px; }
+    }
 </style>
 </head>
 <body>
@@ -744,7 +754,7 @@
         </div>
         <div class="detail-grid active-position">
           <section class="subcard capital-card"><h2>HISTÓRICO DO INVESTIMENTO</h2><div class="metric-row no-btn" id="rowCapital"><span class="label">Capital inicial</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowTotalCapital"><span class="label">Base histórica</span><span class="value" id="metricTotalCapital">--</span><span class="capital-yen" id="totalCapitalYen">—</span></div><div class="metric-row no-btn" id="rowPnl"><span class="label">PnL acumulado</span><span class="value" id="metricPnl">--</span><span class="capital-yen" id="totalPnlYen">—</span><button class="fee-add" type="button">+</button></div></section>
-          <section class="subcard contribution-card"><h2>APORTES DO CICLO</h2><div class="metric-row no-btn"><span class="label">Aportes e reinvestimentos anteriores</span><span class="value" id="previousContributions" title="US$ 128 + US$ 14 registrados no histórico">$142.00</span></div><div class="metric-row" id="rowNewCapital"><span class="label">Aporte novo nesta pool</span><span class="value" id="metricNewCapital">--</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div><div class="metric-row no-btn"><span class="label">SOL comprados · BingX</span><span class="value">61.545 SOL</span></div><div class="metric-row no-btn"><span class="label">Preço médio SOL</span><span class="value">$69.17735</span></div><div class="metric-row no-btn" id="rowNewCapitalValue"><span class="label">Valor atribuído aos aportes</span><span class="value" id="metricNewCapitalValue">--</span></div><div class="metric-row no-btn" id="rowNewCapitalPnl"><span class="label">PnL dos aportes (est.)</span><span class="value" id="metricNewCapitalPnl">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn"><span class="label">Retirada para uso pessoal</span><span class="value">$34.00 · retirada do saldo da venda</span></div><div class="metric-row no-btn" id="rowAge"><span class="label">Tempo da pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div></section>
+          <section class="subcard contribution-card"><h2>DADOS DA ENTRADA</h2><div class="metric-row" id="rowNewCapital"><span class="label">Aporte novo nesta pool</span><span class="value" id="metricNewCapital">--</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div><div class="metric-row no-btn"><span class="label">SOL comprados · BingX</span><span class="value">61.545 SOL</span></div><div class="metric-row no-btn"><span class="label">Preço médio SOL</span><span class="value">$69.17735</span></div><div class="metric-row no-btn"><span class="label">Retirada para uso pessoal</span><span class="value">$34.00 · retirada do saldo da venda</span></div><div class="metric-row no-btn" id="rowAge"><span class="label">Tempo da pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div></section>
                   <div class="allocation-card subcard" id="allocationCard" aria-label="Composição da pool">
         <div class="card-title">Composição</div>
         <div class="alloc-bar" aria-hidden="true">
@@ -1739,7 +1749,6 @@
     function updatePoolCard(anchorX, anchorY, w, h) {
       const liq = liquidity();
       const capital = POOL.capital;
-      const contributionValue = newCapitalCurrentValue();
       const pnl = totalPositionValue() - externalCapital();
       const pnlPct = externalCapital() ? pnl / externalCapital() : 0;
       const pnlTone = pnl >= 0 ? "positive" : "negative";
@@ -1762,14 +1771,9 @@
       setMetric("rowTotalCapital", "metricTotalCapital", usd(externalCapital()));
       $("totalCapitalYen").textContent = state.usdJpy ? jpy(externalCapital() * state.usdJpy) : "¥ —";
       $("totalPnlYen").textContent = state.usdJpy ? jpy(pnl * state.usdJpy) : "¥ —";
-      setMetric("rowNewCapitalValue", "metricNewCapitalValue", usd(contributionValue));
       $("metricPnl").title = "Liquidez + taxas − US$ 4.242 da base histórica. Da última venda MSTRX de US$ 4.296,84 foram retirados US$ 34, restando US$ 4.262,84 para reinvestir e US$ 20,84 acima da base. Custos não detalhados permanecem a conciliar.";
-      $("metricNewCapitalPnl").title = "Aportes anteriores rateados proporcionalmente sobre o saldo transferido. Aportes novos usam sua parcela na liquidez.";
 
-      $("previousContributions").textContent = usd(POOL.previousContributions);
       setMetric("rowNewCapital", "metricNewCapital", usd(state.newExternalCapital));
-      const newPnl = newCapitalPnl();
-      setMetric("rowNewCapitalPnl", "metricNewCapitalPnl", usd(newPnl) + " (" + pct(newPnl / (POOL.previousContributions + state.newExternalCapital)) + ")", newPnl >= 0 ? "positive" : "negative");
       setMetric("rowUncollected", "metricUncollected", pendingLabel, "positive");
       setMetric("rowFeeApr", "metricFeeApr", pct(feeApr()) + " a.a.", "positive");
       setMetric("rowAge", "metricAge", poolAge());
