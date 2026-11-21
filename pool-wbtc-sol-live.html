@@ -743,8 +743,8 @@
           <div id="solEquivalent"></div><div style="font:400 7px/1.4 monospace;color:#8792a6;margin-top:3px">Base estimada desta etapa <span id="poolCostBasis">US$ 4.262,84</span> · saldo anterior US$ 4.296,84 − US$ 34 retirados. Taxa da venda anterior e custos desta entrada a conciliar.</div>
         </div>
         <div class="detail-grid active-position">
-          <section class="subcard capital-card"><h2>HISTÓRICO DO INVESTIMENTO</h2><div class="metric-row no-btn" id="rowCapital"><span class="label">Capital inicial</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowTotalCapital"><span class="label">Base acumulada</span><span class="value" id="metricTotalCapital">--</span><span class="capital-yen" id="totalCapitalYen">—</span></div><div class="metric-row no-btn" id="rowPnl"><span class="label">PnL acumulado</span><span class="value" id="metricPnl">--</span><span class="capital-yen" id="totalPnlYen">—</span><button class="fee-add" type="button">+</button></div></section>
-          <section class="subcard contribution-card"><h2>APORTES DO CICLO</h2><div class="metric-row no-btn"><span class="label">Aportes e reinvestimentos anteriores</span><span class="value" id="previousContributions" title="US$ 128 + US$ 14 registrados no histórico">$142.00</span></div><div class="metric-row" id="rowNewCapital"><span class="label">Aporte novo nesta pool</span><span class="value" id="metricNewCapital">--</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div><div class="metric-row no-btn"><span class="label">Compra SOL informada</span><span class="value">≈ 61 SOL · a confirmar</span></div><div class="metric-row no-btn"><span class="label">Preço médio SOL</span><span class="value">$69.12</span></div><div class="metric-row no-btn" id="rowNewCapitalValue"><span class="label">Valor atribuído aos aportes</span><span class="value" id="metricNewCapitalValue">--</span></div><div class="metric-row no-btn" id="rowNewCapitalPnl"><span class="label">PnL dos aportes (est.)</span><span class="value" id="metricNewCapitalPnl">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn"><span class="label">Retirada para uso pessoal</span><span class="value">$34.00 · incluída no PnL total</span></div><div class="metric-row no-btn" id="rowAge"><span class="label">Tempo da pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div></section>
+          <section class="subcard capital-card"><h2>HISTÓRICO DO INVESTIMENTO</h2><div class="metric-row no-btn" id="rowCapital"><span class="label">Capital inicial</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowTotalCapital"><span class="label">Base ajustada após retirada</span><span class="value" id="metricTotalCapital">--</span><span class="capital-yen" id="totalCapitalYen">—</span></div><div class="metric-row no-btn" id="rowPnl"><span class="label">PnL acumulado</span><span class="value" id="metricPnl">--</span><span class="capital-yen" id="totalPnlYen">—</span><button class="fee-add" type="button">+</button></div></section>
+          <section class="subcard contribution-card"><h2>APORTES DO CICLO</h2><div class="metric-row no-btn"><span class="label">Aportes e reinvestimentos anteriores</span><span class="value" id="previousContributions" title="US$ 128 + US$ 14 registrados no histórico">$142.00</span></div><div class="metric-row" id="rowNewCapital"><span class="label">Aporte novo nesta pool</span><span class="value" id="metricNewCapital">--</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div><div class="metric-row no-btn"><span class="label">Compra SOL informada</span><span class="value">≈ 61 SOL · a confirmar</span></div><div class="metric-row no-btn"><span class="label">Preço médio SOL</span><span class="value">$69.12</span></div><div class="metric-row no-btn" id="rowNewCapitalValue"><span class="label">Valor atribuído aos aportes</span><span class="value" id="metricNewCapitalValue">--</span></div><div class="metric-row no-btn" id="rowNewCapitalPnl"><span class="label">PnL dos aportes (est.)</span><span class="value" id="metricNewCapitalPnl">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn"><span class="label">Retirada para uso pessoal</span><span class="value">$34.00 · abatida da base</span></div><div class="metric-row no-btn" id="rowAge"><span class="label">Tempo da pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div></section>
                   <div class="allocation-card subcard" id="allocationCard" aria-label="Composição da pool">
         <div class="card-title">Composição</div>
         <div class="alloc-bar" aria-hidden="true">
@@ -1519,7 +1519,7 @@
     }
 
     function externalCapital() {
-      return POOL.capital + POOL.previousContributions + state.newExternalCapital;
+      return POOL.capital + POOL.previousContributions + state.newExternalCapital - POOL.withdrawnUsd;
     }
 
     function workingCapital() {
@@ -1584,8 +1584,8 @@
         const share = item.liquidityRaw && currentL > 0 ? Number(item.liquidityRaw) / currentL : item.share;
         return total + liq * share;
       }, 0);
-      const previousShare = POOL.previousContributions / (POOL.capital + POOL.previousContributions);
-      return newLotValue + (totalPositionValue() + POOL.withdrawnUsd - newLotValue) * previousShare;
+      const previousShare = POOL.previousContributions / (POOL.capital + POOL.previousContributions - POOL.withdrawnUsd);
+      return newLotValue + (totalPositionValue() - newLotValue) * previousShare;
     }
 
     function newCapitalPnl() {
@@ -1740,7 +1740,7 @@
       const liq = liquidity();
       const capital = POOL.capital;
       const contributionValue = newCapitalCurrentValue();
-      const pnl = totalPositionValue() + POOL.withdrawnUsd - externalCapital();
+      const pnl = totalPositionValue() - externalCapital();
       const pnlPct = externalCapital() ? pnl / externalCapital() : 0;
       const pnlTone = pnl >= 0 ? "positive" : "negative";
       const comp = composition();
@@ -1763,7 +1763,7 @@
       $("totalCapitalYen").textContent = state.usdJpy ? jpy(externalCapital() * state.usdJpy) : "¥ —";
       $("totalPnlYen").textContent = state.usdJpy ? jpy(pnl * state.usdJpy) : "¥ —";
       setMetric("rowNewCapitalValue", "metricNewCapitalValue", usd(contributionValue));
-      $("metricPnl").title = "Liquidez + taxas + US$ 34 retirados para uso pessoal − US$ 4.242 da base histórica. Custos anteriores não detalhados permanecem a conciliar.";
+      $("metricPnl").title = "Liquidez + taxas − base ajustada de US$ 4.208 (US$ 4.100 iniciais + US$ 142 históricos − US$ 34 retirados). A retirada já foi abatida da base. Custos anteriores não detalhados permanecem a conciliar.";
       $("metricNewCapitalPnl").title = "Aportes anteriores rateados proporcionalmente sobre o saldo transferido. Aportes novos usam sua parcela na liquidez.";
 
       $("previousContributions").textContent = usd(POOL.previousContributions);
@@ -1902,7 +1902,7 @@
     if ($("snapshotBtn")) {
       $("snapshotBtn").addEventListener("click", () => {
         const liq = liquidity();
-        const pnl = totalPositionValue() + POOL.withdrawnUsd - investedCapital();
+        const pnl = totalPositionValue() - investedCapital();
         const comp = composition();
         addHistory("snapshot", "Snapshot · Liquidez " + usd(liq) + " · PnL jornada " + usd(pnl) + " · Capital do bolso " + usd(externalCapital()) + " · Taxas " + usd(state.collectedFees) + " (" + pct(state.collectedFees / externalCapital()) + ") · SOL " + (comp.solPct * 100).toFixed(1) + "% · ETH " + (comp.ethPct * 100).toFixed(1) + "% · " + state.onchain.source);
       });
@@ -1936,10 +1936,15 @@
       } catch (error) {}
       state.history = [
         {kind:"start",ts:POOL.snapshotAt,text:"Reabertura SOL/ETH Wormhole · posição e NFT verificados on-chain. Taxa da pool 0,05%. Capital inicial US$ 4.100 + US$ 142 históricos preservados."},
-        {kind:"withdrawal",ts:POOL.snapshotAt,text:"US$ 34 retirados para uso pessoal, incluídos como valor já recebido no PnL acumulado. Valor informado aproximadamente."},
+        {kind:"withdrawal",ts:POOL.snapshotAt,text:"US$ 34 retirados para uso pessoal. Base histórica US$ 4.242 menos a retirada = base ajustada US$ 4.208. Valor da retirada informado aproximadamente."},
         {kind:"trade",ts:POOL.snapshotAt,text:"Venda MSTRX anterior 4.296,84 USDT brutos; taxa não informada. Compra SOL média informada US$ 69,12, quantidade aproximada 61 SOL. Base estimada disponível US$ 4.262,84, a conciliar com comprovante."},
         ...previousHistory
       ];
+      saveState();
+    }
+    const withdrawalNote=state.history.find(item=>item.kind==="withdrawal");
+    if(withdrawalNote){
+      withdrawalNote.text="US$ 34 retirados para uso pessoal. Base ajustada: US$ 4.242 − US$ 34 = US$ 4.208. Retirada já descontada do capital acompanhado.";
       saveState();
     }
     renderHistory();
