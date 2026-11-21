@@ -929,6 +929,38 @@
       .detail-grid .allocation-card{grid-template-rows:8px 3px 27px}
       .allocation-card .capital-yen{font-size:10px;line-height:16px}
     }
+    @media(orientation:portrait) and (min-height:781px){
+      .dashboard{grid-template-rows:minmax(0,1fr) 410px}
+    }
+    @media(orientation:landscape) and (min-height:651px){
+      .pool-card{grid-template-rows:16px 76px 59px 22px 37px;padding:10px;gap:4px 12px}
+      .pool-card>.card-title{font-size:10px}
+      .pnl-stack{grid-template-rows:83px 83px;gap:8px}
+      .pool-card #rowPoolPnl,.pool-card #rowPnl{height:83px;grid-template-rows:15px 31px 16px 21px}
+      .pool-card #rowLiquidity{grid-template-rows:15px 31px 21px}
+      .pool-card #metricLiquidity,.pool-card #currentPoolPnl,.pool-card #metricPnl{font-size:26px;line-height:31px}
+      .pool-card .metric-row .label{font-size:10px}
+      .pool-card #rowUncollected{grid-template-rows:13px 24px 21px}
+      #rowUncollected .value{font-size:21px;line-height:24px}
+      .side-content .yen-value,.pool-card #liquidityYen{font-size:14px;line-height:21px}
+      .detail-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(4,59px) 59px;gap:5px 10px;padding:8px}
+      .detail-grid .metric-row{height:59px;grid-template-rows:14px 23px 21px}
+      .detail-grid .metric-row .label{font-size:9px;line-height:14px}
+      .detail-grid .metric-row .value,.capital-card #rowTotalCapital .value{font-size:16px;line-height:23px}
+      .detail-grid .capital-yen{font-size:13px;line-height:21px}
+      .detail-grid #rowAge .value{font-size:12px}
+      .detail-grid .allocation-card{grid-row:5;grid-template-rows:11px 4px 34px}
+    }
+    @media(max-width:420px){
+      header{gap:3px;padding:2px 4px}
+      header .pair{font-size:10px;gap:3px}
+      header .price{font-size:12px}
+      header .badge{font-size:7px;padding:2px}
+      header .back{font-size:8px;padding:4px}
+      header .tf button{padding:4px;font-size:8px}
+      .detail-grid .metric-row .label{font-size:7px}
+      .detail-grid #rowAge .value{font-size:7px}
+    }
 </style>
 </head>
 <body>
