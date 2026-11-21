@@ -1835,7 +1835,8 @@
         if(!current||Number.isFinite(event.usd))events.set(event.id,event);
       }
       const merged=[...events.values()].sort((a,b)=>a.slot-b.slot||a.order-b.order||a.id.localeCompare(b.id));
-      return {...remote,events:merged,signatures:[...new Set([...(local.signatures||[]),...(remote.signatures||[])])],
+      const latest=Date.parse(local.updatedAt)>Date.parse(remote.updatedAt)?local:remote;
+      return {...latest,events:merged,signatures:[...new Set([...(local.signatures||[]),...(remote.signatures||[])])],
         prices:{...local.prices,...remote.prices},summary:ledgerModule.summarize(merged)};
     }
 
@@ -1843,7 +1844,7 @@
       if(ledgerBusy)return;
       ledgerBusy=true;
       try{
-        ledgerModule=await import("./tools/pool-ledger.mjs?v=1");
+        ledgerModule=await import("./tools/pool-ledger.mjs?v=2");
         try{
           const response=await fetch(LEDGER_URL+"?v="+Math.floor(Date.now()/30000),{signal:AbortSignal.timeout(9000)});
           if(response.ok)ledgerState=mergeLedgers(ledgerState,await response.json());
@@ -1879,6 +1880,11 @@
       events.replaceChildren();
       if(!ledgerState)return;
       const summary=ledgerState.summary;
+      if(ledgerState.closure){
+        const record=document.createElement("div");
+        record.textContent="POSIÇÃO ENCERRADA · "+new Date(ledgerState.closure.time*1000).toLocaleString("pt-BR",{timeZone:"Asia/Tokyo"})+" JST · Valor líquido ajustado ≈ "+usd(ledgerState.closure.proceedsUsd)+" · PnL sobre US$ 4.100 ≈ "+usd(ledgerState.closure.pnlUsd)+" ("+pct(ledgerState.closure.pnlPercent/100)+"). Resultado em USD estimado na retirada dos tokens; não confirma venda por dólares. A simulação ao vivo não altera este registro.";
+        totals.append(record);
+      }
       if(summary.unpriced)$("ledgerStatus").textContent+=" · "+summary.unpriced+" movimentações com USD pendente";
       for(const [label,value] of [["Taxas coletadas",summary.collectedUsd],["Depósitos posteriores",summary.depositedUsd],["Reaplicação compatível*",summary.reinvestmentCompatibleUsd],["Retiradas de liquidez",summary.withdrawnUsd]]){
         const item=document.createElement("span");
@@ -1911,6 +1917,7 @@
     }
 
     function displayedUncollectedFees() {
+      if(ledgerState?.status==="closed")return 0;
       return state.positionValuation && Number.isFinite(state.positionValuation.feesUsd) ? state.positionValuation.feesUsd : state.uncollectedFees;
     }
 
@@ -1932,11 +1939,11 @@
     }
 
     function activeAmounts() {
-      return state.onchain.source === "onchain" ? state.onchain : estimatedAmounts();
+      return ledgerState?.status!=="closed" && state.onchain.source === "onchain" ? state.onchain : estimatedAmounts();
     }
 
     function liquidity() {
-      if (!state.positionValuation) {
+      if (!state.positionValuation || ledgerState?.status==="closed") {
         if(state.solUsd>0&&state.btcUsd>0){const amounts=estimatedAmounts();return amounts.solAmount*state.solUsd+amounts.btcAmount*state.btcUsd;}
         return POOL.snapshotBalance;
       }
@@ -1944,6 +1951,7 @@
     }
 
     function totalPositionValue() {
+      if(ledgerState?.status==="closed")return ledgerState.closure.proceedsUsd;
       return liquidity() + POOL.reserveSol * (state.solUsd || POOL.snapshotSolUsd) + displayedUncollectedFees() + availableCollectedFees();
     }
 
@@ -1983,7 +1991,7 @@
       const upper = state.onchain.upper || POOL.upper;
       const inside = ratio >= lower && ratio <= upper;
       $("ratio").textContent = ratio ? ratio.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "--";
-      $("rangeStatus").textContent = inside ? "In Range" : (ratio < lower ? "Abaixo" : "Acima");
+      $("rangeStatus").textContent = ledgerState?.status==="closed" ? "Encerrada" : inside ? "In Range" : (ratio < lower ? "Abaixo" : "Acima");
       $("rangeStatus").className = "badge " + (inside ? "ok" : "out");
       $("rangeText").textContent = lower.toFixed(2) + " - " + upper.toFixed(2);
       const priceText = state.lastUpdate
@@ -2115,7 +2123,10 @@
       const comp = composition();
       // Official Orca PnL; external spot prices cannot reproduce its accounting.
       const poolCostBasis = POOL.currentCostBasis;
-      const poolPnl = liq + displayedUncollectedFees() + availableCollectedFees() - poolCostBasis;
+      const closed=ledgerState?.status==="closed";
+      const poolPnl = (closed ? ledgerState.closure.proceedsUsd : liq + displayedUncollectedFees() + availableCollectedFees()) - poolCostBasis;
+      $("rowLiquidity").querySelector(".label").textContent=closed ? "Se tivesse mantido (sim.)" : "Liquidez da pool";
+      $("rowPoolPnl").querySelector(".label").textContent=closed ? "Resultado da etapa (est.)" : "PnL desta etapa (est.)";
       $("poolCostBasis").textContent = usd(poolCostBasis);
       setMetric("rowPoolPnl", "currentPoolPnl", usd(poolPnl), poolPnl >= 0 ? "positive" : "negative");
       $("poolPnlPct").textContent = pct(poolPnl / poolCostBasis);
@@ -2133,7 +2144,7 @@
       $("investmentPnlPct").textContent = pct(pnlPct);
       $("totalPnlYen").textContent = state.usdJpy ? jpy(pnl * state.usdJpy) : "¥ —";
       const ledgerComplete=ledgerState && ledgerState.summary.unpriced===0;
-      $("rowPnl").querySelector(".label").textContent=ledgerComplete ? "PnL sobre US$ 4.100" : "PnL sobre US$ 4.100 (parcial)";
+      $("rowPnl").querySelector(".label").textContent=(closed ? "PnL encerrado · base US$ 4.100" : "PnL sobre US$ 4.100")+(ledgerComplete ? "" : " (parcial)");
       $("metricPnl").title="Base inicial US$ 4.100. Liquidez + taxas pendentes + valores coletados/retirados − depósitos posteriores. Valores históricos USD estimados pela referência horária. A retirada pessoal anterior de US$ 34 já saiu do saldo reinvestido.";
       $("ledgerCollected").textContent=ledgerState ? usd(ledgerState.summary.collectedUsd) : "—";
       $("ledgerCollectedYen").textContent=ledgerState && state.usdJpy ? jpy(ledgerState.summary.collectedUsd*state.usdJpy) : "¥ —";
