@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Liquidações ao vivo | CriptoTerminal</title>
+<style>
+:root{color-scheme:dark;background:#0d121a;color:#eff3fa;font:14px system-ui}
+*{box-sizing:border-box}body{max-width:1600px;margin:auto;padding:clamp(10px,2vw,24px)}
+header,.controls,.legend,.feeds{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+header{margin-bottom:16px}h1{font-size:1.25rem;margin:0}h2{font-size:1rem;margin:0}
+a{color:#a8d9ff}.controls{justify-content:space-between;margin-bottom:12px}
+label{display:inline-flex;align-items:center;gap:6px}select,button{font:inherit;padding:6px 9px;background:#1a2636;color:inherit;border:1px solid #3c4c63;border-radius:6px}
+.feeds,.legend,small,figcaption{color:#b4c2d6;font-size:.85rem}
+.feeds span{border:1px solid #3c4c63;padding:4px 8px;border-radius:999px}
+.feeds [data-live=true]{border-color:#419883;color:#a3f0de}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.cards article,figure{background:#141e2b;border:1px solid #29394c;border-radius:10px;padding:12px}
+.cards strong{display:block;font-size:clamp(1rem,2.2vw,1.65rem);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.long{color:#ffba62}.short{color:#62dcff}figure{margin:0}.legend{margin-top:7px}
+.plot{position:relative}canvas{display:block;width:100%;height:clamp(250px,48dvh,680px);touch-action:pan-y}
+#tip{position:absolute;pointer-events:none;top:12px;background:#0d121aee;border:1px solid #60758c;border-radius:7px;padding:8px;white-space:pre-line;font-size:.83rem;max-width:90%}
+figcaption{margin-top:6px}#status{font-size:.85rem;color:#b4c2d6}
+@media(max-width:670px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.cards article,figure{padding:8px}}
+</style>
+</head>
+<body>
+<header><a href="index.html">← Terminal</a><a id="history-link" href="liquidacoes.html">Mapa histórico</a><h1>Liquidações ao vivo</h1></header>
+<div class="controls">
+  <label>Ativo <select id="asset"><option>BTC</option><option>ETH</option><option>SOL</option><option>XRP</option><option>BNB</option></select></label>
+  <label>Faixa <select id="range"><option value="2">±2%</option><option value="5" selected>±5%</option><option value="10">±10%</option><option value="20">±20%</option></select></label>
+  <label>Histórico do modelo <select id="window"><option value="1">1 h</option><option value="4">4 h</option><option value="24" selected>24 h</option><option value="72">72 h</option></select></label>
+  <label>Livro à vista <select id="book"><option value="binance">Binance</option><option value="coinbase">Coinbase</option><option value="">Ocultar</option></select></label>
+  <button id="fullscreen" type="button" hidden>Tela cheia</button>
+  <div class="feeds" aria-label="Conexões de liquidações"><span id="binance"></span><span id="bybit"></span></div>
+</div>
+<section class="cards" aria-label="Liquidações recebidas">
+  <article>Longs · 1 h<strong id="long" class="long">—</strong><small id="long-count"></small></article>
+  <article>Shorts · 1 h<strong id="short" class="short">—</strong><small id="short-count"></small></article>
+  <article>Últimos 5 min<strong><span id="long-5" class="long">—</span> / <span id="short-5" class="short">—</span></strong><small>Longs / shorts</small></article>
+  <article>Maior recebida · 1 h<strong id="largest">—</strong><small id="largest-detail"></small></article>
+</section>
+<figure>
+  <h2 id="chart-title">Perfil estimado por preço</h2>
+  <div class="legend"><span class="long">Longs abaixo do preço · acumulado tracejado</span><span class="short">Shorts acima · acumulado contínuo</span><span>10× / 25× / 50× / 100× do tom escuro ao claro</span></div>
+  <div class="plot"><canvas id="profile" role="img" aria-label="Perfil estimado de liquidações por preço e profundidade do livro" aria-describedby="chart-description"></canvas><div id="tip" hidden></div></div>
+  <figcaption id="chart-description">Barras acima do eixo em USDT simulados com 1% do giro das velas. Abaixo ficam as compras e vendas do livro à vista. Toque ou passe o mouse para ver valores e acumulados.</figcaption>
+</figure>
+<p id="status" role="status"></p>
+<script src="liquidation-map.js"></script>
+<script src="exchange-books.js"></script>
+<script src="liquidacoes-ao-vivo.js"></script>
+</body>
+</html>
