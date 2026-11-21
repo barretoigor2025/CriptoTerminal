@@ -771,6 +771,164 @@
       .pool-card #metricLiquidity,.pool-card #currentPoolPnl,.pool-card #metricPnl{font-size:22px;line-height:27px}
       .side-content .yen-value,.side-content .capital-yen,.pool-card #liquidityYen{font-size:13px;line-height:19px}
     }
+    /* Responsive layout with fixed figure rows and compact supporting cards. */
+    html,body{width:100%;height:100dvh;min-height:0;overflow:hidden}
+    header{height:34px;min-height:34px;gap:5px;padding:3px 6px;overflow:hidden}
+    header .pair{font-size:11px}
+    header .price{font-size:14px;min-width:5ch}
+    header .badge{font-size:8px;padding:2px 3px}
+    header .tf button{font-size:9px;padding:4px 5px}
+    header .back{font-size:9px;padding:4px 5px;min-height:25px;white-space:nowrap}
+    #liveText{max-width:145px}
+    main{padding:5px;min-height:0;overflow:hidden}
+    .dashboard{height:100%;display:grid;grid-template-columns:minmax(0,1fr) minmax(340px,400px);grid-template-rows:minmax(0,1fr);gap:6px}
+    .stage{height:100%;min-height:0}
+    .side-panel{overflow:hidden;min-height:0}
+    .side-content{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;gap:6px;align-content:start;width:100%;transform:none}
+    .pool-card{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:14px 69px 55px 20px 34px;gap:3px 10px;padding:8px}
+    .pool-card>.card-title{grid-column:1/-1;grid-row:1;margin:0;line-height:14px}
+    .pool-card .primary-pair{display:contents}
+    .pool-card #rowLiquidity{grid-column:1;grid-row:2;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:14px 29px 20px;height:auto;padding:0;gap:0;align-content:start}
+    .pool-card #rowLiquidity>.label{grid-row:1;font-size:9px;line-height:14px}
+    .pool-card #metricLiquidity{grid-row:2}
+    .pool-card #liquidityYen{grid-row:3}
+    .pnl-stack{grid-column:2;grid-row:2/5;display:grid;grid-template-rows:76px 76px;gap:6px}
+    .pool-card #rowPoolPnl,.pool-card #rowPnl{height:76px;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:14px 28px 14px 20px;gap:0;margin:0;padding:0;border:0}
+    .pool-card #metricLiquidity,.pool-card #currentPoolPnl,.pool-card #metricPnl{font-size:23px;line-height:28px;font-weight:700;letter-spacing:-.6px;white-space:nowrap;overflow:visible;text-overflow:clip;width:100%}
+    .pool-card #rowUncollected{grid-column:1;grid-row:3;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:12px 22px 19px;gap:0 3px;margin:0;padding:0;border:0}
+    #rowUncollected .label{font-size:9px;line-height:12px}
+    #rowUncollected .value{font-size:19px;line-height:22px}
+    #rowUncollected .fee-actions{grid-column:2;grid-row:1/4;display:grid;align-self:center;width:auto;margin:0;gap:2px}
+    #rowUncollected button{height:20px;padding:0 3px;font-size:7px}
+    .pool-card #rowFeeApr{grid-column:1;grid-row:4;display:flex;flex-wrap:nowrap;justify-content:flex-start;gap:4px;align-items:center;height:20px;padding:0}
+    .pool-card #rowFeeApr .label{flex-basis:auto;font-size:8px}
+    .pool-card #rowFeeApr .value{font-size:9px}
+    #solEquivalent{grid-column:2;grid-row:5;align-self:center;font-size:10px!important;line-height:13px!important;padding:0!important;white-space:nowrap}
+    .position-basis{grid-column:1;grid-row:5;font-size:8px;line-height:12px;color:var(--muted);min-width:0;white-space:nowrap}
+    .position-basis>span:first-child{display:block}
+    .position-basis .capital-yen{display:inline;font-size:10px!important;line-height:12px!important;min-height:0}
+    .side-content .yen-value,.side-content .capital-yen,.pool-card #liquidityYen{font-size:13px;line-height:19px;min-height:19px;margin:0;color:#f4cf55!important}
+    .hero-percent{font-size:10px;line-height:14px}
+    .detail-grid{display:grid;grid-template-columns:1fr;grid-template-rows:69px 117px 61px;gap:5px;align-items:stretch}
+    .capital-card,.contribution-card,.allocation-card{padding:5px 7px;min-width:0}
+    .capital-card{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:11px 47px;gap:0 8px}
+    .capital-card h2,.contribution-card h2,.allocation-card .card-title{grid-column:1/-1;font-size:8px;line-height:11px;margin:0;letter-spacing:.04em}
+    .detail-grid .metric-row{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:11px 17px 18px;min-height:0;height:47px;gap:0;padding:0;border:0;margin:0;align-content:start;justify-content:start}
+    .detail-grid .metric-row .label{font-size:8px;line-height:11px;white-space:nowrap}
+    .detail-grid .metric-row .value,.capital-card #rowTotalCapital .value{font-size:12px;line-height:17px;min-height:17px;white-space:nowrap;letter-spacing:0;overflow:visible}
+    .detail-grid .capital-yen{font-size:11px;line-height:18px;min-height:18px}
+    .contribution-card{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:11px 47px 47px;gap:3px 6px}
+    .contribution-card #rowNewCapital{position:relative}
+    .contribution-card #rowNewCapital .fee-actions{position:absolute;right:0;bottom:0;width:auto;margin:0}
+    .contribution-card .capital-add{font-size:6px;height:16px;padding:0 2px}
+    .contribution-card #rowAge .value{font-size:9px;letter-spacing:-.3px}
+    .allocation-card{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:11px 4px 33px;gap:1px 8px}
+    .allocation-card .alloc-bar{grid-column:1/-1;grid-row:2;height:4px;margin:0}
+    .allocation-card .alloc-line{display:grid;grid-template-columns:28px 1fr auto;grid-template-rows:14px 18px;min-height:0;height:33px;gap:0 3px;font-size:9px}
+    .allocation-card .alloc-line em{grid-column:3;font-size:10px}
+    .allocation-card .capital-yen{grid-column:2/4;grid-row:2;font-size:11px;line-height:18px}
+    @media(orientation:portrait){
+      .dashboard{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) 513px}
+      .side-content{grid-template-rows:221px 282px}
+      #liveText,#rangeText{display:none}
+    }
+    @media(orientation:portrait) and (min-width:600px){
+      .dashboard{grid-template-rows:minmax(0,1fr) 420px}
+      .side-content{grid-template-rows:221px 193px}
+      .detail-grid{grid-template-columns:1fr 1fr;grid-template-rows:117px 61px}
+      .capital-card{grid-column:1;grid-row:1;height:117px;grid-template-rows:11px 47px 47px;grid-template-columns:1fr}
+      .capital-card h2{grid-column:1}
+      .contribution-card{grid-column:2;grid-row:1}
+      .allocation-card{grid-column:1/-1;grid-row:2}
+    }
+    @media(orientation:landscape) and (max-height:650px),(orientation:portrait) and (max-height:780px){
+      .pool-card{grid-template-rows:12px 55px 47px 16px 28px;padding:5px 7px;gap:2px 8px}
+      .pool-card>.card-title{line-height:12px}
+      .pnl-stack{grid-template-rows:62px 62px;gap:3px}
+      .pool-card #rowPoolPnl,.pool-card #rowPnl{height:62px;grid-template-rows:11px 23px 11px 17px}
+      .pool-card #rowLiquidity{grid-template-rows:11px 25px 18px}
+      .pool-card #metricLiquidity,.pool-card #currentPoolPnl,.pool-card #metricPnl{font-size:21px;line-height:23px}
+      .pool-card .metric-row .label{font-size:8px;line-height:11px}
+      .hero-percent{font-size:9px;line-height:11px}
+      .side-content .yen-value,.pool-card #liquidityYen{font-size:12px;line-height:17px;min-height:17px}
+      .pool-card #rowUncollected{grid-template-rows:11px 19px 17px}
+      #rowUncollected .value{font-size:17px;line-height:19px}
+      #rowUncollected button{height:18px;font-size:6px}
+      .pool-card #rowFeeApr{height:16px}
+      .position-basis{font-size:7px;line-height:10px}
+      .position-basis .capital-yen{font-size:9px!important}
+      .detail-grid{grid-template-columns:1fr 1fr;grid-template-rows:109px 55px;gap:4px}
+      .capital-card{grid-column:1;grid-row:1;grid-template-columns:1fr;grid-template-rows:10px 42px 42px}
+      .contribution-card{grid-column:2;grid-row:1;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:10px repeat(3,28px);gap:2px 5px}
+      .detail-grid .metric-row{height:42px;grid-template-rows:10px 16px 16px}
+      .contribution-card .metric-row{height:28px;grid-template-rows:10px 18px}
+      .contribution-card .capital-yen{display:none}
+      .contribution-card .metric-row .label{font-size:7px;line-height:10px}
+      .contribution-card .metric-row .value{font-size:10px;line-height:18px}
+      .capital-card .capital-yen{font-size:11px;line-height:16px}
+      .allocation-card{grid-column:1/-1;grid-row:2;padding:3px 6px;grid-template-rows:10px 3px 32px}
+    }
+    @media(orientation:landscape) and (max-height:650px){
+      .dashboard{grid-template-columns:minmax(0,1fr) minmax(360px,44%);gap:5px}
+      header{height:29px;min-height:29px}
+      .side-content{gap:4px}
+      #liveText{display:none}
+    }
+    @media(orientation:portrait) and (max-height:780px){
+      .dashboard{grid-template-rows:minmax(0,1fr) 350px}
+      .side-content{grid-template-rows:178px 168px;gap:4px}
+    }
+    @media(orientation:landscape) and (max-height:390px){
+      .dashboard{grid-template-columns:minmax(0,1fr) minmax(360px,51%)}
+      .pool-card{grid-template-rows:11px 49px 43px 14px 24px;padding:4px 6px}
+      .pnl-stack{grid-template-rows:56px 56px;gap:2px}
+      .pool-card #rowPoolPnl,.pool-card #rowPnl{height:56px;grid-template-rows:10px 21px 10px 15px}
+      .pool-card #metricLiquidity,.pool-card #currentPoolPnl,.pool-card #metricPnl{font-size:20px;line-height:21px}
+      .side-content .yen-value,.pool-card #liquidityYen{font-size:11px;line-height:15px;min-height:15px}
+      .detail-grid{grid-template-rows:96px 49px;gap:3px}
+      .capital-card{grid-template-rows:10px 37px 37px}
+      .contribution-card{grid-template-rows:9px repeat(3,24px)}
+      .contribution-card .metric-row{height:24px;grid-template-rows:9px 15px}
+      .allocation-card{grid-template-rows:9px 3px 27px}
+    }
+    /* Supporting facts share the available columns, with no empty tall cards. */
+    .detail-grid{
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      grid-template-rows:49px 49px 55px;
+      gap:5px 7px;padding:6px 7px;
+      border:1px solid #ffffff18;border-radius:9px;background:#121923;
+    }
+    .detail-grid .capital-card,.detail-grid .contribution-card{display:contents}
+    .detail-grid .capital-card h2,.detail-grid .contribution-card h2{display:none}
+    .detail-grid .metric-row{height:49px;grid-template-rows:12px 18px 19px;min-width:0}
+    .detail-grid .metric-row .label{font-size:7px;line-height:12px;white-space:normal}
+    .detail-grid .metric-row .value,.capital-card #rowTotalCapital .value{font-size:11px;line-height:18px;overflow:hidden;text-overflow:ellipsis}
+    .detail-grid .capital-yen,.contribution-card .capital-yen{display:block;font-size:11px;line-height:19px;min-height:19px}
+    .detail-grid .allocation-card{grid-column:1/-1;grid-row:3;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:10px 3px 32px;border:0;padding:3px 0 0;background:none}
+    .detail-grid #rowNewCapital .fee-actions{right:0;bottom:0;transform:translateY(-1px)}
+    .detail-grid #rowNewCapital .capital-yen{padding-right:27px}
+    .detail-grid #rowAge .value{font-size:8px}
+    .side-content{grid-template-rows:auto auto}
+    @media(orientation:portrait){
+      .dashboard{grid-template-rows:minmax(0,1fr) 400px}
+      .detail-grid{grid-template-rows:49px 49px 55px}
+    }
+    @media(orientation:portrait) and (max-height:780px){
+      .dashboard{grid-template-rows:minmax(0,1fr) 352px}
+      .detail-grid{grid-template-rows:46px 46px 49px;gap:3px 6px;padding:4px 6px}
+      .detail-grid .metric-row{height:46px;grid-template-rows:11px 17px 18px}
+      .detail-grid .capital-yen{font-size:10px;line-height:18px;min-height:18px}
+      .detail-grid .allocation-card{grid-template-rows:9px 3px 29px}
+    }
+    @media(orientation:landscape) and (max-height:650px){
+      .detail-grid{grid-template-rows:42px 42px 45px;gap:3px 6px;padding:4px 6px}
+      .detail-grid .metric-row{height:42px;grid-template-rows:10px 16px 16px}
+      .detail-grid .metric-row .label{font-size:7px;line-height:10px}
+      .detail-grid .metric-row .value,.capital-card #rowTotalCapital .value{font-size:11px;line-height:16px}
+      .detail-grid .capital-yen,.contribution-card .capital-yen{display:block;font-size:10px;line-height:16px;min-height:16px}
+      .detail-grid .allocation-card{grid-template-rows:8px 3px 27px}
+      .allocation-card .capital-yen{font-size:10px;line-height:16px}
+    }
 </style>
 </head>
 <body>
@@ -824,11 +982,11 @@
           <div class="primary-pair"><div class="metric-row no-btn" id="rowLiquidity"><span class="label">Liquidez da pool</span><span class="value" id="metricLiquidity">--</span><span class="yen-value" id="liquidityYen">—</span></div><div class="pnl-stack"><div class="metric-row no-btn hero-pnl" id="rowPoolPnl"><span class="label">PnL desta etapa (est.)</span><span class="value" id="currentPoolPnl">—</span><span class="hero-percent" id="poolPnlPct">—</span><span class="yen-value" id="poolPnlYen">—</span></div><div class="metric-row no-btn hero-pnl" id="rowPnl"><span class="label">PnL do investimento</span><span class="value" id="metricPnl">—</span><span class="hero-percent" id="investmentPnlPct">—</span><span class="yen-value" id="totalPnlYen">¥ —</span></div></div></div>
           <div class="metric-row" id="rowUncollected"><span class="label">Taxas pendentes</span><span class="value fee-value-with-ring"><span id="metricUncollected">--</span><span id="feeRefreshRing" class="fee-refresh-ring" role="img" aria-label="Aguardando consulta das taxas" title="Próxima consulta em 5 segundos"><svg viewBox="0 0 20 20" aria-hidden="true"><circle class="ring-track" cx="10" cy="10" r="7.5"/><circle class="ring-progress" cx="10" cy="10" r="7.5" pathLength="100"/></svg></span></span><span class="yen-value" id="pendingYen">—</span><span class="fee-actions"><button class="fee-add" type="button" data-fee="uncollectedFees">Modificar</button><button class="fee-withdraw" id="collectFeesBtn" type="button">Sacar</button></span></div>
           <div class="metric-row no-btn" id="rowFeeApr"><span class="label">APR taxas</span><span class="value" id="metricFeeApr">--</span></div>
-          <div id="solEquivalent"></div><div style="font:400 7px/1.4 monospace;color:#8792a6;margin-top:3px">Base estimada da nova posição <span id="poolCostBasis">US$ 4.034,74</span><span class="capital-yen" id="poolBasisYen">¥ —</span> · inferida do print Orca (saldo + taxas − PnL). Histórico da compra original de SOL preservado.</div>
+          <div id="solEquivalent"></div><div class="position-basis" title="Base estimada pelo print Orca: saldo + taxas − PnL."><span>Base desta posição</span> <span id="poolCostBasis">US$ 4.034,74</span><span class="capital-yen" id="poolBasisYen">¥ —</span></div>
         </div>
         <div class="detail-grid active-position">
-          <section class="subcard capital-card"><h2>HISTÓRICO DO INVESTIMENTO</h2><div class="metric-row no-btn" id="rowCapital"><span class="label">Capital inicial</span><span class="value" id="metricCapital">--</span><span class="capital-yen" id="initialCapitalYen">¥ —</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowTotalCapital"><span class="label">Base histórica</span><span class="value" id="metricTotalCapital">--</span><span class="capital-yen" id="totalCapitalYen">—</span></div></section>
-          <section class="subcard contribution-card"><h2>DADOS DA ENTRADA</h2><div class="metric-row no-btn"><span class="label">Migração WBTC/SOL · 21/11</span><span class="value">61.758881174 SOL · prévia $4,034.59</span><span class="capital-yen" id="migrationYen">¥ —</span></div><div class="metric-row" id="rowNewCapital"><span class="label">Aporte novo nesta pool</span><span class="value" id="metricNewCapital">--</span><span class="capital-yen" id="newCapitalYen">¥ —</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div><div class="metric-row no-btn"><span class="label">SOL comprados · BingX</span><span class="value">61.545 SOL</span></div><div class="metric-row no-btn"><span class="label">Preço médio SOL</span><span class="value">$69.17735</span><span class="capital-yen" id="solEntryYen">¥ —</span></div><div class="metric-row no-btn"><span class="label">Retirada para uso pessoal</span><span class="value">$34.00 · retirada do saldo da venda</span><span class="capital-yen" id="withdrawalYen">¥ —</span></div><div class="metric-row no-btn" id="rowAge"><span class="label">Tempo da pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div></section>
+          <section class="subcard capital-card"><h2>CAPITAL</h2><div class="metric-row no-btn" id="rowCapital"><span class="label">Capital inicial</span><span class="value" id="metricCapital">--</span><span class="capital-yen" id="initialCapitalYen">¥ —</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowTotalCapital"><span class="label">Base histórica</span><span class="value" id="metricTotalCapital">--</span><span class="capital-yen" id="totalCapitalYen">—</span></div></section>
+          <section class="subcard contribution-card"><h2>DADOS DA ENTRADA</h2><div class="metric-row no-btn"><span class="label">Entrada WBTC/SOL</span><span class="value">$4,034.59</span><span class="capital-yen" id="migrationYen">¥ —</span></div><div class="metric-row" id="rowNewCapital"><span class="label">Aporte novo</span><span class="value" id="metricNewCapital">--</span><span class="capital-yen" id="newCapitalYen">¥ —</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div><div class="metric-row no-btn"><span class="label">Compra SOL · BingX</span><span class="value">61.545 SOL</span></div><div class="metric-row no-btn"><span class="label">Preço médio SOL</span><span class="value">$69.17735</span><span class="capital-yen" id="solEntryYen">¥ —</span></div><div class="metric-row no-btn"><span class="label">Retirada pessoal</span><span class="value">$34.00</span><span class="capital-yen" id="withdrawalYen">¥ —</span></div><div class="metric-row no-btn" id="rowAge"><span class="label">Tempo da pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div></section>
                   <div class="allocation-card subcard" id="allocationCard" aria-label="Composição da pool">
         <div class="card-title">Composição</div>
         <div class="alloc-bar" aria-hidden="true">
