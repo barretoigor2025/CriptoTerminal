@@ -697,6 +697,49 @@
     @media (orientation:landscape) and (max-height:560px) {
       .pool-card #liquidityYen { font-size:12px; line-height:16px; }
     }
+    /* Reserved rows keep live figures in the same place. */
+    .pnl-stack{display:grid;grid-template-rows:repeat(2,80px);gap:9px;min-width:0}
+    .pool-card #rowPoolPnl,.pool-card #rowPnl{
+      display:grid;grid-template-columns:minmax(0,1fr);
+      grid-template-rows:14px 29px 14px 20px;gap:0;
+      height:80px;margin:0;padding:0;border:0;align-content:start;
+    }
+    .pool-card #currentPoolPnl,.pool-card #metricPnl{
+      font-family:"IBM Plex Mono",monospace;font-size:22px;line-height:29px;
+      font-weight:700;letter-spacing:-.6px;white-space:nowrap;
+    }
+    .side-content .yen-value,.side-content .capital-yen,.pool-card #liquidityYen,
+    .pool-card #rowPnl .yen-value{
+      display:block;color:#f4cf55!important;opacity:1;
+      font:600 13px/19px "IBM Plex Mono",monospace;
+      min-height:19px;white-space:nowrap;
+    }
+    .side-content .value,.side-content .hero-percent,.side-content .yen-value,
+    .side-content .capital-yen,.alloc-line b,.alloc-line em{
+      font-variant-numeric:tabular-nums;min-width:0;max-width:100%;
+    }
+    .side-content .value,.side-content .hero-percent{
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .pool-card #rowLiquidity{display:grid;grid-template-rows:14px 29px 20px;gap:0;align-content:start}
+    .pool-card #metricLiquidity{line-height:29px}
+    .detail-grid .metric-row{min-height:54px;align-content:start}
+    .detail-grid .metric-row .value{min-height:16px}
+    .detail-grid #rowAge{min-height:39px}
+    .allocation-card .alloc-line{min-height:43px;grid-template-rows:14px 19px}
+    .allocation-card .capital-yen{grid-column:2}
+    @media(max-width:680px) and (orientation:portrait){
+      .pool-card #currentPoolPnl,.pool-card #metricPnl{font-size:20px}
+    }
+    @media(orientation:landscape) and (max-height:560px){
+      .pnl-stack{grid-template-rows:repeat(2,70px);gap:5px}
+      .pool-card #rowPoolPnl,.pool-card #rowPnl{height:70px;grid-template-rows:12px 25px 13px 18px}
+      .pool-card #currentPoolPnl,.pool-card #metricPnl{font-size:20px;line-height:25px}
+      .detail-grid .metric-row{min-height:48px}
+      .side-content .yen-value,.side-content .capital-yen,.pool-card #liquidityYen{font-size:12px;line-height:18px;min-height:18px}
+    }
+    #rowPnl.positive .hero-percent{color:var(--green)}
+    #rowPnl.negative .hero-percent{color:var(--red)}
 </style>
 </head>
 <body>
@@ -747,22 +790,22 @@
         </div>
         <div class="pool-card active-position" id="poolCard" aria-label="Resumo da pool">
           <div class="card-title">MINHA POOL <span class="estimate-tag" id="positionStatus">Consultando Orca</span></div>
-          <div class="primary-pair"><div class="metric-row no-btn" id="rowLiquidity"><span class="label">Liquidez da pool</span><span class="value" id="metricLiquidity">--</span><span class="yen-value" id="liquidityYen">—</span></div><div class="metric-row no-btn hero-pnl" id="rowPoolPnl"><span class="label">PnL desta etapa (est.)</span><span class="value" id="currentPoolPnl">—</span><span class="hero-percent" id="poolPnlPct">—</span><span class="yen-value" id="poolPnlYen">—</span></div></div>
+          <div class="primary-pair"><div class="metric-row no-btn" id="rowLiquidity"><span class="label">Liquidez da pool</span><span class="value" id="metricLiquidity">--</span><span class="yen-value" id="liquidityYen">—</span></div><div class="pnl-stack"><div class="metric-row no-btn hero-pnl" id="rowPoolPnl"><span class="label">PnL desta etapa (est.)</span><span class="value" id="currentPoolPnl">—</span><span class="hero-percent" id="poolPnlPct">—</span><span class="yen-value" id="poolPnlYen">—</span></div><div class="metric-row no-btn hero-pnl" id="rowPnl"><span class="label">PnL do investimento</span><span class="value" id="metricPnl">—</span><span class="hero-percent" id="investmentPnlPct">—</span><span class="yen-value" id="totalPnlYen">¥ —</span></div></div></div>
           <div class="metric-row" id="rowUncollected"><span class="label">Taxas pendentes</span><span class="value fee-value-with-ring"><span id="metricUncollected">--</span><span id="feeRefreshRing" class="fee-refresh-ring" role="img" aria-label="Aguardando consulta das taxas" title="Próxima consulta em 5 segundos"><svg viewBox="0 0 20 20" aria-hidden="true"><circle class="ring-track" cx="10" cy="10" r="7.5"/><circle class="ring-progress" cx="10" cy="10" r="7.5" pathLength="100"/></svg></span></span><span class="yen-value" id="pendingYen">—</span><span class="fee-actions"><button class="fee-add" type="button" data-fee="uncollectedFees">Modificar</button><button class="fee-withdraw" id="collectFeesBtn" type="button">Sacar</button></span></div>
           <div class="metric-row no-btn" id="rowFeeApr"><span class="label">APR taxas</span><span class="value" id="metricFeeApr">--</span></div>
-          <div id="solEquivalent"></div><div style="font:400 7px/1.4 monospace;color:#8792a6;margin-top:3px">Base estimada da nova posição <span id="poolCostBasis">US$ 4.034,74</span> · inferida do print Orca (saldo + taxas − PnL). Histórico da compra original de SOL preservado.</div>
+          <div id="solEquivalent"></div><div style="font:400 7px/1.4 monospace;color:#8792a6;margin-top:3px">Base estimada da nova posição <span id="poolCostBasis">US$ 4.034,74</span><span class="capital-yen" id="poolBasisYen">¥ —</span> · inferida do print Orca (saldo + taxas − PnL). Histórico da compra original de SOL preservado.</div>
         </div>
         <div class="detail-grid active-position">
-          <section class="subcard capital-card"><h2>HISTÓRICO DO INVESTIMENTO</h2><div class="metric-row no-btn" id="rowCapital"><span class="label">Capital inicial</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowTotalCapital"><span class="label">Base histórica</span><span class="value" id="metricTotalCapital">--</span><span class="capital-yen" id="totalCapitalYen">—</span></div><div class="metric-row no-btn" id="rowPnl"><span class="label">PnL acumulado</span><span class="value" id="metricPnl">--</span><span class="capital-yen" id="totalPnlYen">—</span><button class="fee-add" type="button">+</button></div></section>
-          <section class="subcard contribution-card"><h2>DADOS DA ENTRADA</h2><div class="metric-row no-btn"><span class="label">Migração WBTC/SOL · 21/11</span><span class="value">61.758881174 SOL · prévia $4,034.59</span></div><div class="metric-row" id="rowNewCapital"><span class="label">Aporte novo nesta pool</span><span class="value" id="metricNewCapital">--</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div><div class="metric-row no-btn"><span class="label">SOL comprados · BingX</span><span class="value">61.545 SOL</span></div><div class="metric-row no-btn"><span class="label">Preço médio SOL</span><span class="value">$69.17735</span></div><div class="metric-row no-btn"><span class="label">Retirada para uso pessoal</span><span class="value">$34.00 · retirada do saldo da venda</span></div><div class="metric-row no-btn" id="rowAge"><span class="label">Tempo da pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div></section>
+          <section class="subcard capital-card"><h2>HISTÓRICO DO INVESTIMENTO</h2><div class="metric-row no-btn" id="rowCapital"><span class="label">Capital inicial</span><span class="value" id="metricCapital">--</span><span class="capital-yen" id="initialCapitalYen">¥ —</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowTotalCapital"><span class="label">Base histórica</span><span class="value" id="metricTotalCapital">--</span><span class="capital-yen" id="totalCapitalYen">—</span></div></section>
+          <section class="subcard contribution-card"><h2>DADOS DA ENTRADA</h2><div class="metric-row no-btn"><span class="label">Migração WBTC/SOL · 21/11</span><span class="value">61.758881174 SOL · prévia $4,034.59</span><span class="capital-yen" id="migrationYen">¥ —</span></div><div class="metric-row" id="rowNewCapital"><span class="label">Aporte novo nesta pool</span><span class="value" id="metricNewCapital">--</span><span class="capital-yen" id="newCapitalYen">¥ —</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div><div class="metric-row no-btn"><span class="label">SOL comprados · BingX</span><span class="value">61.545 SOL</span></div><div class="metric-row no-btn"><span class="label">Preço médio SOL</span><span class="value">$69.17735</span><span class="capital-yen" id="solEntryYen">¥ —</span></div><div class="metric-row no-btn"><span class="label">Retirada para uso pessoal</span><span class="value">$34.00 · retirada do saldo da venda</span><span class="capital-yen" id="withdrawalYen">¥ —</span></div><div class="metric-row no-btn" id="rowAge"><span class="label">Tempo da pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div></section>
                   <div class="allocation-card subcard" id="allocationCard" aria-label="Composição da pool">
         <div class="card-title">Composição</div>
         <div class="alloc-bar" aria-hidden="true">
           <div class="alloc-fill sol" id="solFill"></div>
           <div class="alloc-fill btc" id="btcFill"></div>
         </div>
-        <div class="alloc-line"><span>SOL</span><b id="solShare">--</b><em id="solValue">--</em></div>
-        <div class="alloc-line"><span>WBTC</span><b id="btcShare">--</b><em id="btcValue">--</em></div>
+        <div class="alloc-line"><span>SOL</span><b id="solShare">--</b><em id="solValue">--</em><span class="capital-yen" id="solCompositionYen">¥ —</span></div>
+        <div class="alloc-line"><span>WBTC</span><b id="btcShare">--</b><em id="btcValue">--</em><span class="capital-yen" id="btcCompositionYen">¥ —</span></div>
         </div>
 
         </div>
@@ -1766,10 +1809,11 @@
       const pendingLabel = usd(pendingFees);
 
       setMetric("rowLiquidity", "metricLiquidity", usd(liq));
-      setMetric("rowPnl", "metricPnl", usd(pnl) + " (" + pct(pnlPct) + ")", pnlTone);
+      setMetric("rowPnl", "metricPnl", usd(pnl), pnlTone);
       setMetric("rowCapital", "metricCapital", usd(POOL.capital));
       setMetric("rowTotalCapital", "metricTotalCapital", usd(externalCapital()));
       $("totalCapitalYen").textContent = state.usdJpy ? jpy(externalCapital() * state.usdJpy) : "¥ —";
+      $("investmentPnlPct").textContent = pct(pnlPct);
       $("totalPnlYen").textContent = state.usdJpy ? jpy(pnl * state.usdJpy) : "¥ —";
       $("metricPnl").title = "Liquidez + taxas − US$ 4.242 da base histórica. Da última venda MSTRX de US$ 4.296,84 foram retirados US$ 34, restando US$ 4.262,84 para reinvestir e US$ 20,84 acima da base. Custos não detalhados permanecem a conciliar.";
 
@@ -1783,8 +1827,18 @@
       $("solEquivalent").textContent = "≈ " + (liq / (state.positionValuation?.solUsd || state.solUsd || POOL.snapshotSolUsd)).toFixed(4) + " SOL";
       $("solValue").textContent = usd(comp.solValue);
       $("btcValue").textContent = usd(comp.btcValue);
-      const sizes = [...$('sideContent').querySelectorAll('.value,.yen-value,.hero-percent')].map(el => el.textContent.length).join(',');
-      if(fitDataPanel.textSizes !== sizes){fitDataPanel.textSizes = sizes;requestAnimationFrame(fitDataPanel);}
+      for(const [id,value] of [
+        ["initialCapitalYen",POOL.capital],
+        ["newCapitalYen",state.newExternalCapital],
+        ["solEntryYen",POOL.currentBuyUsd/POOL.currentBuySol],
+        ["withdrawalYen",POOL.withdrawnUsd],
+        ["migrationYen",4034.59],
+        ["solCompositionYen",comp.solValue],
+        ["btcCompositionYen",comp.btcValue],
+        ["poolBasisYen",poolCostBasis]
+      ]){
+        $(id).textContent=state.usdJpy ? jpy(value*state.usdJpy) : "¥ —";
+      }
     }
 
     new ResizeObserver(resize).observe($("stage"));
