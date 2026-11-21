@@ -90,6 +90,26 @@ export function summarize(events) {
   return result;
 }
 
+export function recordClosure(previous,events,summary,account) {
+  const withdrawals=events.filter(event=>event.kind==='withdrawal');
+  const last=withdrawals.at(-1);
+  let empty=account===null;
+  if(account?.data?.[1]==='base64'){
+    const bytes=Uint8Array.from(atob(account.data[0]),char=>char.charCodeAt(0));
+    if(bytes.length<88)throw Error('Conta de posição incompleta');
+    empty=bytes.slice(72,88).every(byte=>byte===0);
+  }
+  const closures=[...(previous?.closures||[])];
+  if(!empty||!last)return {status:'open',closure:null,closures};
+  const closure={id:last.id,time:last.time,signature:last.signature,baseUsd:4100,
+    proceedsUsd:summary.netFlowUsd,pnlUsd:summary.netFlowUsd-4100,
+    pnlPercent:(summary.netFlowUsd/4100-1)*100,unpriced:summary.unpriced,
+    valuation:'Tokens retirados; USD estimado pela referência horária, não venda confirmada'};
+  const index=closures.findIndex(item=>item.id===closure.id);
+  if(index<0)closures.push(closure);else closures[index]=closure;
+  return {status:'closed',closure,closures};
+}
+
 export async function scanLedger(previous,rpc,priceAt) {
   const existing=previous?.position===POSITION?previous:{position:POSITION,events:[],signatures:[],prices:{}};
   const known=new Set(existing.signatures||[]),pending=[];
@@ -126,8 +146,11 @@ export async function scanLedger(previous,rpc,priceAt) {
       event.valuation='Referência horária USD; estimativa';
     }catch(error){event.priceError=error.message;}
   }
-  return {version:1,position:POSITION,pool:POOL,updatedAt:new Date().toISOString(),events,signatures,prices,
-    summary:summarize(events)};
+  const summary=summarize(events);
+  const account=await rpc('getAccountInfo',[POSITION,{encoding:'base64',commitment:'finalized'}]);
+  const closure=recordClosure(existing,events,summary,account.value);
+  return {version:2,position:POSITION,pool:POOL,updatedAt:new Date().toISOString(),events,signatures,prices,
+    summary,...closure};
 }
 
 export async function hourlyPrices(hour) {
