@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>Pool ETH/SOL</title>
+  <title>Pool WBTC/SOL</title>
   <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <style>
     :root {
@@ -328,7 +328,7 @@
       background: linear-gradient(90deg, #27b38d, #58d8b5);
     }
 
-    .alloc-fill.eth {
+    .alloc-fill.btc {
       flex: 1;
       background: linear-gradient(90deg, #f0a13a, #ffd166);
     }
@@ -701,10 +701,10 @@
 </head>
 <body>
   <header>
-    <div class="pair"><span class="dot"></span><span>ETH/SOL</span></div>
+    <div class="pair"><span class="dot"></span><span>WBTC/SOL</span></div>
     <div class="price" id="ratio">--</div>
     <div class="badge ok" id="rangeStatus">In Range</div>
-    <div class="badge" id="rangeText">22.37 - 24.72</div>
+    <div class="badge" id="rangeText">811.89 - 897.27</div>
     <div class="badge" id="liveText">tick 1s</div>
     <div class="spacer"></div>
     <div class="tf" aria-label="Timeframe">
@@ -718,10 +718,10 @@
 
   <main>
     <div class="dashboard">
-      <section class="stage" id="stage" aria-label="Grafico limpo da pool ETH/SOL">
+      <section class="stage" id="stage" aria-label="Grafico limpo da pool WBTC/SOL">
         <div id="chart"></div>
         <canvas id="overlay"></canvas>
-        <div class="loading" id="loading">carregando ETH/SOL...</div>
+        <div class="loading" id="loading">carregando WBTC/SOL...</div>
       </section>
 
       <aside class="side-panel" aria-label="Dados da pool"><div class="side-content" id="sideContent">
@@ -750,19 +750,19 @@
           <div class="primary-pair"><div class="metric-row no-btn" id="rowLiquidity"><span class="label">Liquidez da pool</span><span class="value" id="metricLiquidity">--</span><span class="yen-value" id="liquidityYen">—</span></div><div class="metric-row no-btn hero-pnl" id="rowPoolPnl"><span class="label">PnL desta etapa (est.)</span><span class="value" id="currentPoolPnl">—</span><span class="hero-percent" id="poolPnlPct">—</span><span class="yen-value" id="poolPnlYen">—</span></div></div>
           <div class="metric-row" id="rowUncollected"><span class="label">Taxas pendentes</span><span class="value fee-value-with-ring"><span id="metricUncollected">--</span><span id="feeRefreshRing" class="fee-refresh-ring" role="img" aria-label="Aguardando consulta das taxas" title="Próxima consulta em 5 segundos"><svg viewBox="0 0 20 20" aria-hidden="true"><circle class="ring-track" cx="10" cy="10" r="7.5"/><circle class="ring-progress" cx="10" cy="10" r="7.5" pathLength="100"/></svg></span></span><span class="yen-value" id="pendingYen">—</span><span class="fee-actions"><button class="fee-add" type="button" data-fee="uncollectedFees">Modificar</button><button class="fee-withdraw" id="collectFeesBtn" type="button">Sacar</button></span></div>
           <div class="metric-row no-btn" id="rowFeeApr"><span class="label">APR taxas</span><span class="value" id="metricFeeApr">--</span></div>
-          <div id="solEquivalent"></div><div style="font:400 7px/1.4 monospace;color:#8792a6;margin-top:3px">Custo da compra de SOL <span id="poolCostBasis">US$ 4.257,52</span> · duas execuções confirmadas. Diferença de US$ 5,32 frente ao saldo anterior menos a retirada ainda a conciliar. Custos de transferência e montagem não detalhados.</div>
+          <div id="solEquivalent"></div><div style="font:400 7px/1.4 monospace;color:#8792a6;margin-top:3px">Base estimada da nova posição <span id="poolCostBasis">US$ 4.034,74</span> · inferida do print Orca (saldo + taxas − PnL). Histórico da compra original de SOL preservado.</div>
         </div>
         <div class="detail-grid active-position">
           <section class="subcard capital-card"><h2>HISTÓRICO DO INVESTIMENTO</h2><div class="metric-row no-btn" id="rowCapital"><span class="label">Capital inicial</span><span class="value" id="metricCapital">--</span><button class="fee-add" type="button">+</button></div><div class="metric-row no-btn" id="rowTotalCapital"><span class="label">Base histórica</span><span class="value" id="metricTotalCapital">--</span><span class="capital-yen" id="totalCapitalYen">—</span></div><div class="metric-row no-btn" id="rowPnl"><span class="label">PnL acumulado</span><span class="value" id="metricPnl">--</span><span class="capital-yen" id="totalPnlYen">—</span><button class="fee-add" type="button">+</button></div></section>
-          <section class="subcard contribution-card"><h2>DADOS DA ENTRADA</h2><div class="metric-row" id="rowNewCapital"><span class="label">Aporte novo nesta pool</span><span class="value" id="metricNewCapital">--</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div><div class="metric-row no-btn"><span class="label">SOL comprados · BingX</span><span class="value">61.545 SOL</span></div><div class="metric-row no-btn"><span class="label">Preço médio SOL</span><span class="value">$69.17735</span></div><div class="metric-row no-btn"><span class="label">Retirada para uso pessoal</span><span class="value">$34.00 · retirada do saldo da venda</span></div><div class="metric-row no-btn" id="rowAge"><span class="label">Tempo da pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div></section>
+          <section class="subcard contribution-card"><h2>DADOS DA ENTRADA</h2><div class="metric-row no-btn"><span class="label">Migração WBTC/SOL · 21/11</span><span class="value">61.758881174 SOL · prévia $4,034.59</span></div><div class="metric-row" id="rowNewCapital"><span class="label">Aporte novo nesta pool</span><span class="value" id="metricNewCapital">--</span><span class="fee-actions"><button class="capital-add" type="button" data-capital="newExternalCapital">Adicionar</button></span></div><div class="metric-row no-btn"><span class="label">SOL comprados · BingX</span><span class="value">61.545 SOL</span></div><div class="metric-row no-btn"><span class="label">Preço médio SOL</span><span class="value">$69.17735</span></div><div class="metric-row no-btn"><span class="label">Retirada para uso pessoal</span><span class="value">$34.00 · retirada do saldo da venda</span></div><div class="metric-row no-btn" id="rowAge"><span class="label">Tempo da pool</span><span class="value" id="metricAge">--</span><button class="fee-add" type="button">+</button></div></section>
                   <div class="allocation-card subcard" id="allocationCard" aria-label="Composição da pool">
         <div class="card-title">Composição</div>
         <div class="alloc-bar" aria-hidden="true">
           <div class="alloc-fill sol" id="solFill"></div>
-          <div class="alloc-fill eth" id="ethFill"></div>
+          <div class="alloc-fill btc" id="btcFill"></div>
         </div>
         <div class="alloc-line"><span>SOL</span><b id="solShare">--</b><em id="solValue">--</em></div>
-        <div class="alloc-line"><span>ETH</span><b id="ethShare">--</b><em id="ethValue">--</em></div>
+        <div class="alloc-line"><span>WBTC</span><b id="btcShare">--</b><em id="btcValue">--</em></div>
         </div>
 
         </div>
@@ -786,45 +786,45 @@
     const POOL = {
       close: null,
       withdrawnUsd: 34,
-      referenceLiquidity: "81025564102",
-      tickLower: -55104,
-      tickUpper: -54104,
+      referenceLiquidity: "13522435796",
+      tickLower: -91024,
+      tickUpper: -90024,
       capital: 4100,
       previousContributions: 142,
-      lower: 22.366054940640716,
-      upper: 24.718189889458394,
-      solAmount: 31.494642450362353,
-      ethAmount: 1.2697171445208502,
-      uncollectedFees: 0,
+      lower: 811.8899626578882,
+      upper: 897.272689331419,
+      solAmount: 31.918,
+      btcAmount: 0.0349,
+      uncollectedFees: 0.02,
       collectedFees: 0,
       reinvestedFees: 0,
       newExternalCapital: 0,
-      whirlpool: "HktfL7iwGKT5QHjywQkcDnZXScoh811k7akrMZJkCcEF",
-      position: "xcSEc6HhX4BLRrHKPu3WJ2Ru1hSSWEjcd8HS3fwHcRo",
-      positionMint: "4kMtw91AijqZrQX66AcknJT6yv19Q5N5z1oKqkQJrvvN",
-      snapshotBalance: 4218.008120187109,
-      snapshotPoolPnl: 0,
-      snapshotPoolPnlPct: 0,
-      snapshotRatio: 23.543787780751245,
-      snapshotSolUsd: 68.7175089778847,
+      whirlpool: "B5EwJVDuAauzUEEdwvbuXzbFFgEYnUqqS37TUM1c4PQA",
+      position: "FtWGNzUnykfnNKfVrLvu9k9BCNBQTv66rKgGXwGCm33M",
+      positionMint: "6MKyf7RiChn7aNDef5MuermYgCHrLdH6cu7WMTTcQzN3",
+      snapshotBalance: 4035.35,
+      snapshotPoolPnl: 0.63,
+      snapshotPoolPnlPct: 0.63 / 4034.74,
+      snapshotRatio: 855.13746,
+      snapshotSolUsd: 65.3281105,
       // Stage cost from the two filled BingX SOL purchase totals.
-      currentCostBasis: 4257.52,
+      currentCostBasis: 4034.74,
       currentBuyUsd: 4257.52,
       currentBuySol: 61.545,
       reserveSol: 0,
       feeTier: 0.05,
-      snapshotAt: "2026-11-21T09:56:22+09:00",
+      snapshotAt: "2026-11-21T14:46:00+09:00",
       rpc: ["https://api.mainnet-beta.solana.com", "https://solana-rpc.publicnode.com"]
     };
 
-    const STORAGE_KEY = "eth_sol_pool_20261121_v1";
-    const PREVIOUS_STORAGE_KEY = "cbbtc_sol_pool_20261111_v1";
-    const POOL_STARTED_AT = new Date("2026-11-21T09:55:14+09:00").getTime();
+    const STORAGE_KEY = "wbtc_sol_pool_20261121_afternoon_v1";
+    const PREVIOUS_STORAGE_KEY = "eth_sol_pool_20261121_v1";
+    const POOL_STARTED_AT = new Date("2026-11-21T14:43:48+09:00").getTime();
     const perMs = { "1h": 3600000, "4h": 14400000, "1d": 86400000 };
     const state = {
       tf: "1h",
       candles: [],
-      ethUsd: 0,
+      btcUsd: 0,
       solUsd: 0,
       usdJpy: 0,
       lastUpdate: null,
@@ -836,7 +836,7 @@
       onchainError: "",
       onchain: {
         solAmount: POOL.solAmount,
-        ethAmount: POOL.ethAmount,
+        btcAmount: POOL.btcAmount,
         lower: POOL.lower,
         upper: POOL.upper,
         poolRatio: 0,
@@ -1115,16 +1115,16 @@
 
     async function loadUsdCandles(tf) {
       try {
-        return await Promise.all([hyperCandles("ETH", tf), hyperCandles("SOL", tf)]);
+        return await Promise.all([hyperCandles("BTC", tf), hyperCandles("SOL", tf)]);
       } catch (err) {
-        return Promise.all([binanceCandles("ETHUSDT", tf), binanceCandles("SOLUSDT", tf)]);
+        return Promise.all([binanceCandles("BTCUSDT", tf), binanceCandles("SOLUSDT", tf)]);
       }
     }
 
-    function buildRatioCandles(eth, sol) {
+    function buildRatioCandles(btc, sol) {
       const solMap = new Map(sol.map(c => [c.time, c]));
       const out = [];
-      for (const b of eth) {
+      for (const b of btc) {
         const s = solMap.get(b.time);
         if (!s || !s.open || !s.high || !s.low || !s.close) continue;
         out.push({
@@ -1135,10 +1135,10 @@
           close: b.close / s.close
         });
       }
-      const lastEth = eth[eth.length - 1];
+      const lastWbtc = btc[btc.length - 1];
       const lastSol = sol[sol.length - 1];
-      if (lastEth && lastSol) {
-        state.ethUsd = lastEth.close;
+      if (lastWbtc && lastSol) {
+        state.btcUsd = lastWbtc.close;
         state.solUsd = lastSol.close;
       }
       return out;
@@ -1149,8 +1149,8 @@
       state.loading = true;
       $("loading").hidden = false;
       try {
-        const [eth, sol] = await loadUsdCandles(state.tf);
-        state.candles = buildRatioCandles(eth, sol);
+        const [btc, sol] = await loadUsdCandles(state.tf);
+        state.candles = buildRatioCandles(btc, sol);
         state.lastUpdate = new Date();
         series.setData(state.candles);
         if (state.firstLoad) {
@@ -1179,18 +1179,18 @@
       if (!res.ok) throw new Error("hyperliquid ticker " + res.status);
       const data = await res.json();
       return {
-        eth: Number(data.ETH),
+        btc: Number(data.BTC),
         sol: Number(data.SOL)
       };
     }
 
     async function binanceSpotPrices() {
-      const symbols = encodeURIComponent(JSON.stringify(["ETHUSDT", "SOLUSDT"]));
+      const symbols = encodeURIComponent(JSON.stringify(["BTCUSDT", "SOLUSDT"]));
       const res = await fetch("https://api.binance.com/api/v3/ticker/price?symbols=" + symbols);
       if (!res.ok) throw new Error("binance ticker " + res.status);
       const data = await res.json();
       const map = Object.fromEntries(data.map(item => [item.symbol, Number(item.price)]));
-      return { eth: map.ETHUSDT, sol: map.SOLUSDT };
+      return { btc: map.BTCUSDT, sol: map.SOLUSDT };
     }
 
     async function fetchSpotPrices() {
@@ -1200,14 +1200,14 @@
         try {
           return await binanceSpotPrices();
         } catch (err2) {
-          const [ethRes, solRes] = await Promise.all([
-            fetch("https://api.coinbase.com/v2/prices/ETH-USD/spot"),
+          const [btcRes, solRes] = await Promise.all([
+            fetch("https://api.coinbase.com/v2/prices/BTC-USD/spot"),
             fetch("https://api.coinbase.com/v2/prices/SOL-USD/spot")
           ]);
-          if (!ethRes.ok || !solRes.ok) throw new Error("ticker indisponivel");
-          const [ethData, solData] = await Promise.all([ethRes.json(), solRes.json()]);
+          if (!btcRes.ok || !solRes.ok) throw new Error("ticker indisponivel");
+          const [btcData, solData] = await Promise.all([btcRes.json(), solRes.json()]);
           return {
-            eth: Number(ethData && ethData.data && ethData.data.amount),
+            btc: Number(btcData && btcData.data && btcData.data.amount),
             sol: Number(solData && solData.data && solData.data.amount)
           };
         }
@@ -1270,15 +1270,15 @@
       return BigInt(Math.floor(Math.pow(1.0001, tick / 2) * 2 ** 64));
     }
 
-    function solPerEthFromTick(tick) {
-      const ethPerSol = Math.pow(1.0001, tick) * 10;
-      return 1 / ethPerSol;
+    function solPerWbtcFromTick(tick) {
+      const btcPerSol = Math.pow(1.0001, tick) * 10;
+      return 1 / btcPerSol;
     }
 
-    function solPerEthFromSqrtX64(sqrtPriceX64) {
+    function solPerWbtcFromSqrtX64(sqrtPriceX64) {
       const sqrt = Number(sqrtPriceX64) / 2 ** 64;
-      const ethPerSol = sqrt * sqrt * 10;
-      return 1 / ethPerSol;
+      const btcPerSol = sqrt * sqrt * 10;
+      return 1 / btcPerSol;
     }
 
     function divToken(raw, decimals) {
@@ -1304,7 +1304,7 @@
 
       return {
         solAmount: divToken(amountA, 9),
-        ethAmount: divToken(amountB, 8)
+        btcAmount: divToken(amountB, 8)
       };
     }
 
@@ -1338,8 +1338,8 @@
       const feeCheckpointA = u128(bytes, p); p += 16;
       const feeOwedSolRaw = u64(bytes, p); p += 8;
       const feeCheckpointB = u128(bytes, p); p += 16;
-      const feeOwedEthRaw = u64(bytes, p);
-      return { liquidityRaw, tickLower, tickUpper, feeOwedSolRaw, feeOwedEthRaw, feeCheckpointA, feeCheckpointB };
+      const feeOwedWbtcRaw = u64(bytes, p);
+      return { liquidityRaw, tickLower, tickUpper, feeOwedSolRaw, feeOwedWbtcRaw, feeCheckpointA, feeCheckpointB };
     }
 
     function parsePool(bytes) {
@@ -1365,7 +1365,7 @@
       if(!(p>0))throw new Error("preço Orca indisponível"); return p;
     }
     async function positionFees(position,pool){
-      const addresses={"-55616":"82KppHH5eWWHhhiPhwenZDFrd5eMKn3882UxusXRMvcb","-54208":"6DxLjxvEMqAYAA95yXQQYV3NFbdSayzVZ7QnD88qCHuf"};
+      const addresses={"-91520":"HnAhe3mi2RUtkcCWhRKT8RJJKcDzgEysZTmMQNdXMf6t","-90112":"DdDPEn7gZVnKgV2fAL4VtuiHYG7CypM2igeDpYARh9hn"};
       const starts=[position.tickLower,position.tickUpper].map(t=>Math.floor(t/(88*pool.tickSpacing))*88*pool.tickSpacing);
       if(starts.some(t=>!addresses[t]))throw new Error("range alterado: reconectar tick arrays");
       const result=await solanaRpc("getMultipleAccounts",[starts.map(t=>addresses[t]),{encoding:"base64"}]);
@@ -1387,7 +1387,7 @@
         return owed+position.liquidityRaw*wrap(inside-checkpoint)/(1n<<64n);
       };
       return {a:fee(pool.feeGrowthA,lo.a,hi.a,position.feeCheckpointA,position.feeOwedSolRaw),
-              b:fee(pool.feeGrowthB,lo.b,hi.b,position.feeCheckpointB,position.feeOwedEthRaw)};
+              b:fee(pool.feeGrowthB,lo.b,hi.b,position.feeCheckpointB,position.feeOwedWbtcRaw)};
     }
 
     const FEE_REFRESH_MS = 5000;
@@ -1427,34 +1427,34 @@
         if(accounts.some(a=>a.owner!==program) || base58(posBytes.slice(8,40))!==POOL.whirlpool || base58(posBytes.slice(40,72))!==POOL.positionMint) throw new Error("posição não pertence à pool");
         const position = parsePosition(posBytes);
         const poolBytes = b64Bytes(accounts[1].data[0]);
-        if(base58(poolBytes.slice(101,133))!=="So11111111111111111111111111111111111111112" || base58(poolBytes.slice(181,213))!=="7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs")throw new Error("Tokens da pool incompatíveis");
+        if(base58(poolBytes.slice(101,133))!=="So11111111111111111111111111111111111111112" || base58(poolBytes.slice(181,213))!=="3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh")throw new Error("Tokens da pool incompatíveis");
         const pool = parsePool(poolBytes);
         const amounts = positionAmounts(position.liquidityRaw, position.tickLower, position.tickUpper, pool.sqrtPriceX64);
-        const lowerA = solPerEthFromTick(position.tickLower);
-        const upperA = solPerEthFromTick(position.tickUpper);
+        const lowerA = solPerWbtcFromTick(position.tickLower);
+        const upperA = solPerWbtcFromTick(position.tickUpper);
 
         const nextOnchain = {
           solAmount: amounts.solAmount,
-          ethAmount: amounts.ethAmount,
+          btcAmount: amounts.btcAmount,
           lower: Math.min(lowerA, upperA),
           upper: Math.max(lowerA, upperA),
-          poolRatio: solPerEthFromSqrtX64(pool.sqrtPriceX64),
+          poolRatio: solPerWbtcFromSqrtX64(pool.sqrtPriceX64),
           tickCurrent: pool.tickCurrent,
           liquidityRaw: position.liquidityRaw.toString(),
           feeOwedSolRaw: position.feeOwedSolRaw.toString(),
-          feeOwedEthRaw: position.feeOwedEthRaw.toString(),
+          feeOwedWbtcRaw: position.feeOwedWbtcRaw.toString(),
           source: "onchain"
         };
-        const [solToken, ethToken, feesRaw] = await Promise.all([
+        const [solToken, btcToken, feesRaw] = await Promise.all([
           orcaToken("So11111111111111111111111111111111111111112"),
-          orcaToken("7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs"),
+          orcaToken("3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh"),
           positionFees(position,pool)
         ]);
         state.onchain = nextOnchain;
-        state.positionValuation = {solUsd:solToken,ethUsd:ethToken,feesUsd:Number(feesRaw.a)/1e9*solToken+Number(feesRaw.b)/1e8*ethToken};
+        state.positionValuation = {solUsd:solToken,btcUsd:btcToken,feesUsd:Number(feesRaw.a)/1e9*solToken+Number(feesRaw.b)/1e8*btcToken};
         state.lastOnchainUpdate = new Date();
         $("positionStatus").textContent = "on-chain · "+state.lastOnchainUpdate.toLocaleTimeString("pt-BR",{timeZone:"Asia/Tokyo",hour:"2-digit",minute:"2-digit"});
-        $("positionStatus").title = "Saldos e taxas on-chain; preços USD da Orca. Base desta etapa estimada pelo saldo anterior menos a retirada informada.";
+        $("positionStatus").title = "Saldos e taxas on-chain; preços USD da Orca. Base desta etapa estimada pelo print Orca de 21/11 às 14:46 JST.";
         state.onchainError = "";
         rangeTop.applyOptions({ price: state.onchain.upper });
         rangeBottom.applyOptions({ price: state.onchain.lower });
@@ -1471,9 +1471,9 @@
       }
     }
 
-    function applySpotPrices(ethUsd, solUsd) {
-      if (!ethUsd || !solUsd || (!POOL.close && !state.candles.length)) return;
-      state.ethUsd = ethUsd;
+    function applySpotPrices(btcUsd, solUsd) {
+      if (!btcUsd || !solUsd || (!POOL.close && !state.candles.length)) return;
+      state.btcUsd = btcUsd;
       state.solUsd = solUsd;
       state.lastUpdate = new Date();
 
@@ -1482,7 +1482,7 @@
         renderHeader();
         return;
       }
-      const ratio = ethUsd / solUsd;
+      const ratio = btcUsd / solUsd;
       const time = bucketTime(Date.now());
       const last = state.candles[state.candles.length - 1];
       let candle;
@@ -1515,7 +1515,7 @@
       state.ticking = true;
       try {
         const prices = await fetchSpotPrices();
-        applySpotPrices(prices.eth, prices.sol);
+        applySpotPrices(prices.btc, prices.sol);
       } catch (err) {
         $("liveText").textContent = "tick falhou";
       } finally {
@@ -1546,8 +1546,8 @@
 
     function onchainUncollectedFees() {
       const solRaw = Number(state.onchain.feeOwedSolRaw || 0);
-      const ethRaw = Number(state.onchain.feeOwedEthRaw || 0);
-      return solRaw / 1e9 * state.solUsd + ethRaw / 1e8 * state.ethUsd;
+      const btcRaw = Number(state.onchain.feeOwedWbtcRaw || 0);
+      return solRaw / 1e9 * state.solUsd + btcRaw / 1e8 * state.btcUsd;
     }
 
     function displayedUncollectedFees() {
@@ -1566,7 +1566,7 @@
     }
 
     function estimatedAmounts() {
-      const ratio=state.ethUsd>0&&state.solUsd>0 ? state.ethUsd/state.solUsd : POOL.snapshotRatio;
+      const ratio=state.btcUsd>0&&state.solUsd>0 ? state.btcUsd/state.solUsd : POOL.snapshotRatio;
       const sqrt=BigInt(Math.floor(Math.sqrt(1/(ratio*10))*2**64));
       return positionAmounts(BigInt(POOL.referenceLiquidity),POOL.tickLower,POOL.tickUpper,sqrt);
     }
@@ -1577,10 +1577,10 @@
 
     function liquidity() {
       if (!state.positionValuation) {
-        if(state.solUsd>0&&state.ethUsd>0){const amounts=estimatedAmounts();return amounts.solAmount*state.solUsd+amounts.ethAmount*state.ethUsd;}
+        if(state.solUsd>0&&state.btcUsd>0){const amounts=estimatedAmounts();return amounts.solAmount*state.solUsd+amounts.btcAmount*state.btcUsd;}
         return POOL.snapshotBalance;
       }
-      return state.onchain.solAmount * state.positionValuation.solUsd + state.onchain.ethAmount * state.positionValuation.ethUsd;
+      return state.onchain.solAmount * state.positionValuation.solUsd + state.onchain.btcAmount * state.positionValuation.btcUsd;
     }
 
     function totalPositionValue() {
@@ -1605,20 +1605,20 @@
     function composition() {
       const amounts = activeAmounts();
       const solPrice = state.positionValuation?.solUsd || state.solUsd || POOL.snapshotSolUsd;
-      const ethPrice = state.positionValuation?.ethUsd || state.ethUsd || POOL.snapshotSolUsd * POOL.snapshotRatio;
+      const btcPrice = state.positionValuation?.btcUsd || state.btcUsd || POOL.snapshotSolUsd * POOL.snapshotRatio;
       const solValue = amounts.solAmount * solPrice;
-      const ethValue = amounts.ethAmount * ethPrice;
-      const total = solValue + ethValue;
+      const btcValue = amounts.btcAmount * btcPrice;
+      const total = solValue + btcValue;
       return {
         solValue,
-        ethValue,
+        btcValue,
         solPct: total ? solValue / total : 0,
-        ethPct: total ? ethValue / total : 0
+        btcPct: total ? btcValue / total : 0
       };
     }
 
     function renderHeader() {
-      const ratio = (POOL.close && state.ethUsd && state.solUsd ? state.ethUsd / state.solUsd : state.onchain.poolRatio) || POOL.snapshotRatio;
+      const ratio = (POOL.close && state.btcUsd && state.solUsd ? state.btcUsd / state.solUsd : state.onchain.poolRatio) || POOL.snapshotRatio;
       const lower = state.onchain.lower || POOL.lower;
       const upper = state.onchain.upper || POOL.upper;
       const inside = ratio >= lower && ratio <= upper;
@@ -1669,8 +1669,8 @@
         ctx.fillRect(0, Math.min(yHigh,yLow), plotWidth, Math.abs(yLow-yHigh));
         ctx.restore();
       }
-      // Ratio is SOL per ETH: at the upper bound the position is all SOL;
-      // at the lower bound it is all ETH (token A SOL / token B ETH).
+      // Ratio is SOL per WBTC: at the upper bound the position is all SOL;
+      // at the lower bound it is all WBTC (token A SOL / token B WBTC).
       function drawExit(y, text, color) {
         if (y == null || y < 0 || y > h - 24) return;
         ctx.save();
@@ -1693,7 +1693,7 @@
         ctx.restore();
       }
       drawExit(yHigh, "Saída em Solana", "#54a9ff");
-      drawExit(yLow, "Saída em ETH", "#f5a33b");
+      drawExit(yLow, "Saída em BTC", "#f5a33b");
 
       if (yNow != null) {
         ctx.save();
@@ -1736,9 +1736,9 @@
       $("closeBasis").textContent = "Base acumulada " + usd(capital) + " (" + usd(POOL.capital) +
         " iniciais + " + usd(POOL.previousContributions) + " em aportes e reinvestimentos). Saldo antes da compra de SOL " + usd(beforeSolPurchaseUsd) + ".";
 
-      if (state.ethUsd > 0 && state.solUsd > 0) {
-        const { solAmount, ethAmount } = estimatedAmounts();
-        const value = solAmount * state.solUsd + ethAmount * state.ethUsd;
+      if (state.btcUsd > 0 && state.solUsd > 0) {
+        const { solAmount, btcAmount } = estimatedAmounts();
+        const value = solAmount * state.solUsd + btcAmount * state.btcUsd;
         setMetric("rowSimValue", "simValue", usd(value));
         $("simValueYen").textContent = state.usdJpy ? jpy(value * state.usdJpy) : "¥ —";
         showResult("rowSimDelta", "simDelta", value, cashUsd);
@@ -1779,10 +1779,10 @@
       setMetric("rowAge", "metricAge", poolAge());
       $("solFill").style.width = (comp.solPct * 100).toFixed(2) + "%";
       $("solShare").textContent = (comp.solPct * 100).toFixed(1) + "%";
-      $("ethShare").textContent = (comp.ethPct * 100).toFixed(1) + "%";
+      $("btcShare").textContent = (comp.btcPct * 100).toFixed(1) + "%";
       $("solEquivalent").textContent = "≈ " + (liq / (state.positionValuation?.solUsd || state.solUsd || POOL.snapshotSolUsd)).toFixed(4) + " SOL";
       $("solValue").textContent = usd(comp.solValue);
-      $("ethValue").textContent = usd(comp.ethValue);
+      $("btcValue").textContent = usd(comp.btcValue);
       const sizes = [...$('sideContent').querySelectorAll('.value,.yen-value,.hero-percent')].map(el => el.textContent.length).join(',');
       if(fitDataPanel.textSizes !== sizes){fitDataPanel.textSizes = sizes;requestAnimationFrame(fitDataPanel);}
     }
@@ -1908,7 +1908,7 @@
         const liq = liquidity();
         const pnl = totalPositionValue() - investedCapital();
         const comp = composition();
-        addHistory("snapshot", "Snapshot · Liquidez " + usd(liq) + " · PnL jornada " + usd(pnl) + " · Capital do bolso " + usd(externalCapital()) + " · Taxas " + usd(state.collectedFees) + " (" + pct(state.collectedFees / externalCapital()) + ") · SOL " + (comp.solPct * 100).toFixed(1) + "% · ETH " + (comp.ethPct * 100).toFixed(1) + "% · " + state.onchain.source);
+        addHistory("snapshot", "Snapshot · Liquidez " + usd(liq) + " · PnL jornada " + usd(pnl) + " · Capital do bolso " + usd(externalCapital()) + " · Taxas " + usd(state.collectedFees) + " (" + pct(state.collectedFees / externalCapital()) + ") · SOL " + (comp.solPct * 100).toFixed(1) + "% · WBTC " + (comp.btcPct * 100).toFixed(1) + "% · " + state.onchain.source);
       });
     }
 
@@ -1939,7 +1939,8 @@
         if (Array.isArray(previous.history)) previousHistory = previous.history.slice(0, 77);
       } catch (error) {}
       state.history = [
-        {kind:"start",ts:POOL.snapshotAt,text:"Reabertura SOL/ETH Wormhole · posição e NFT verificados on-chain. Taxa da pool 0,05%. Capital inicial US$ 4.100 + US$ 142 históricos preservados."},
+        {kind:"migration",ts:POOL.snapshotAt,text:"ETH/SOL encerrada. Último print às 14:41: saldo US$ 4.032,87, pendentes US$ 2,57 e PnL Orca -US$ 193,29. Prévia da nova entrada: 61,758881174 SOL avaliados em US$ 4.034,59. Valores dos prints são referências, sujeitos à execução."},
+        {kind:"start",ts:POOL.snapshotAt,text:"Migração ETH/SOL para WBTC/SOL 0,05%. Posição, NFT e mints verificados na blockchain. Print 14:46: saldo US$ 4.035,35 + US$ 0,02 pendentes; PnL desta posição +US$ 0,63; acumulado -US$ 206,63 sobre US$ 4.242."},
         {kind:"withdrawal",ts:POOL.snapshotAt,text:"Última venda MSTRX US$ 4.296,84 menos US$ 34 retirados = US$ 4.262,84 reinvestíveis. Base histórica US$ 4.242; PnL após retirada US$ 20,84 antes dos custos pendentes."},
         {kind:"trade",ts:POOL.snapshotAt,text:"BingX 21/11: limite executado 0,754 SOL por 52,07 USDT às 09:40:08 JST; mercado 60,791 SOL por 4.205,45 USDT às 09:42:04 JST. Total executado 61,545 SOL por 4.257,52 USDT; média calculada 69,17735 USDT/SOL. Diferença de 5,32 USDT frente ao saldo anterior menos 34 retirados ainda a conciliar."},
         ...previousHistory
