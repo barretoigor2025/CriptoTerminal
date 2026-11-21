@@ -2,7 +2,7 @@ export const POSITION = 'FtWGNzUnykfnNKfVrLvu9k9BCNBQTv66rKgGXwGCm33M';
 export const POOL = 'B5EwJVDuAauzUEEdwvbuXzbFFgEYnUqqS37TUM1c4PQA';
 // The opening consisted of three deposits completed at 14:45:46 JST.
 export const OPENING_END = 1795239946;
-export const REPORTED_EXIT = {"id":"user-reported-net-exit-20261121","time":1795268716,"timeSource":"Horário do registro; saída informada pelo usuário","baseUsd":4100,"proceedsUsd":4312,"pnlUsd":212,"pnlPercent":5.170731707317073,"unpriced":0,"source":"user-reported-net","valuation":"Saída líquida informada pelo usuário: US$ 4.312; inclui taxas, não descontar novamente"};
+export const REPORTED_EXIT = {"id":"user-reported-net-exit-20261121","time":1795268716,"timeSource":"Horário do registro; saída informada pelo usuário","baseUsd":4100,"proceedsUsd":4320,"pnlUsd":220,"pnlPercent":5.365853658536586,"unpriced":0,"source":"user-reported-net","valuation":"Saída líquida informada pelo usuário: US$ 4.320; inclui taxas, não descontar novamente"};
 const PROGRAM = 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc';
 const SOL = 'So11111111111111111111111111111111111111112';
 const BTC = '3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh';
