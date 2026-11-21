@@ -1101,7 +1101,7 @@
     const STORAGE_KEY = "wbtc_sol_pool_20261121_afternoon_v1";
     const LEDGER_KEY="pool_confirmed_ledger_"+POOL.position;
     const LEDGER_URL="https://raw.githubusercontent.com/barretoigor2025/CriptoTerminal/market-data/pool-ledger.json";
-    const REPORTED_EXIT={"id":"user-reported-net-exit-20261121","time":1795268716,"timeSource":"Horário do registro; saída informada pelo usuário","baseUsd":4100,"proceedsUsd":4312,"pnlUsd":212,"pnlPercent":5.170731707317073,"unpriced":0,"source":"user-reported-net","valuation":"Saída líquida informada pelo usuário: US$ 4.312; inclui taxas, não descontar novamente"};
+    const REPORTED_EXIT={"id":"user-reported-net-exit-20261121","time":1795268716,"timeSource":"Horário do registro; saída informada pelo usuário","baseUsd":4100,"proceedsUsd":4320,"pnlUsd":220,"pnlPercent":5.365853658536586,"unpriced":0,"source":"user-reported-net","valuation":"Saída líquida informada pelo usuário: US$ 4.320; inclui taxas, não descontar novamente"};
     function applyReportedExit(ledger){
       ledger=ledger||{position:POOL.position,events:[],signatures:[],prices:{},summary:{collectedUsd:0,depositedUsd:0,reinvestmentCompatibleUsd:0,withdrawnUsd:0,netFlowUsd:0,unpriced:0}};
       return {...ledger,status:"closed",closure:REPORTED_EXIT,closures:[...(ledger.closures||[]).filter(item=>item.id!==REPORTED_EXIT.id),REPORTED_EXIT]};
@@ -1851,7 +1851,7 @@
       if(ledgerBusy)return;
       ledgerBusy=true;
       try{
-        ledgerModule=await import("./tools/pool-ledger.mjs?v=3");
+        ledgerModule=await import("./tools/pool-ledger.mjs?v=4");
         try{
           const response=await fetch(LEDGER_URL+"?v="+Math.floor(Date.now()/30000),{signal:AbortSignal.timeout(9000)});
           if(response.ok)ledgerState=applyReportedExit(mergeLedgers(ledgerState,await response.json()));
