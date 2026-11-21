@@ -71,7 +71,7 @@ body.chart-overlay-open{overflow:hidden}
 </style>
 </head>
 <body>
-<header><a id="terminal-link" href="index.html">← Terminal</a><h1>Mapa de liquidações</h1></header>
+<header><a id="terminal-link" href="index.html">← Terminal</a><h1>Mapa de liquidações</h1><a id="live-link" href="liquidacoes-ao-vivo.html">Ao vivo</a></header>
 <section id="chart-panel" class="chart-panel" aria-label="Mapa interativo">
 <div class="controls">
 <div class="asset-buttons" role="group" aria-label="Ativo">
@@ -161,6 +161,7 @@ let bookRequest;
 const books = new Map();
 
 function refreshBooks() {
+  document.getElementById('live-link').href = 'liquidacoes-ao-vivo.html?asset=' + asset;
   bookRequest?.abort();
   const request = new AbortController();
   bookRequest = request;
