@@ -740,6 +740,24 @@
     }
     #rowPnl.positive .hero-percent{color:var(--green)}
     #rowPnl.negative .hero-percent{color:var(--red)}
+    .pool-card #rowLiquidity{
+      grid-template-columns:minmax(0,1fr);
+      grid-template-rows:18px 30px 20px;
+      width:100%;min-width:0;justify-items:start;
+    }
+    .pool-card #rowLiquidity>.label{grid-column:1;grid-row:1;white-space:nowrap}
+    .pool-card #metricLiquidity{
+      grid-column:1;grid-row:2;display:block;
+      font-size:22px;line-height:30px;
+      width:100%;overflow:visible;text-overflow:clip;white-space:nowrap;
+    }
+    .pool-card #liquidityYen{
+      grid-column:1;grid-row:3;
+      width:100%;margin:0;white-space:nowrap;
+    }
+    @media(max-width:680px) and (orientation:portrait){
+      .pool-card #metricLiquidity{font-size:20px}
+    }
 </style>
 </head>
 <body>
