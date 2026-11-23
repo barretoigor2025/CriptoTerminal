@@ -24,20 +24,27 @@ button:focus-visible,select:focus-visible,summary:focus-visible{outline:2px soli
 #fullscreen .collapse-icon,#fullscreen[aria-pressed="true"] .expand-icon{display:none}
 #fullscreen[aria-pressed="true"] .collapse-icon{display:block}
 figure{position:relative;display:flex;flex:1;flex-direction:column;min-height:0;margin:0;border:1px solid #3a3a3a;border-radius:7px;overflow:hidden;background:#171717}
-.chart-plot{position:relative;flex:1;min-height:0}
+.chart-plot{position:relative;flex:1;min-width:0;min-height:0}
 canvas{display:block}
 #chart{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
 #chart.drawing{cursor:crosshair}
-.drawing-tools summary{list-style:none}
-.drawing-tools summary::-webkit-details-marker{display:none}
-.drawing-tools summary.active{border-color:#42e1cf;color:#bafff4}
-.drawing-menu{position:absolute;z-index:14;right:0;top:100%;width:min(290px,calc(100vw - 20px));padding:8px;display:grid;gap:6px;background:#191919;border:1px solid #555;border-radius:6px}
+.chart-body{display:flex;flex:1;min-height:0}
+.drawing-rail{position:relative;z-index:10;display:flex;flex-direction:column;align-items:center;gap:3px;flex:none;width:43px;padding:4px 2px;background:#181818;border-right:1px solid #353535}
+.drawing-rail > button,.drawing-rail summary{display:grid;place-items:center;width:36px;height:36px;padding:0;border-color:transparent;background:transparent;color:#c2c2c2}
+.drawing-rail > button:hover,.drawing-rail summary:hover,.drawing-rail details[open] summary{background:#252525}
+.drawing-rail button[aria-pressed="true"]{background:#153c39;border-color:#317e75;color:#bafff4}
+.drawing-rail svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.drawing-rail summary{list-style:none}
+.drawing-rail summary::-webkit-details-marker{display:none}
+.drawing-menu{position:absolute;z-index:14;left:100%;top:4px;width:min(280px,calc(100vw - 65px));padding:8px;display:grid;gap:6px;background:#191919;border:1px solid #555;border-radius:6px}
 .drawing-row{display:flex;align-items:center;flex-wrap:wrap;gap:5px}
 .drawing-row select{flex:1;min-width:65px}
 .drawing-row input{width:42px;height:36px}
-.drawing-row button{display:block;width:auto;padding:0 8px}
 .drawing-row select,.drawing-row button{height:36px}
-#drawing-status{padding:0 2px;font-size:.85rem;color:#bafff4}
+#drawing-status{position:absolute;z-index:9;left:8px;bottom:32px;max-width:calc(100% - 82px);padding:4px 6px;background:#181818e8;border-radius:4px;font-size:.85rem;color:#bafff4;pointer-events:none}
+@media(max-height:430px) and (orientation:landscape){
+  .drawing-rail > button,.drawing-rail summary{height:29px}
+}
 #chart.dragging{cursor:grabbing}
 #chart.scaling-price{cursor:ns-resize}
 figcaption{padding:4px 7px;color:#ccc;font-size:.78rem;border-top:1px solid #333;flex:none}
@@ -113,29 +120,6 @@ body.chart-overlay-open{overflow:hidden}
     <svg class="expand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5"/></svg>
     <svg class="collapse-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h5V4m11 5h-5V4M4 15h5v5m11-5h-5v5"/></svg>
   </button>
-  <details class="drawing-tools" id="drawing-tools">
-    <summary aria-label="Desenhar" title="Desenhar">✎</summary>
-    <div class="drawing-menu">
-      <div class="drawing-row">
-        <select id="drawing-mode" aria-label="Ferramenta de desenho">
-          <option value="">Navegar</option>
-          <option value="horizontal">Linha horizontal</option>
-          <option value="line">Linha de tendência</option>
-          <option value="channel">Canal paralelo</option>
-          <option value="fib">Fibonacci</option>
-        </select>
-        <input id="drawing-color" type="color" value="#e5e7eb" aria-label="Cor da linha">
-      </div>
-      <div class="drawing-row">
-        <select id="drawing-style" aria-label="Traçado"><option value="solid">Contínua</option><option value="dash">Tracejada</option></select>
-        <select id="drawing-width" aria-label="Espessura"><option value="1">Fina</option><option value="2" selected>Média</option><option value="4">Grossa</option></select>
-      </div>
-      <div class="drawing-row">
-        <select id="drawing-selection" aria-label="Desenhos salvos"><option value="">Desenhos salvos</option></select>
-        <button type="button" id="drawing-delete" disabled>Apagar</button>
-      </div>
-    </div>
-  </details>
   <details class="chart-help">
     <summary aria-label="Legenda e ajuda" title="Legenda e ajuda">?</summary>
     <div class="chart-help-content">
@@ -156,18 +140,48 @@ body.chart-overlay-open{overflow:hidden}
     <div><strong>LONG ↓</strong><small id="long-zone">Aguardando dados…</small></div>
   </div>
 </section>
-<div id="drawing-status" role="status" hidden></div>
 <figure>
+<div class="chart-body">
+<div class="drawing-rail" role="group" aria-label="Ferramentas de desenho">
+  <button type="button" data-drawing-mode="channel" aria-label="Canal paralelo" aria-pressed="false" title="Canal paralelo">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 13 16-9M4 20l16-9"/></svg>
+  </button>
+  <button type="button" data-drawing-mode="fib" aria-label="Fibonacci" aria-pressed="false" title="Fibonacci">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 10h13M4 14h16M4 19h13M5 19 19 5" stroke-width="1.35"/></svg>
+  </button>
+  <button type="button" data-drawing-mode="line" aria-label="Linha de tendência" aria-pressed="false" title="Linha de tendência">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 18 12-12"/><circle cx="5" cy="19" r="1.5"/><circle cx="19" cy="5" r="1.5"/></svg>
+  </button>
+  <details id="drawing-tools">
+    <summary aria-label="Opções dos desenhos" title="Opções dos desenhos">⋯</summary>
+    <div class="drawing-menu">
+      <div class="drawing-row">
+        <button type="button" data-drawing-mode="horizontal" aria-label="Linha horizontal" aria-pressed="false">Linha horizontal</button>
+        <input id="drawing-color" type="color" value="#e5e7eb" aria-label="Cor da linha">
+      </div>
+      <div class="drawing-row">
+        <select id="drawing-style" aria-label="Traçado"><option value="solid">Contínua</option><option value="dash">Tracejada</option></select>
+        <select id="drawing-width" aria-label="Espessura"><option value="1">Fina</option><option value="2" selected>Média</option><option value="4">Grossa</option></select>
+      </div>
+      <div class="drawing-row">
+        <select id="drawing-selection" aria-label="Desenhos salvos"><option value="">Desenhos salvos</option></select>
+        <button type="button" id="drawing-delete" disabled>Apagar</button>
+      </div>
+    </div>
+  </details>
+</div>
 <div class="chart-plot">
+<div id="drawing-status" role="status" hidden></div>
 <canvas id="chart" role="img" aria-label="Gráfico de velas com intensidade estimada de liquidação por preço e horário"></canvas>
 <div id="liqTip" class="liq-tip" hidden></div>
+</div>
 </div>
 <figcaption id="status" role="status">Carregando cotações…</figcaption>
 </figure>
 </section>
 <script src="liquidation-map.js"></script>
 <script src="exchange-books.js"></script>
-<script src="liquidation-drawings.js"></script>
+<script src="liquidation-drawings.js?v=2"></script>
 <script>
 const assetButtons = Array.from(document.querySelectorAll('[data-asset]'));
 const initialAsset = new URLSearchParams(location.search).get('asset')?.toUpperCase();
