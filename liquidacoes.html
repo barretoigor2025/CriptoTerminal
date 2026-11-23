@@ -11,7 +11,7 @@ body{max-width:1600px;height:100vh;height:100dvh;margin:auto;padding:8px 10px;di
 header{display:flex;align-items:center;gap:10px;min-height:24px}
 a{color:#ccc}h1{font-size:1rem;margin:0}
 .chart-panel{display:flex;flex:1;flex-direction:column;gap:6px;min-height:0}
-.controls{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:5px 8px}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:5px 8px}
 .asset-buttons,.filters,#leverage-buttons,.chart-actions{display:flex;align-items:center;gap:3px;max-width:100%}
 .chart-actions{margin-left:auto}
 select,button,summary{height:30px;font:inherit;color:inherit;background:#212121;border:1px solid #424242;border-radius:5px}
@@ -24,27 +24,9 @@ button:focus-visible,select:focus-visible,summary:focus-visible{outline:2px soli
 #fullscreen .collapse-icon,#fullscreen[aria-pressed="true"] .expand-icon{display:none}
 #fullscreen[aria-pressed="true"] .collapse-icon{display:block}
 figure{position:relative;display:flex;flex:1;flex-direction:column;min-height:0;margin:0;border:1px solid #3a3a3a;border-radius:7px;overflow:hidden;background:#171717}
-.chart-plot{position:relative;flex:1;min-width:0;min-height:0}
+.chart-plot{position:relative;flex:1;min-height:0}
 canvas{display:block}
 #chart{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
-#chart.drawing{cursor:crosshair}
-.chart-body{display:flex;flex:1;min-height:0}
-.drawing-rail{position:relative;z-index:10;display:flex;flex-direction:column;align-items:center;gap:3px;flex:none;width:43px;padding:4px 2px;background:#181818;border-right:1px solid #353535}
-.drawing-rail > button,.drawing-rail summary{display:grid;place-items:center;width:36px;height:36px;padding:0;border-color:transparent;background:transparent;color:#c2c2c2}
-.drawing-rail > button:hover,.drawing-rail summary:hover,.drawing-rail details[open] summary{background:#252525}
-.drawing-rail button[aria-pressed="true"]{background:#153c39;border-color:#317e75;color:#bafff4}
-.drawing-rail svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
-.drawing-rail summary{list-style:none}
-.drawing-rail summary::-webkit-details-marker{display:none}
-.drawing-menu{position:absolute;z-index:14;left:100%;top:4px;width:min(280px,calc(100vw - 65px));padding:8px;display:grid;gap:6px;background:#191919;border:1px solid #555;border-radius:6px}
-.drawing-row{display:flex;align-items:center;flex-wrap:wrap;gap:5px}
-.drawing-row select{flex:1;min-width:65px}
-.drawing-row input{width:42px;height:36px}
-.drawing-row select,.drawing-row button{height:36px}
-#drawing-status{position:absolute;z-index:9;left:8px;bottom:32px;max-width:calc(100% - 82px);padding:4px 6px;background:#181818e8;border-radius:4px;font-size:.85rem;color:#bafff4;pointer-events:none}
-@media(max-height:430px) and (orientation:landscape){
-  .drawing-rail > button,.drawing-rail summary{height:29px}
-}
 #chart.dragging{cursor:grabbing}
 #chart.scaling-price{cursor:ns-resize}
 figcaption{padding:4px 7px;color:#ccc;font-size:.78rem;border-top:1px solid #333;flex:none}
@@ -141,47 +123,15 @@ body.chart-overlay-open{overflow:hidden}
   </div>
 </section>
 <figure>
-<div class="chart-body">
-<div class="drawing-rail" role="group" aria-label="Ferramentas de desenho">
-  <button type="button" data-drawing-mode="channel" aria-label="Canal paralelo" aria-pressed="false" title="Canal paralelo">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 13 16-9M4 20l16-9"/></svg>
-  </button>
-  <button type="button" data-drawing-mode="fib" aria-label="Fibonacci" aria-pressed="false" title="Fibonacci">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 10h13M4 14h16M4 19h13M5 19 19 5" stroke-width="1.35"/></svg>
-  </button>
-  <button type="button" data-drawing-mode="line" aria-label="Linha de tendência" aria-pressed="false" title="Linha de tendência">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 18 12-12"/><circle cx="5" cy="19" r="1.5"/><circle cx="19" cy="5" r="1.5"/></svg>
-  </button>
-  <details id="drawing-tools">
-    <summary aria-label="Opções dos desenhos" title="Opções dos desenhos">⋯</summary>
-    <div class="drawing-menu">
-      <div class="drawing-row">
-        <button type="button" data-drawing-mode="horizontal" aria-label="Linha horizontal" aria-pressed="false">Linha horizontal</button>
-        <input id="drawing-color" type="color" value="#e5e7eb" aria-label="Cor da linha">
-      </div>
-      <div class="drawing-row">
-        <select id="drawing-style" aria-label="Traçado"><option value="solid">Contínua</option><option value="dash">Tracejada</option></select>
-        <select id="drawing-width" aria-label="Espessura"><option value="1">Fina</option><option value="2" selected>Média</option><option value="4">Grossa</option></select>
-      </div>
-      <div class="drawing-row">
-        <select id="drawing-selection" aria-label="Desenhos salvos"><option value="">Desenhos salvos</option></select>
-        <button type="button" id="drawing-delete" disabled>Apagar</button>
-      </div>
-    </div>
-  </details>
-</div>
 <div class="chart-plot">
-<div id="drawing-status" role="status" hidden></div>
 <canvas id="chart" role="img" aria-label="Gráfico de velas com intensidade estimada de liquidação por preço e horário"></canvas>
 <div id="liqTip" class="liq-tip" hidden></div>
-</div>
 </div>
 <figcaption id="status" role="status">Carregando cotações…</figcaption>
 </figure>
 </section>
 <script src="liquidation-map.js"></script>
 <script src="exchange-books.js"></script>
-<script src="liquidation-drawings.js?v=2"></script>
 <script>
 const assetButtons = Array.from(document.querySelectorAll('[data-asset]'));
 const initialAsset = new URLSearchParams(location.search).get('asset')?.toUpperCase();
@@ -203,11 +153,6 @@ const tierColors = ['#ffd166', '#ff9f66', '#ff778a', '#e5a3ff', '#a5b4fc', '#68c
 const selectedLeverages = new Set(liquidationLeverages);
 const tierButtons = document.getElementById('leverage-buttons');
 let controller, map, pointer, viewport, pendingDraw, feedIndex, tapStart, loading;
-const drawings = bindLiquidationDrawings({
-  canvas, asset:() => asset, candles:() => map?.candles,
-  plotBounds, chartView, localPoint, scheduleDraw, priceLabel,
-  clearHover:() => { pointer = null; }
-});
 const bookVenues = [
   {id:'binance', label:'Binance', unit:'USDT', limit:1000},
   {id:'coinbase', label:'Coinbase', unit:'USD', limit:Infinity}
@@ -322,7 +267,7 @@ fullscreenButton.addEventListener('click', async () => {
 document.addEventListener('fullscreenchange', syncFullscreen);
 document.addEventListener('webkitfullscreenchange', syncFullscreen);
 document.addEventListener('keydown', event => {
-  if (event.key !== 'Escape' || event.defaultPrevented || !overlayOpen) return;
+  if (event.key !== 'Escape' || !overlayOpen) return;
   overlayOpen = false;
   syncFullscreen();
   fullscreenButton.focus();
@@ -533,7 +478,6 @@ function draw() {
     ctx.fillText(label, hit.labelLeft, markerY - 3);
     occupied.push(markerY);
   }
-  drawings.paint(ctx, candles, {left, right, top, bottom}, first, stride, y);
   ctx.restore();
   ctx.fillStyle = '#bbb';
   const tickStep = Math.max(1, Math.ceil(105 / stride));
@@ -698,7 +642,6 @@ async function load(reset = false) {
   controller = request;
   loading = true;
   if (reset) {
-    drawings.reset();
     map = pointer = viewport = null;
     feedIndex = undefined;
     render();
@@ -792,7 +735,7 @@ function onPriceScale(point) {
 }
 
 canvas.addEventListener('pointerdown', event => {
-  if (!map || event.button !== 0 || priceDrag || contacts.size >= 2 || drawings.active()) return;
+  if (!map || event.button !== 0 || priceDrag || contacts.size >= 2) return;
   const point = localPoint(event);
   if (onPriceScale(point)) {
     if (contacts.size) return;
@@ -811,7 +754,6 @@ canvas.addEventListener('pointerdown', event => {
   scheduleDraw();
 });
 canvas.addEventListener('pointermove', event => {
-  if (drawings.active()) return;
   const next = localPoint(event);
   if (priceDrag) {
     if (!map || priceDrag.id !== event.pointerId) return;
@@ -888,7 +830,7 @@ canvas.addEventListener('wheel', event => {
   transformView(anchor, anchor, priceScale ? 1 : factor, priceScale ? factor : 1);
 }, {passive:false});
 canvas.addEventListener('dblclick', event => {
-  if (!map || drawings.active()) return;
+  if (!map) return;
   if (onPriceScale(localPoint(event))) {
     const {first, count} = chartView();
     setView(first, count, map.min, map.max - map.min);
