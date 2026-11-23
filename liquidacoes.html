@@ -11,7 +11,7 @@ body{max-width:1600px;height:100vh;height:100dvh;margin:auto;padding:8px 10px;di
 header{display:flex;align-items:center;gap:10px;min-height:24px}
 a{color:#ccc}h1{font-size:1rem;margin:0}
 .chart-panel{display:flex;flex:1;flex-direction:column;gap:6px;min-height:0}
-.controls{display:flex;flex-wrap:wrap;align-items:center;gap:5px 8px}
+.controls{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:5px 8px}
 .asset-buttons,.filters,#leverage-buttons,.chart-actions{display:flex;align-items:center;gap:3px;max-width:100%}
 .chart-actions{margin-left:auto}
 select,button,summary{height:30px;font:inherit;color:inherit;background:#212121;border:1px solid #424242;border-radius:5px}
@@ -27,6 +27,17 @@ figure{position:relative;display:flex;flex:1;flex-direction:column;min-height:0;
 .chart-plot{position:relative;flex:1;min-height:0}
 canvas{display:block}
 #chart{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+#chart.drawing{cursor:crosshair}
+.drawing-tools summary{list-style:none}
+.drawing-tools summary::-webkit-details-marker{display:none}
+.drawing-tools summary.active{border-color:#42e1cf;color:#bafff4}
+.drawing-menu{position:absolute;z-index:14;right:0;top:100%;width:min(290px,calc(100vw - 20px));padding:8px;display:grid;gap:6px;background:#191919;border:1px solid #555;border-radius:6px}
+.drawing-row{display:flex;align-items:center;flex-wrap:wrap;gap:5px}
+.drawing-row select{flex:1;min-width:65px}
+.drawing-row input{width:42px;height:36px}
+.drawing-row button{display:block;width:auto;padding:0 8px}
+.drawing-row select,.drawing-row button{height:36px}
+#drawing-status{padding:0 2px;font-size:.85rem;color:#bafff4}
 #chart.dragging{cursor:grabbing}
 #chart.scaling-price{cursor:ns-resize}
 figcaption{padding:4px 7px;color:#ccc;font-size:.78rem;border-top:1px solid #333;flex:none}
@@ -102,6 +113,29 @@ body.chart-overlay-open{overflow:hidden}
     <svg class="expand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5"/></svg>
     <svg class="collapse-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h5V4m11 5h-5V4M4 15h5v5m11-5h-5v5"/></svg>
   </button>
+  <details class="drawing-tools" id="drawing-tools">
+    <summary aria-label="Desenhar" title="Desenhar">✎</summary>
+    <div class="drawing-menu">
+      <div class="drawing-row">
+        <select id="drawing-mode" aria-label="Ferramenta de desenho">
+          <option value="">Navegar</option>
+          <option value="horizontal">Linha horizontal</option>
+          <option value="line">Linha de tendência</option>
+          <option value="channel">Canal paralelo</option>
+          <option value="fib">Fibonacci</option>
+        </select>
+        <input id="drawing-color" type="color" value="#e5e7eb" aria-label="Cor da linha">
+      </div>
+      <div class="drawing-row">
+        <select id="drawing-style" aria-label="Traçado"><option value="solid">Contínua</option><option value="dash">Tracejada</option></select>
+        <select id="drawing-width" aria-label="Espessura"><option value="1">Fina</option><option value="2" selected>Média</option><option value="4">Grossa</option></select>
+      </div>
+      <div class="drawing-row">
+        <select id="drawing-selection" aria-label="Desenhos salvos"><option value="">Desenhos salvos</option></select>
+        <button type="button" id="drawing-delete" disabled>Apagar</button>
+      </div>
+    </div>
+  </details>
   <details class="chart-help">
     <summary aria-label="Legenda e ajuda" title="Legenda e ajuda">?</summary>
     <div class="chart-help-content">
@@ -122,6 +156,7 @@ body.chart-overlay-open{overflow:hidden}
     <div><strong>LONG ↓</strong><small id="long-zone">Aguardando dados…</small></div>
   </div>
 </section>
+<div id="drawing-status" role="status" hidden></div>
 <figure>
 <div class="chart-plot">
 <canvas id="chart" role="img" aria-label="Gráfico de velas com intensidade estimada de liquidação por preço e horário"></canvas>
@@ -132,6 +167,7 @@ body.chart-overlay-open{overflow:hidden}
 </section>
 <script src="liquidation-map.js"></script>
 <script src="exchange-books.js"></script>
+<script src="liquidation-drawings.js"></script>
 <script>
 const assetButtons = Array.from(document.querySelectorAll('[data-asset]'));
 const initialAsset = new URLSearchParams(location.search).get('asset')?.toUpperCase();
@@ -153,6 +189,11 @@ const tierColors = ['#ffd166', '#ff9f66', '#ff778a', '#e5a3ff', '#a5b4fc', '#68c
 const selectedLeverages = new Set(liquidationLeverages);
 const tierButtons = document.getElementById('leverage-buttons');
 let controller, map, pointer, viewport, pendingDraw, feedIndex, tapStart, loading;
+const drawings = bindLiquidationDrawings({
+  canvas, asset:() => asset, candles:() => map?.candles,
+  plotBounds, chartView, localPoint, scheduleDraw, priceLabel,
+  clearHover:() => { pointer = null; }
+});
 const bookVenues = [
   {id:'binance', label:'Binance', unit:'USDT', limit:1000},
   {id:'coinbase', label:'Coinbase', unit:'USD', limit:Infinity}
@@ -267,7 +308,7 @@ fullscreenButton.addEventListener('click', async () => {
 document.addEventListener('fullscreenchange', syncFullscreen);
 document.addEventListener('webkitfullscreenchange', syncFullscreen);
 document.addEventListener('keydown', event => {
-  if (event.key !== 'Escape' || !overlayOpen) return;
+  if (event.key !== 'Escape' || event.defaultPrevented || !overlayOpen) return;
   overlayOpen = false;
   syncFullscreen();
   fullscreenButton.focus();
@@ -478,6 +519,7 @@ function draw() {
     ctx.fillText(label, hit.labelLeft, markerY - 3);
     occupied.push(markerY);
   }
+  drawings.paint(ctx, candles, {left, right, top, bottom}, first, stride, y);
   ctx.restore();
   ctx.fillStyle = '#bbb';
   const tickStep = Math.max(1, Math.ceil(105 / stride));
@@ -642,6 +684,7 @@ async function load(reset = false) {
   controller = request;
   loading = true;
   if (reset) {
+    drawings.reset();
     map = pointer = viewport = null;
     feedIndex = undefined;
     render();
@@ -735,7 +778,7 @@ function onPriceScale(point) {
 }
 
 canvas.addEventListener('pointerdown', event => {
-  if (!map || event.button !== 0 || priceDrag || contacts.size >= 2) return;
+  if (!map || event.button !== 0 || priceDrag || contacts.size >= 2 || drawings.active()) return;
   const point = localPoint(event);
   if (onPriceScale(point)) {
     if (contacts.size) return;
@@ -754,6 +797,7 @@ canvas.addEventListener('pointerdown', event => {
   scheduleDraw();
 });
 canvas.addEventListener('pointermove', event => {
+  if (drawings.active()) return;
   const next = localPoint(event);
   if (priceDrag) {
     if (!map || priceDrag.id !== event.pointerId) return;
@@ -830,7 +874,7 @@ canvas.addEventListener('wheel', event => {
   transformView(anchor, anchor, priceScale ? 1 : factor, priceScale ? factor : 1);
 }, {passive:false});
 canvas.addEventListener('dblclick', event => {
-  if (!map) return;
+  if (!map || drawings.active()) return;
   if (onPriceScale(localPoint(event))) {
     const {first, count} = chartView();
     setView(first, count, map.min, map.max - map.min);
