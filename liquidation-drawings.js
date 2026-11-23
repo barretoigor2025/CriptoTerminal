@@ -1,6 +1,6 @@
 function bindLiquidationDrawings({canvas, asset, candles, plotBounds, chartView, localPoint, scheduleDraw, priceLabel, clearHover}) {
   const menu = document.getElementById('drawing-tools');
-  const mode = document.getElementById('drawing-mode');
+  const tools = document.querySelectorAll('[data-drawing-mode]');
   const color = document.getElementById('drawing-color');
   const style = document.getElementById('drawing-style');
   const width = document.getElementById('drawing-width');
@@ -16,9 +16,9 @@ function bindLiquidationDrawings({canvas, asset, candles, plotBounds, chartView,
   const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
   const saved = new Map();
   let anchors = [];
-  let preview, press;
+  let preview, press, mode;
 
-  const active = () => Boolean(mode.value);
+  const active = () => Boolean(mode);
   const storageKey = () => 'liquidation-drawings:' + asset();
   const readStyle = () => ({color:color.value, dashed:style.value === 'dash', width:Number(width.value)});
 
@@ -45,7 +45,7 @@ function bindLiquidationDrawings({canvas, asset, candles, plotBounds, chartView,
   function updateSelection(index = '') {
     selection.replaceChildren(new Option('Desenhos salvos', ''));
     items().forEach((drawing, position) => {
-      const label = [...mode.options].find(option => option.value === drawing.kind)?.textContent;
+      const label = [...tools].find(button => button.dataset.drawingMode === drawing.kind)?.getAttribute('aria-label');
       selection.add(new Option((position + 1) + '. ' + label, position));
     });
     selection.value = index;
@@ -54,30 +54,38 @@ function bindLiquidationDrawings({canvas, asset, candles, plotBounds, chartView,
 
   function syncMode() {
     status.hidden = !active();
-    status.textContent = active() ? steps[mode.value][anchors.length] : '';
+    status.textContent = active() ? steps[mode][anchors.length] : '';
     canvas.classList.toggle('drawing', active());
-    menu.querySelector('summary').classList.toggle('active', active());
+    for (const button of tools) {
+      button.setAttribute('aria-pressed', String(button.dataset.drawingMode === mode));
+    }
     clearHover();
     scheduleDraw();
   }
 
   function cancel() {
-    mode.value = '';
+    mode = '';
     anchors = [];
     preview = press = undefined;
     syncMode();
   }
 
-  mode.addEventListener('change', () => {
-    anchors = [];
-    preview = press = undefined;
-    if (active()) {
+  for (const button of tools) {
+    button.addEventListener('click', () => {
+      const next = button.dataset.drawingMode;
+      menu.open = false;
+      if (mode === next) {
+        cancel();
+        return;
+      }
+      mode = next;
+      anchors = [];
+      preview = press = undefined;
       selection.value = '';
       remove.disabled = true;
-      menu.open = false;
-    }
-    syncMode();
-  });
+      syncMode();
+    });
+  }
 
   selection.addEventListener('change', () => {
     remove.disabled = selection.value === '';
@@ -160,7 +168,7 @@ function bindLiquidationDrawings({canvas, asset, candles, plotBounds, chartView,
     press = undefined;
     const anchor = moved ? undefined : anchorAt(point);
     if (!anchor) return;
-    const kind = mode.value;
+    const kind = mode;
     if (anchors.length === 1 && kind === 'channel' && anchor.time === anchors[0].time) return;
     anchors.push(anchor);
     if (anchors.length < steps[kind].length) {
@@ -243,7 +251,7 @@ function bindLiquidationDrawings({canvas, asset, candles, plotBounds, chartView,
     for (const drawing of drawings) paintDrawing(drawing);
     if (anchors.length) {
       ctx.globalAlpha = 0.75;
-      paintDrawing({kind:mode.value, anchors:preview ? [...anchors, preview] : anchors, ...readStyle()});
+      paintDrawing({kind:mode, anchors:preview ? [...anchors, preview] : anchors, ...readStyle()});
     }
     ctx.restore();
   }
