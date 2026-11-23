@@ -735,8 +735,6 @@
           <summary>Configurar volume e RSI nas velas</summary>
           <div class="ind-row">
             <label><input type="checkbox" data-ivr="thick" checked> Engrossar velas de volume alto</label>
-            <label><input type="checkbox" data-ivr="paint" checked> Colorir velas</label>
-            <label><input type="checkbox" data-ivr="bubbles" checked> Balões de mudança de volume</label>
             <label><input type="checkbox" data-ivr="signals" checked> Triângulos RSI</label>
             <label><input type="checkbox" data-ivr="zones" checked> Losangos de tendência</label>
           </div>
@@ -744,8 +742,6 @@
             <label>Período volume <input type="number" data-ivr="volumeLen" min="2" value="55"></label>
             <label style="color:#f23645">Extra alto <input type="number" data-ivr="extraHigh" step="any" value="4"></label>
             <label style="color:#ff9800">Alto <input type="number" data-ivr="high" step="any" value="2.5"></label>
-            <label>Médio <input type="number" data-ivr="medium" step="any" value="1"></label>
-            <label>Normal <input type="number" data-ivr="normal" step="any" value="-0.5"></label>
           </div>
           <div class="ind-row">
             <label>Período RSI <input type="number" data-ivr="rsiLen" min="1" value="14"></label>
@@ -1383,32 +1379,15 @@ const INDICATORS = {
 // Adaptado de [NB] Institutional Volume + RSI on Candles, © NoobSharks.
 // https://www.noobsharks.com · https://www.youtube.com/@NOOBSHARKS
 const IVR = {
-  cfg:{on:false, paint:true, thick:true, bubbles:true, signals:true, zones:true, volumeLen:55,
-    extraHigh:4, high:2.5, medium:1, normal:-0.5,
+  cfg:{on:false, thick:true, signals:true, zones:true, volumeLen:55,
+    extraHigh:4, high:2.5,
     rsiLen:14, overbought:70, oversold:30, center:50, sideways:5},
-  volumeBands:[
-    {label:'Baixo', gray:'#666666', color:'#2196f3'},
-    {label:'Normal', gray:'#999999', color:'#ffffff', threshold:'normal'},
-    {label:'Médio', gray:'#bbbbbb', color:'#ffeb3b', threshold:'medium'},
-    {label:'Alto', gray:'#dddddd', color:'#ff9800', threshold:'high'},
-    {label:'Extra alto', gray:'#ffffff', color:'#f23645', threshold:'extraHigh'}
-  ],
   values:[],
   bands:[],
-  candle(candles, i){
-    const band = this.volumeBand(candles, i);
-    if(this.cfg.on && (this.cfg.paint || this.cfg.thick)) this.bands[i] = band;
-    if(!band || !this.cfg.paint) return candles[i];
-    const color = this.bandColor(band);
-    return {...candles[i], color, wickColor:color};
-  },
-  bandColor(band){
-    return THEME.name==='mono' ? band.gray : band.color;
-  },
   volumeBand(candles, i){
     const c = candles[i], cfg = this.cfg;
     const start = i - cfg.volumeLen + 1;
-    if(!cfg.on || (!cfg.paint && !cfg.thick) || start<0) return null;
+    if(!cfg.on || !cfg.thick || start<0) return null;
 
     let sum = 0;
     for(let j=start; j<=i; j++) sum += candles[j].volume;
@@ -1418,25 +1397,24 @@ const IVR = {
     if(!Number.isFinite(squared) || squared===0) return null;
 
     const z = (c.volume - mean)/Math.sqrt(squared/cfg.volumeLen);
-    for(let j=this.volumeBands.length-1; j>0; j--){
-      const band = this.volumeBands[j];
-      if(z>cfg[band.threshold]) return band;
-    }
-    return this.volumeBands[0];
+    if(z>cfg.extraHigh) return 'extraHigh';
+    if(z>cfg.high) return 'high';
+    return null;
   },
   computeRSI(){
     const {on, signals, zones, rsiLen} = this.cfg;
     this.values = on && (signals || zones) ? INDICATORS.rsi(S.candles, rsiLen) : [];
   },
   render(){
-    this.bands = [];
-    candleSeries.setData(this.cfg.on && (this.cfg.paint || this.cfg.thick) ? S.candles.map((_, i)=>this.candle(S.candles, i)) : S.candles);
+    this.bands = this.cfg.on && this.cfg.thick
+      ? S.candles.map((_, i)=>this.volumeBand(S.candles, i))
+      : [];
+    candleSeries.setData(S.candles);
     this.computeRSI();
   },
   draw(){
-    const showBubbles = this.cfg.paint && this.cfg.bubbles && this.bands.length>1;
     const showThickness = this.cfg.thick && this.bands.length>0;
-    if(!this.values.length && !showBubbles && !showThickness) return;
+    if(!this.values.length && !showThickness) return;
     const scale = chart.timeScale(), range = scale.getVisibleLogicalRange();
     if(!range) return;
     const cfg = this.cfg;
@@ -1471,7 +1449,6 @@ const IVR = {
       if(cfg.signals && above) this.triangle(x, yOf(candle.high), -1, size, '#f23645');
       if(cfg.signals && below) this.triangle(x, yOf(candle.low), 1, size, '#4caf50');
     }
-    if(showBubbles) this.drawVolumeBubbles(range, right, bottom);
     ctx.restore();
   },
   drawThickCandles(scale, range){
@@ -1479,51 +1456,13 @@ const IVR = {
     if(spacing<3) return;
     for(let i=Math.max(0, Math.floor(range.from)); i<=Math.min(this.bands.length-1, Math.ceil(range.to)); i++){
       const band = this.bands[i];
-      if(band?.threshold!=='high' && band?.threshold!=='extraHigh') continue;
+      if(!band) continue;
       const {time, open, close} = S.candles[i];
       const x = xOf(time), yOpen = yOf(open), yClose = yOf(close);
       if(x===null || yOpen===null || yClose===null) continue;
-      const width = spacing*(band.threshold==='extraHigh' ? 0.98 : 0.91);
-      ctx.fillStyle = this.cfg.paint ? this.bandColor(band) : close>=open ? THEME.cur.up : THEME.cur.down;
+      const width = spacing*(band==='extraHigh' ? 0.98 : 0.91);
+      ctx.fillStyle = close>=open ? THEME.cur.up : THEME.cur.down;
       ctx.fillRect(x-width/2, Math.min(yOpen,yClose), width, Math.max(1, Math.abs(yOpen-yClose)));
-    }
-  },
-  drawVolumeBubbles(range, right, bottom){
-    const boxes = [], height = 20, gap = 4;
-    ctx.font = "10px 'IBM Plex Mono', monospace";
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.lineWidth = 1;
-    // Prioriza mudanças mais recentes quando dois balões disputam o mesmo espaço.
-    for(let i=Math.min(this.bands.length-1, Math.floor(range.to)); i>=Math.max(1, Math.ceil(range.from)); i--){
-      const previous = this.bands[i-1], current = this.bands[i];
-      if(!previous || !current || previous===current) continue;
-      const candle = S.candles[i], x = xOf(candle.time), y = yOf(candle.high);
-      if(x===null || y===null || x<0 || x>right || y<0 || y>bottom) continue;
-      const label = `Volume: ${previous.label} → ${current.label}`;
-      const width = Math.ceil(ctx.measureText(label).width)+14;
-      if(width+2*gap>right || height+2*gap>bottom) continue;
-      const left = Math.max(gap, Math.min(x-width/2, right-width-gap));
-      const top = y>=height+47 ? y-height-19 : y+16;
-      if(top+height>bottom-gap || boxes.some(b=>
-        left<b.left+b.width+gap && left+width+gap>b.left &&
-        top<b.top+height+gap && top+height+gap>b.top)) continue;
-
-      const anchor = Math.max(left+6, Math.min(x, left+width-6));
-      ctx.strokeStyle = this.bandColor(current);
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(anchor, top<y ? top+height : top);
-      ctx.stroke();
-      ctx.fillStyle = '#111827';
-      ctx.beginPath();
-      if(ctx.roundRect) ctx.roundRect(left, top, width, height, 5);
-      else ctx.rect(left, top, width, height);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(label, left+7, top+height/2);
-      boxes.push({left, top, width});
     }
   },
   triangle(x, y, direction, size, color){
@@ -1838,7 +1777,8 @@ function onLiveCandle(c, closed){
   else if(!last || c.time>last.time){ arr.push(c); }
   else { return; }
 
-  candleSeries.update(IVR.candle(arr, arr.length-1));
+  candleSeries.update(c);
+  if(IVR.cfg.on && IVR.cfg.thick) IVR.bands[arr.length-1] = IVR.volumeBand(arr, arr.length-1);
   IVR.computeRSI();
   volSeries.update({time:c.time, value:c.volume, color:c.close>=c.open?'#26a69a55':'#ef535055'});
 
@@ -4594,7 +4534,9 @@ bindExchangeBook($('#binanceBook'), () => S.symbol, () => S.source);
   if(saved.events){ EVENTS.cfg.on=!!saved.events.on; $('#eventsOn').checked=EVENTS.cfg.on; syncEvents(); }
 
   if(saved.ivr){
-    Object.assign(IVR.cfg, saved.ivr);
+    for(const key of Object.keys(IVR.cfg)){
+      if(Object.hasOwn(saved.ivr, key)) IVR.cfg[key] = saved.ivr[key];
+    }
     $('#ivrOn').checked = IVR.cfg.on;
     $('#ivrSettings').hidden = !IVR.cfg.on;
     for(const input of ivrInputs){
