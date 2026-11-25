@@ -2,7 +2,7 @@ export const POSITION = '8dqY7JSPJxMcH7qQ5CYohXJHMR382igki1FDcJLbV325';
 export const POOL = 'B5EwJVDuAauzUEEdwvbuXzbFFgEYnUqqS37TUM1c4PQA';
 // Four finalized deposits completed this position's opening at 23:18:57 JST.
 export const OPENING_END = 1795616337;
-export const REPORTED_EXIT = null;
+export const REPORTED_EXIT = {"id":"user-reported-net-exit-8dqY7JSP-20261126","time":1795624470,"timeSource":"Horário do registro; saída informada pelo usuário","baseUsd":4100,"proceedsUsd":4339,"pnlUsd":239,"pnlPercent":5.829268292682928,"stageCostUsd":4319.06,"stagePnlUsd":19.9399999999996,"unpriced":0,"source":"user-reported-net","valuation":"Saída líquida informada pelo usuário: US$ 4.339; taxas já incluídas"};
 export const PAST_POSITIONS = [{position:'FtWGNzUnykfnNKfVrLvu9k9BCNBQTv66rKgGXwGCm33M',netExitUsd:4320,baseUsd:4100,pnlUsd:220,pnlPercent:220/4100*100,source:'user-reported-net',archive:'data/pool-history/FtWGNzUnykfnNKfVrLvu9k9BCNBQTv66rKgGXwGCm33M.json'}];
 const PROGRAM = 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc';
 const SOL = 'So11111111111111111111111111111111111111112';
