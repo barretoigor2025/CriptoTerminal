@@ -1,8 +1,9 @@
-export const POSITION = 'FtWGNzUnykfnNKfVrLvu9k9BCNBQTv66rKgGXwGCm33M';
+export const POSITION = '8dqY7JSPJxMcH7qQ5CYohXJHMR382igki1FDcJLbV325';
 export const POOL = 'B5EwJVDuAauzUEEdwvbuXzbFFgEYnUqqS37TUM1c4PQA';
-// The opening consisted of three deposits completed at 14:45:46 JST.
-export const OPENING_END = 1795239946;
-export const REPORTED_EXIT = {"id":"user-reported-net-exit-20261121","time":1795268716,"timeSource":"Horário do registro; saída informada pelo usuário","baseUsd":4100,"proceedsUsd":4320,"pnlUsd":220,"pnlPercent":5.365853658536586,"unpriced":0,"source":"user-reported-net","valuation":"Saída líquida informada pelo usuário: US$ 4.320; inclui taxas, não descontar novamente"};
+// Four finalized deposits completed this position's opening at 23:18:57 JST.
+export const OPENING_END = 1795616337;
+export const REPORTED_EXIT = null;
+export const PAST_POSITIONS = [{position:'FtWGNzUnykfnNKfVrLvu9k9BCNBQTv66rKgGXwGCm33M',netExitUsd:4320,baseUsd:4100,pnlUsd:220,pnlPercent:220/4100*100,source:'user-reported-net',archive:'data/pool-history/FtWGNzUnykfnNKfVrLvu9k9BCNBQTv66rKgGXwGCm33M.json'}];
 const PROGRAM = 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc';
 const SOL = 'So11111111111111111111111111111111111111112';
 const BTC = '3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh';
@@ -155,8 +156,10 @@ export async function scanLedger(previous,rpc,priceAt) {
   const summary=summarize(events);
   const account=await rpc('getAccountInfo',[POSITION,{encoding:'base64',commitment:'finalized'}]);
   const closure=recordClosure(existing,events,summary,account.value);
-  return {version:2,position:POSITION,pool:POOL,updatedAt:new Date().toISOString(),events,signatures,prices,
-    summary,...closure};
+  const openingEvents=events.filter(event=>event.kind==='deposit'&&event.time<=OPENING_END);
+  const opening={count:openingEvents.length,sol:openingEvents.reduce((sum,event)=>sum+event.sol,0),btc:openingEvents.reduce((sum,event)=>sum+event.btc,0),signatures:openingEvents.map(event=>event.signature),time:openingEvents[0]?.time,completedAt:OPENING_END};
+  return {version:3,position:POSITION,pool:POOL,updatedAt:new Date().toISOString(),events,signatures,prices,
+    summary,opening,pastPositions:PAST_POSITIONS,...closure};
 }
 
 export async function hourlyPrices(hour) {
@@ -170,3 +173,4 @@ export async function hourlyPrices(hour) {
   }));
   return {sol:prices[0],btc:prices[1]};
 }
+
