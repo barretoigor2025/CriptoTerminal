@@ -116,30 +116,49 @@ select,button,summary{background:#21182b;border-color:#463554}
 }
 @media(max-width:340px){.chart-actions button,summary{width:20px}.filters #history{max-width:67px}}
 
-:root{background:#0e1111;color:#e6eae4}
-body{gap:7px}
-header{border-bottom:1px solid #303937;padding-bottom:7px}
-header a{color:#a9b4aa}
-.market-summary{display:grid;grid-template-columns:1fr auto;gap:5px 12px;padding:4px 5px 7px}
-.market-summary .watch{display:contents}
-.market-summary strong{font:700 clamp(22px,6vw,37px)/1.1 var(--data);color:#eef4e8;letter-spacing:-.06em}
-#market-mode{align-self:center;justify-self:end;border:1px solid #3e5850;border-radius:20px;padding:5px 8px}
-#zone-totals{grid-column:1/-1;display:flex;gap:4px 12px;flex-wrap:wrap}
-#zone-totals b{display:inline}
-.zone-short{color:#ff8994}.zone-long{color:#79e1b4}
-.chart-panel{background:#111616;border-color:#39433d}
-figure{background:#101414}
-.controls,.periods,figcaption,.recent-events,.event-strip{background:#151a19;border-color:#333d36}
-select,button,summary{background:#1b2421;border-color:#40504a}
-.periods button[aria-pressed=true],.view-modes button[aria-pressed=true]{background:#a7d7bb;color:#10211a}
-.view-modes{position:absolute;top:6px;right:8px;z-index:2;display:flex;gap:3px}
+/* Dashboard palette shared by the controls and canvas. */
+:root{
+  --ink:#080a0b;--panel:#111315;--border:#3e3528;
+  --gold:#ffe2a1;--green:#66f5c7;--pink:#ff6096;
+  background:#080a0b;color:#f7efde
+}
+body{gap:8px;background:radial-gradient(ellipse at 68% 0%,#281b10 0%,transparent 46%)}
+header{border-bottom:1px solid var(--border);padding-bottom:7px}
+header h1{color:var(--gold);letter-spacing:.035em}
+header a{color:var(--gold);padding:5px 7px;border:1px solid #7e663d;border-radius:3px;background:var(--ink)}
+.market-summary{display:flex;justify-content:space-between;gap:6px 16px;padding:4px 8px 7px}
+.market-summary strong{font:700 clamp(22px,6vw,37px)/1.1 var(--data);color:#fff1cc;letter-spacing:-.06em;text-shadow:0 0 20px #ffb14e65}
+#market-mode{border:1px solid #64553a;border-radius:3px;padding:5px 8px}
+#market-mode[data-live=true],#market-status[data-live=true]{color:var(--green);text-shadow:0 0 10px #66f5c771}
+#market-mode[data-live=true]{border-color:#479a7d;background:#0d251e}
+#zone-totals{display:flex;align-items:center;gap:4px 12px;flex-wrap:wrap}
+.zone-short{color:var(--pink);text-shadow:0 0 12px #ff609657}
+.zone-long{color:var(--green);text-shadow:0 0 12px #66f5c757}
+.chart-panel,.chart-panel.is-expanded{background:var(--ink);border-color:#8a6b3e;border-radius:4px;box-shadow:0 0 22px #ffad421c}
+figure{background:var(--ink)}
+.controls,.periods,figcaption,.recent-events,.event-strip{background:var(--panel);border-color:var(--border)}
+.controls,.periods{background:linear-gradient(#211a11,#0c0d0e)}
+select,button,summary,.periods button{background:#0c0d0e;color:var(--gold);border-color:#77613d;border-radius:3px}
+button:hover,select:hover,summary:hover,header a:hover{border-color:var(--gold);box-shadow:0 0 9px #ffbf5b47}
+.periods button[aria-pressed=true],.view-modes button[aria-pressed=true]{
+  background:linear-gradient(#fff1c7,#efc46b);color:#1e1508;border-color:#fff1c7;box-shadow:0 0 12px #ffd37575
+}
+#leverage-buttons button[aria-pressed=true],#fullscreen[aria-pressed=true],.chart-help[open] summary{
+  background:#102820;color:var(--green);border-color:#479a7d
+}
+.symbol,#timeline-detail{color:var(--gold)}
+.view-modes{position:absolute;top:6px;right:8px;z-index:2;display:flex;gap:4px}
 .view-modes button{height:24px;padding:0 7px;font-size:9px}
 .zoom-controls{display:flex;align-items:center;gap:2px}
 .zoom-controls button{font-size:13px;min-width:22px;padding:0}
 .chart-actions .chart-help summary{width:auto;padding:0 6px;font-size:8px}
-.chart-help-content{background:#18221e}
+.chart-help-content{background:#141413;border-color:#8a6b3e}
 .chart-help-content label{display:inline-flex;align-items:center;gap:3px;margin:5px 7px 3px 0}
+.ramp{background:linear-gradient(90deg,#2a1815,#b65b35,#ffd27f,#fff6d7)}
 @media(max-width:620px){
+  header{gap:5px}
+  header h1{font-size:clamp(15px,4.5vw,22px)}
+  header a{font-size:8px;padding:5px 4px;white-space:nowrap}
   .controls{justify-content:flex-start;gap:4px}
   .chart-actions{margin-left:auto}
   .chart-actions svg{width:13px}
@@ -383,7 +402,7 @@ function recordLiquidation(event) {
 const refresh = document.getElementById('refresh');
 const status = document.getElementById('status');
 const canvas = document.getElementById('chart');
-const sideColors = {short:'#ff707d', long:'#62e1bc'};
+const sideColors = {short:'#ff6096', long:'#66f5c7'};
 const ctx = canvas.getContext('2d');
 const dateFormat = new Intl.DateTimeFormat('pt-BR', {
   timeZone:'Asia/Tokyo', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'
@@ -588,9 +607,9 @@ function buildMap(candles, origin = map?.origin) {
   const heatContext = heatmap.getContext('2d');
   const image = heatContext.createImageData(heatmap.width, rows);
   const colors = Array.from({length:256}, (_, index) => {
-    const strength = Math.max(0, (index / 255 - 0.25) / 0.75);
-    return [Math.round(40 + 215 * strength), Math.round(117 + 87 * strength),
-      Math.round(145 - 52 * strength), Math.round(215 * strength)];
+    const strength = Math.max(0, (index / 255 - 0.12) / 0.88);
+    return [255, Math.round(99 + 148 * strength),
+      Math.round(54 + 159 * strength), Math.round(232 * strength ** 1.2)];
   });
   if (peak > 0) {
     for (let row = 0; row < rows; row++) {
@@ -693,11 +712,11 @@ function draw() {
   const fieldEnd = right + gutter;
   const liveEdge = first + count >= candles.length && first < candles.length;
   ctx.font = (width < 560 ? '8px ' : '10px ') + dataFont;
-  ctx.fillStyle = '#1a131d';
+  ctx.fillStyle = '#130e0c';
   ctx.fillRect(left, top, fieldEnd - left, clamp(liveY, top, bottom) - top);
-  ctx.fillStyle = '#101c1c';
+  ctx.fillStyle = '#091512';
   ctx.fillRect(left, clamp(liveY, top, bottom), fieldEnd - left, bottom - clamp(liveY, top, bottom));
-  ctx.fillStyle = '#9fb2c8';
+  ctx.fillStyle = '#b3ac9f';
   for (let i = 0; i <= 5; i++) {
     const price = low + (high - low) * i / 5;
     ctx.fillRect(left, y(price), fieldEnd - left, 0.28);
@@ -716,7 +735,7 @@ function draw() {
     const bodyTop = Math.min(y(candle.open), y(candle.close));
     const bodyHeight = Math.max(1, Math.abs(y(candle.open) - y(candle.close)));
     const bodyWidth = Math.max(0.7, stride * 0.66);
-    ctx.fillStyle = candle.close >= candle.open ? '#5ef5bb' : '#ff6579';
+    ctx.fillStyle = candle.close >= candle.open ? '#80ffd8' : '#ff79a9';
     ctx.fillRect(center - 0.4, y(candle.high), 0.8, y(candle.low) - y(candle.high));
     ctx.fillRect(center - bodyWidth / 2, bodyTop, bodyWidth, bodyHeight);
   }
@@ -752,19 +771,25 @@ function draw() {
     for (const level of layerHeat.checked ? active : []) {
       const strength = level.weight / peak;
       if (strength < 0.15) continue;
-      const beam = ctx.createLinearGradient(Math.max(left, edge - 130), 0, fieldEnd, 0);
+      const start = Math.max(left, edge - Math.min((right - left) * 0.7, 92 + strength * 235));
+      const priceY = y(level.price);
+      const warm = level.side === 'short';
+      const beam = ctx.createLinearGradient(start, 0, fieldEnd, 0);
       beam.addColorStop(0, 'transparent');
-      beam.addColorStop(1, level.side === 'short' ? '#f5bc73' : '#66d6ce');
+      beam.addColorStop(0.55, warm ? '#b85b2e' : '#227f69');
+      beam.addColorStop(1, warm ? '#ffe2a1' : '#9affda');
       ctx.fillStyle = beam;
-      ctx.globalAlpha = strength * 0.85;
-      ctx.fillRect(Math.max(left, edge - 130), y(level.price) - 1, fieldEnd - Math.max(left, edge - 130),
-        Math.max(2, Math.min(7, y(level.price) - y(level.price + step))));
+      ctx.globalAlpha = strength * 0.26;
+      ctx.fillRect(start, priceY - 5, fieldEnd - start, 10);
+      ctx.globalAlpha = Math.min(1, strength * 1.4);
+      ctx.fillRect(start, priceY - 1, fieldEnd - start,
+        Math.max(2, Math.min(5, y(level.price) - y(level.price + step))));
     }
     ctx.globalAlpha = 1;
     if (liveY >= top && liveY <= bottom) {
-      ctx.fillStyle = livePrice ? '#f4dfbf' : '#b7a7b9';
+      ctx.fillStyle = livePrice ? '#fff1cc' : '#b3ac9f';
       ctx.save();
-      if (livePrice) { ctx.shadowColor = '#f4dfbf'; ctx.shadowBlur = 9; }
+      if (livePrice) { ctx.shadowColor = '#ffd375'; ctx.shadowBlur = 13; }
       ctx.fillRect(left, liveY, fieldEnd - left, 1.5);
       ctx.restore();
       ctx.font = '700 12px ' + dataFont;
@@ -807,8 +832,11 @@ function draw() {
         ctx.fill();
         const available = fieldEnd - cardLeft;
         const centerY = cardTop + cardHeight / 2;
-        ctx.fillStyle = '#111715';
+        ctx.fillStyle = side === 'short' ? '#1b1015' : '#0b1915';
         ctx.fillRect(cardLeft, cardTop, available, cardHeight);
+        ctx.globalAlpha = 0.45;
+        ctx.strokeRect(cardLeft + 0.5, cardTop + 0.5, available - 1, cardHeight - 1);
+        ctx.globalAlpha = 1;
         ctx.fillStyle = color;
         ctx.fillRect(cardLeft, cardTop, 2, cardHeight);
         ctx.textBaseline = 'middle';
