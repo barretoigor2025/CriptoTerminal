@@ -154,7 +154,7 @@ button:hover,select:hover,summary:hover,header a:hover{border-color:var(--gold);
 .chart-actions .chart-help summary{width:auto;padding:0 6px;font-size:8px}
 .chart-help-content{background:#141413;border-color:#8a6b3e}
 .chart-help-content label{display:inline-flex;align-items:center;gap:3px;margin:5px 7px 3px 0}
-.ramp{background:linear-gradient(90deg,#193369 16.7%,#295da9 16.7% 33.3%,#438dda 33.3% 50%,#f1cf63 50% 66.7%,#ff8f37 66.7% 83.3%,#ff4c45 83.3%)}
+.ramp{background:linear-gradient(90deg,#1c2a40,#49393d,#9d4e36,#db7f47,#ffb263,#ffe5ab)}
 .periods{order:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;width:min(100%,540px);padding:5px}
 .periods button{width:100%;padding:0 2px}
 @media(max-width:620px){
@@ -212,11 +212,11 @@ button:hover,select:hover,summary:hover,header a:hover{border-color:var(--gold);
     <summary aria-label="Legenda e ajuda" title="Camadas e legenda">Camadas</summary>
     <div class="chart-help-content">
       <label><input type="checkbox" id="layer-heat" checked>Mapa de calor</label>
-      <label><input type="checkbox" id="layer-levels" checked>Pontos de liquidez</label>
+      <label><input type="checkbox" id="layer-levels" checked>Cards de liquidez</label>
       <label><input type="checkbox" id="layer-events" checked>Eventos</label>
       <div id="leverage-buttons" role="group" aria-label="Alavancagem estimada"></div>
       <div class="legend">Intensidade baixa <span class="ramp"></span> alta</div>
-      <p>Cada mapa é recalculado com as velas do período selecionado. O azul indica menor intensidade, o amarelo indica concentração maior e o vermelho marca os níveis mais fortes da janela. Toque em uma faixa para ver a estimativa. Os valores usam 1% do giro de cada corretora como hipótese de modelagem. Os círculos marcam eventos reportados por Binance, Bybit e OKX. O preço e o valor dos eventos são aproximados. A razão Livro compara a profundidade à vista de Binance e Coinbase nos próximos 0,5% com o valor simulado. Ela aparece quando os dois livros cobrem toda a faixa.</p>
+      <p>Cada mapa é recalculado com as velas do período selecionado. As faixas mais claras indicam maior concentração estimada. Os cards mostram os maiores níveis da última vela visível. Toque em uma faixa ou card para ver os detalhes. Os valores usam 1% do giro de cada corretora como hipótese de modelagem. Os círculos marcam eventos reportados por Binance, Bybit e OKX. O preço e o valor dos eventos são aproximados. A razão Livro compara a profundidade à vista de Binance e Coinbase nos próximos 0,5% com o valor simulado. Ela aparece quando os dois livros cobrem toda a faixa.</p>
       <p>Arraste o gráfico para navegar, role ou faça pinça para aproximar e arraste a escala de preço para ajustá-la. Clique na linha do tempo para centralizar um evento. Horários do Japão.</p>
     </div>
   </details>
@@ -553,7 +553,7 @@ document.addEventListener('keydown', event => {
 });
 
 function plotBounds() {
-  const gutter = canvas.clientWidth < 560 ? Math.min(80, canvas.clientWidth * 0.22) : Math.min(155, canvas.clientWidth * 0.17);
+  const gutter = canvas.clientWidth < 560 ? Math.min(126, canvas.clientWidth * 0.37) : Math.min(198, canvas.clientWidth * 0.23);
   return {left:canvas.clientWidth < 560 ? 43 : 64, top:36, right:canvas.clientWidth - 10 - gutter, gutter, bottom:canvas.clientHeight - 24};
 }
 
@@ -575,10 +575,10 @@ function clamp(value, min, max) {
 
 function setView(first, count, low, span) {
   const dataSpan = map.max - map.min;
-  count = clamp(count, Math.min(8, map.candles.length), map.candles.length * 1.5);
+  count = clamp(count, Math.min(8, map.candles.length), map.candles.length);
   span = clamp(span, dataSpan / 80, dataSpan * 4);
-  first = clamp(first, 1 - count, map.candles.length - 1);
-  low = clamp(low, map.min - span, map.max);
+  first = clamp(first, 0, map.candles.length - count);
+  low = clamp(low, 0, map.max);
   viewport = {first, count, low, high:low + span};
   scheduleDraw();
 }
@@ -592,8 +592,8 @@ function scheduleDraw() {
 }
 
 const heatPalette = [
-  [0, 0, 0, 0], [25, 51, 105, 108], [41, 93, 169, 154], [67, 141, 218, 202],
-  [241, 207, 99, 225], [255, 143, 55, 240], [255, 76, 69, 255]
+  [0, 0, 0, 0], [28, 42, 64, 66], [73, 57, 61, 116], [157, 78, 54, 155],
+  [219, 127, 71, 205], [255, 178, 99, 235], [255, 229, 171, 255]
 ];
 const heatThresholds = [0.025, 0.08, 0.18, 0.34, 0.57, 0.78];
 const heatFill = heatPalette.map(([r, g, b, a]) => `rgba(${r},${g},${b},${a / 255})`);
@@ -717,12 +717,12 @@ function draw() {
   const {first, count, low, high} = chartView();
   const stride = (right - left) / count;
   const firstColumn = Math.max(0, Math.floor(first));
-  const endColumn = Math.min(candles.length, Math.ceil(first + count));
+  const endColumn = Math.min(candles.length, Math.ceil(first + count - 1e-8));
   const y = price => bottom - (price - low) / (high - low) * (bottom - top);
   const reference = livePrice ?? map.current;
   const liveY = y(reference);
   const fieldEnd = right + gutter;
-  const liveEdge = first + count >= candles.length && first < candles.length;
+  const liveEdge = endColumn === candles.length;
   ctx.font = (width < 560 ? '8px ' : '10px ') + dataFont;
   ctx.fillStyle = '#090e17';
   ctx.fillRect(left, top, fieldEnd - left, bottom - top);
@@ -772,34 +772,59 @@ function draw() {
   ctx.globalAlpha = 1;
   ctx.restore();
 
-  const liquidityPoints = [];
-  if (liveEdge) {
-    const active = map.levels.filter(level => levelStillOpen(level, reference) &&
-      y(level.price) >= top && y(level.price) <= bottom);
-    const peak = Math.max(0, ...active.map(level => level.weight));
-    for (const level of active.slice().reverse()) {
-      const tier = heatTier(level.weight / peak);
-      if (!tier) continue;
-      const priceY = Math.round(y(level.price));
-      if (layerHeat.checked) {
-        const length = Math.min((fieldEnd - left) * 0.62, gutter + tier * 17);
-        const start = Math.round(fieldEnd - length);
-        const cell = Math.max(4, Math.round(length / (tier * 2 + 3)));
-        const bandHeight = Math.max(2, Math.min(5, Math.round(y(level.price) - y(level.price + step))));
-        for (let color = 1; color <= tier; color++) {
-          const x = start + (color - 1) * cell;
-          const inset = tier - color;
-          ctx.fillStyle = heatFill[color];
-          ctx.fillRect(x, priceY - Math.floor(bandHeight / 2) - inset,
-            fieldEnd - x, bandHeight + inset * 2);
-        }
-      }
-      if (layerLevels.checked && tier >= 3) {
-        ctx.fillStyle = heatFill[tier];
-        ctx.fillRect(fieldEnd - 5, priceY - 2, 4, 4);
-        liquidityPoints.push({level, y:priceY});
+  const cardColumn = endColumn - 1;
+  const cardReference = liveEdge ? reference : candles[cardColumn].close;
+  const cardAnchor = y(cardReference);
+  const cards = [];
+  if (layerLevels.checked) {
+    const levels = liveEdge ? map.levels.filter(level => levelStillOpen(level, reference)) : [];
+    if (!liveEdge) {
+      for (let row = 0; row < rows; row++) {
+        const weight = notional[row * candles.length + cardColumn];
+        if (weight <= 0) continue;
+        const price = min + (row + 0.5) * step;
+        levels.push({row, weight, price, side:price < cardReference ? 'long' : 'short'});
       }
     }
+    levels.sort((a, b) => b.weight - a.weight);
+    const cardHeight = width < 560 ? 20 : 23;
+    const cardLeft = right + 4;
+    ctx.textBaseline = 'middle';
+    for (const side of ['short', 'long']) {
+      for (const level of levels) {
+        const center = y(level.price);
+        if (level.side !== side || center < top + cardHeight / 2 ||
+            center > bottom - cardHeight / 2 || Math.abs(center - cardAnchor) < cardHeight ||
+            cards.some(card => Math.abs(center - card.center) < cardHeight + 4)) continue;
+        const color = sideColors[side];
+        const distance = (100 * (level.price / cardReference - 1)).toFixed(2) + '%';
+        const coverage = liveEdge ? depthCoverage(level) : undefined;
+        const cardTop = center - cardHeight / 2;
+        ctx.fillStyle = '#101115';
+        ctx.fillRect(cardLeft, cardTop, fieldEnd - cardLeft, cardHeight);
+        ctx.strokeStyle = color;
+        ctx.globalAlpha = 0.65;
+        ctx.strokeRect(cardLeft + 0.5, cardTop + 0.5, fieldEnd - cardLeft - 1, cardHeight - 1);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = color;
+        ctx.font = (width < 560 ? '700 9px ' : '700 12px ') + dataFont;
+        ctx.fillText('≈' + bookAmount.format(level.weight), cardLeft + 5, center, gutter * 0.46);
+        ctx.fillStyle = '#f7efde';
+        ctx.font = (width < 560 ? '8px ' : '10px ') + dataFont;
+        ctx.textAlign = 'right';
+        ctx.fillText(distance, fieldEnd - 4, center);
+        ctx.textAlign = 'left';
+        if (width >= 560 && coverage !== undefined) {
+          ctx.fillStyle = '#66f5c7';
+          ctx.fillText(coverage.toFixed(1) + '×', cardLeft + gutter * 0.49, center);
+        }
+        cards.push({level, center, halfHeight:cardHeight / 2});
+        if (cards.filter(card => card.level.side === side).length >= 3) break;
+      }
+    }
+    ctx.textBaseline = 'alphabetic';
+  }
+  if (liveEdge) {
     if (liveY >= top && liveY <= bottom) {
       ctx.fillStyle = livePrice ? '#fff1cc' : '#b3ac9f';
       ctx.save();
@@ -831,13 +856,10 @@ function draw() {
     showTooltip(left, top, width, bottom);
     return;
   }
-  const profile = liveEdge && pointer.x >= left + (candles.length - first) * stride;
-  if (pointer.x >= right && !profile) return;
-  const marker = profile && liquidityPoints.reduce((nearest, point) => {
-    const distance = Math.abs(pointer.y - point.y);
-    return distance <= 7 && (!nearest || distance < Math.abs(pointer.y - nearest.y)) ? point : nearest;
-  }, null)?.level;
-  const column = marker || profile ? candles.length - 1 : Math.floor(first + (pointer.x - left) / stride);
+  const inRail = pointer.x >= right;
+  const marker = inRail ? cards.find(card => Math.abs(pointer.y - card.center) <= card.halfHeight)?.level : undefined;
+  if (inRail && !marker) return;
+  const column = marker ? cardColumn : Math.floor(first + (pointer.x - left) / stride);
   if (!candles[column]) return;
   const price = high - (pointer.y - top) / (bottom - top) * (high - low);
   const row = marker?.row ?? Math.floor((price - min) / step);
@@ -853,9 +875,9 @@ function draw() {
     tooltip.append(range);
   }
   const context = document.createElement('span');
-  context.textContent = (marker ? marker.side.toUpperCase() + ' · estimativa atual' : profile ? 'Perfil estimado · última vela' : 'Vela apontada') +
+  context.textContent = (marker ? marker.side.toUpperCase() + ' · faixa estimada' : 'Vela apontada') +
     ' · ' + originDate.format(candles[column].time) + ' JST';
-  if (marker) {
+  if (marker && liveEdge) {
     const detail = document.createElement('small');
     const coverage = depthCoverage(marker);
     detail.textContent = coverage === undefined ? 'Cobertura indisponível nesta faixa' : 'Cobertura dos livros: ' + coverage.toFixed(1) + '×';
@@ -1022,7 +1044,7 @@ async function load(reset = false) {
         const time = map.candles[anchor].time;
         const index = candles.findIndex(candle => candle.time >= time);
         if (index < 0) viewport = null;
-        else viewport.first = clamp(viewport.first + index - anchor, 1 - viewport.count, candles.length - 1);
+        else setView(viewport.first + index - anchor, viewport.count, viewport.low, viewport.high - viewport.low);
       }
       map = buildMap(candles, {period:periodLabel, feed:available.map(feed => feed.name).join(' + ')});
       if (liveRange?.time !== candles.at(-1).time) liveRange = null;
@@ -1092,7 +1114,7 @@ function transformView(before, after, factor, verticalFactor) {
   if (width <= 0 || height <= 0) return;
   const span = high - low;
   const dataSpan = map.max - map.min;
-  const nextCount = clamp(count * factor, Math.min(8, map.candles.length), map.candles.length * 1.5);
+  const nextCount = clamp(count * factor, Math.min(8, map.candles.length), map.candles.length);
   const nextSpan = clamp(span * verticalFactor, dataSpan / 80, dataSpan * 4);
   const priceAnchor = low + (bottom - before.y) / height * span;
   const candleAnchor = first + (before.x - left) / width * count;
