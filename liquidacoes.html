@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Liquidações | Cripto Terminal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@800&family=Martian+Mono:wght@400;600;700&display=swap">
 <style>
 :root{color-scheme:dark;font:13px system-ui;background:#0c1017;color:#e7edf5}
 *{box-sizing:border-box}
@@ -82,14 +83,49 @@ select,button,summary{background:#152538;border-color:#334c65}
   figcaption,.event-strip{font-size:10px;padding:4px 6px}
 }
 @media(max-height:480px){body{padding:4px;gap:4px}header{min-height:20px}.controls{padding-top:3px;padding-bottom:3px}#event-timeline{height:21px}}
+
+:root{--data:"Martian Mono",monospace;background:#100f15;color:#f0e9e1}
+body{font-family:var(--data);max-width:1600px}
+header a{font-size:10px;color:#c1b4c7}
+header h1{font:800 22px "Big Shoulders Stencil Display",sans-serif}
+.market-summary{display:flex;align-items:center;gap:12px 24px;flex-wrap:wrap;padding:3px 2px}
+.market-summary strong{font:800 36px/1 "Big Shoulders Stencil Display",sans-serif;color:#fff1de}
+.market-summary span{display:block;font-size:10px}
+.market-summary .watch{display:flex;align-items:center;gap:9px}
+#market-mode{color:#bbadc4}#market-mode[data-live=true]{color:#88efca}
+#zone-totals{color:#cabed2}
+.chart-panel{background:#140f18;border-color:#403147;border-radius:6px}
+.controls,figcaption,.recent-events,.event-strip{background:#17131e;border-color:#392e42}
+figure{background:#100e15}
+.periods{padding:3px 8px;background:#17131e;border-top:1px solid #392e42;flex:none}
+.periods button[aria-pressed=true]{background:#d9b9fc;color:#23152f}
+select,button,summary{background:#21182b;border-color:#463554}
+.filters select{font-size:9px}
+@media(max-width:620px){
+  body{padding:6px;gap:5px}
+  .market-summary{justify-content:space-between;gap:4px}
+  .market-summary strong{font-size:30px}
+  .market-summary span{font-size:8px}
+  .controls{justify-content:space-between;padding:4px}
+  .periods{justify-content:space-between}
+  .periods button{font-size:9px;padding:0 4px;height:24px}
+  .filters{flex:0}.filters select{height:25px;flex:none}
+  .filters #history{max-width:78px}.filters #price-range{max-width:66px}
+  .chart-actions{gap:2px}.chart-actions button,summary{width:22px;height:25px}
+  figcaption{font-size:8px}
+}
+@media(max-width:340px){.chart-actions button,summary{width:20px}.filters #history{max-width:67px}}
 </style>
 </head>
 <body>
 <header><a href="index.html">← Terminal</a><h1>Liquidações do BTC</h1><a href="liquidacoes-ao-vivo.html">Painel de eventos</a></header>
+<div class="market-summary">
+  <div class="watch"><strong id="market-price">—</strong><span id="market-mode">BTC</span></div>
+  <span id="zone-totals">Faixas estimadas · aguardando dados</span>
+</div>
 <section id="chart-panel" class="chart-panel" aria-label="Mapa interativo">
 <div class="controls">
 <strong class="symbol">BTC</strong>
-<div class="periods" id="periods" role="group" aria-label="Tempo gráfico"></div>
 <div class="filters" role="group" aria-label="Filtros do gráfico">
 <select id="interval" aria-label="Tempo gráfico" title="Tempo gráfico">
 <option value="15" selected>15 min</option><option value="60">1 h</option>
@@ -126,6 +162,7 @@ select,button,summary{background:#152538;border-color:#334c65}
 <canvas id="chart" role="img" aria-label="Gráfico de velas com intensidade estimada de liquidação por preço e horário"></canvas>
 <div id="liqTip" class="liq-tip" hidden></div>
 </div>
+<div class="periods" id="periods" role="group" aria-label="Tempo gráfico"></div>
 <figcaption>
   <div id="market-status">Conectando preços de marcação…</div>
   <div id="status" role="status">Carregando cotações…</div>
@@ -166,6 +203,11 @@ interval.addEventListener('change', () => {
 const historySize = document.getElementById('history');
 const priceRange = document.getElementById('price-range');
 const tooltip = document.getElementById('liqTip');
+const marketPrice = document.getElementById('market-price');
+const marketMode = document.getElementById('market-mode');
+const zoneTotals = document.getElementById('zone-totals');
+const dataFont = '"Martian Mono", monospace';
+const displayFont = '"Big Shoulders Stencil Display", sans-serif';
 const marketStatus = document.getElementById('market-status');
 const eventSummary = document.getElementById('event-summary');
 const marks = new Map();
@@ -181,6 +223,18 @@ function updateMarket() {
   const prices = fresh.map(([, mark]) => mark.price).sort((a, b) => a - b);
   const middle = Math.floor(prices.length / 2);
   livePrice = prices.length ? (prices[middle] + prices[Math.floor((prices.length - 1) / 2)]) / 2 : undefined;
+  marketPrice.textContent = livePrice || map ? priceLabel(livePrice ?? map.current) : '—';
+  marketMode.dataset.live = String(Boolean(livePrice));
+  marketMode.textContent = livePrice ? '● AO VIVO' : 'BTC · VELAS';
+  if (map) {
+    const reference = livePrice ?? map.current;
+    const totals = {short:0,long:0};
+    for (const level of map.levels) {
+      if (levelStillOpen(level, reference)) totals[level.side] += level.weight;
+    }
+    zoneTotals.textContent = '≈ ' + bookAmount.format(totals.short) + ' shorts · ' +
+      bookAmount.format(totals.long) + ' longs · USDT estimados';
+  }
   marketStatus.dataset.live = String(Boolean(livePrice));
   marketStatus.textContent = livePrice
     ? 'Marcação ao vivo · ' + priceLabel(livePrice) + ' · ' + fresh.map(([venue]) => venue).join(' + ')
@@ -422,8 +476,8 @@ document.addEventListener('keydown', event => {
 });
 
 function plotBounds() {
-  const gutter = canvas.clientWidth < 560 ? 106 : Math.min(248, canvas.clientWidth * 0.25);
-  return {left:canvas.clientWidth < 560 ? 43 : 64, top:24, right:canvas.clientWidth - 10 - gutter, gutter, bottom:canvas.clientHeight - 24};
+  const gutter = canvas.clientWidth < 560 ? Math.min(143, canvas.clientWidth * 0.42) : Math.min(248, canvas.clientWidth * 0.25);
+  return {left:canvas.clientWidth < 560 ? 43 : 64, top:16, right:canvas.clientWidth - 10 - gutter, gutter, bottom:canvas.clientHeight - 24};
 }
 
 function chartView() {
@@ -480,7 +534,7 @@ function buildMap(candles, origin = map?.origin) {
   const heatContext = heatmap.getContext('2d');
   const image = heatContext.createImageData(heatmap.width, rows);
   const colors = Array.from({length:256}, (_, index) => {
-    const strength = index / 255;
+    const strength = Math.max(0, (index / 255 - 0.25) / 0.75);
     return [Math.round(40 + 215 * strength), Math.round(117 + 87 * strength),
       Math.round(145 - 52 * strength), Math.round(215 * strength)];
   });
@@ -488,7 +542,7 @@ function buildMap(candles, origin = map?.origin) {
     for (let row = 0; row < rows; row++) {
       for (let column = 0; column < candles.length; column++) {
         const value = G[row * candles.length + column];
-        const color = colors[Math.round(Math.pow(value / peak, 0.6) * 255)];
+        const color = colors[Math.round(Math.pow(value / peak, 0.85) * 255)];
         image.data.set(color, ((rows - 1 - row) * candles.length + column) * 4);
       }
     }
@@ -511,6 +565,12 @@ function buildMap(candles, origin = map?.origin) {
 
 function priceLabel(price) {
   return price.toLocaleString('en-US', {maximumFractionDigits:price < 10 ? 4 : 2});
+}
+
+function levelStillOpen(level, reference) {
+  return level.side === 'short'
+    ? level.price > Math.max(reference, liveRange?.high ?? reference)
+    : level.price < Math.min(reference, liveRange?.low ?? reference);
 }
 
 function draw() {
@@ -538,10 +598,10 @@ function draw() {
   const liveY = y(reference);
   const fieldEnd = right + gutter;
   const liveEdge = first + count >= candles.length && first < candles.length;
-  ctx.font = '11px ui-monospace, monospace';
-  ctx.fillStyle = '#18202f';
+  ctx.font = (width < 560 ? '8px ' : '10px ') + dataFont;
+  ctx.fillStyle = '#1a131d';
   ctx.fillRect(left, top, fieldEnd - left, clamp(liveY, top, bottom) - top);
-  ctx.fillStyle = '#10262b';
+  ctx.fillStyle = '#101c1c';
   ctx.fillRect(left, clamp(liveY, top, bottom), fieldEnd - left, bottom - clamp(liveY, top, bottom));
   ctx.fillStyle = '#9fb2c8';
   for (let i = 0; i <= 5; i++) {
@@ -592,27 +652,28 @@ function draw() {
   const cards = [];
   if (liveEdge) {
     const edge = left + (candles.length - first) * stride;
-    const active = map.levels.filter(level => {
-      const limit = level.side === 'short' ? liveRange?.high ?? reference : liveRange?.low ?? reference;
-      return y(level.price) >= top && y(level.price) <= bottom &&
-        (level.side === 'short' ? level.price > limit : level.price < limit);
-    });
+    const active = map.levels.filter(level => levelStillOpen(level, reference) &&
+      y(level.price) >= top && y(level.price) <= bottom);
     const peak = Math.max(0, ...active.map(level => level.weight));
     for (const level of active) {
-      const strength = Math.sqrt(level.weight / peak);
+      const strength = level.weight / peak;
+      if (strength < 0.15) continue;
       const beam = ctx.createLinearGradient(Math.max(left, edge - 130), 0, fieldEnd, 0);
       beam.addColorStop(0, 'transparent');
       beam.addColorStop(1, level.side === 'short' ? '#f5bc73' : '#66d6ce');
       ctx.fillStyle = beam;
-      ctx.globalAlpha = strength * 0.65;
+      ctx.globalAlpha = strength * 0.85;
       ctx.fillRect(Math.max(left, edge - 130), y(level.price) - 1, fieldEnd - Math.max(left, edge - 130),
         Math.max(2, Math.min(7, y(level.price) - y(level.price + step))));
     }
     ctx.globalAlpha = 1;
     if (liveY >= top && liveY <= bottom) {
-      ctx.fillStyle = livePrice ? '#a7eaff' : '#92a9bb';
+      ctx.fillStyle = livePrice ? '#f4dfbf' : '#b7a7b9';
+      ctx.save();
+      if (livePrice) { ctx.shadowColor = '#f4dfbf'; ctx.shadowBlur = 9; }
       ctx.fillRect(left, liveY, fieldEnd - left, 1.5);
-      ctx.font = 'bold 14px ui-monospace, monospace';
+      ctx.restore();
+      ctx.font = '700 12px ' + dataFont;
       const label = priceLabel(reference);
       const labelWidth = ctx.measureText(label).width + 16;
       ctx.fillRect(fieldEnd - labelWidth, liveY - 12, labelWidth, 24);
@@ -621,14 +682,16 @@ function draw() {
     }
 
     const compact = width < 560;
-    const cardHeight = compact ? 32 : 38;
-    const cardLeft = right + 13;
+    const cardHeight = compact ? 29 : 34;
+    const cardLeft = right + (compact ? 7 : 13);
+    const proximityScore = level => level.weight / (0.008 + Math.abs(level.price / reference - 1)) ** 1.5;
+    const ranked = active.sort((a, b) => proximityScore(b) - proximityScore(a));
     for (const side of ['short', 'long']) {
       const from = side === 'short' ? top : Math.max(top, liveY + 15);
       const to = side === 'short' ? Math.min(bottom, liveY - 15) : bottom;
-      const count = Math.max(0, Math.min(compact ? 2 : 3, Math.floor((to - from) / (cardHeight + 4))));
+      const count = Math.max(0, Math.min(compact ? 4 : 5, Math.floor((to - from) / (cardHeight + 4))));
       const selected = [];
-      for (const level of active) {
+      for (const level of ranked) {
         if (selected.length >= count) break;
         if (level.side === side && !selected.some(other => Math.abs(other.row - level.row) < 3)) selected.push(level);
       }
@@ -648,25 +711,26 @@ function draw() {
         ctx.beginPath();
         ctx.arc(edge, target, 2.5, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#0b1825';
+        ctx.fillStyle = '#171220';
         ctx.fillRect(cardLeft, cardTop, fieldEnd - cardLeft, cardHeight);
-        ctx.strokeStyle = '#365268';
+        ctx.strokeStyle = '#47354d';
         ctx.strokeRect(cardLeft + 0.5, cardTop + 0.5, fieldEnd - cardLeft - 1, cardHeight - 1);
         ctx.fillStyle = color;
         ctx.fillRect(cardLeft, cardTop, 2, cardHeight);
-        ctx.font = (compact ? 'bold 11px' : 'bold 16px') + ' ui-monospace, monospace';
+        ctx.font = (compact ? '800 15px ' : '800 19px ') + displayFont;
         ctx.fillText('≈ ' + bookAmount.format(level.weight), cardLeft + 7, cardTop + (compact ? 13 : 17));
         const distance = (Math.abs(level.price / reference - 1) * 100).toFixed(2) + '%';
-        if (!compact) ctx.fillText(distance, fieldEnd - ctx.measureText(distance).width - 7, cardTop + 17);
-        ctx.font = (compact ? '9px' : '11px') + ' ui-monospace, monospace';
+        ctx.font = (compact ? '600 8px ' : '600 10px ') + dataFont;
+        ctx.fillText(distance, fieldEnd - ctx.measureText(distance).width - 5, cardTop + (compact ? 12 : 15));
+        ctx.font = (compact ? '8px ' : '10px ') + dataFont;
         ctx.fillStyle = '#b3c7d9';
         const range = compact ? Math.round(level.price).toLocaleString('en-US') :
           Math.round(min + level.row * step).toLocaleString('en-US') + '–' +
           Math.round(min + (level.row + 1) * step).toLocaleString('en-US');
         ctx.fillText(side.toUpperCase() + ' ' + range, cardLeft + 7, cardTop + cardHeight - 6);
-        const coverage = !compact ? depthCoverage(level) : undefined;
+        const coverage = depthCoverage(level);
         if (coverage !== undefined) {
-          const label = 'Livro ' + coverage.toFixed(1) + '×';
+          const label = (compact ? '' : 'Livro ') + coverage.toFixed(1) + '×';
           const labelX = fieldEnd - ctx.measureText(label).width - 7;
           if (labelX > cardLeft + 13 + ctx.measureText(side.toUpperCase() + ' ' + range).width) {
             ctx.fillStyle = coverage >= 1 ? '#72e7bd' : '#ff9c9e';
@@ -677,7 +741,8 @@ function draw() {
       });
     }
   }
-  ctx.fillStyle = '#bbb';
+  ctx.fillStyle = '#bfb2c5';
+  ctx.font = (width < 560 ? '8px ' : '10px ') + dataFont;
   const tickStep = Math.max(1, Math.ceil(105 / stride));
   for (let column = firstColumn; column < endColumn; column += tickStep) {
     const x = left + (column - first + 0.5) * stride;
@@ -1050,6 +1115,8 @@ function render() {
   drawTimeline();
 }
 new ResizeObserver(render).observe(canvas);
+document.fonts?.load('800 16px ' + displayFont).then(scheduleDraw);
+document.fonts?.load('600 10px ' + dataFont).then(scheduleDraw);
 watchBtcLiquidations({
   onMark: (venue, price) => marks.set(venue, {price, time:Date.now()}),
   onLiquidation:recordLiquidation,
