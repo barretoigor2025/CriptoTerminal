@@ -154,7 +154,13 @@ button:hover,select:hover,summary:hover,header a:hover{border-color:var(--gold);
 .chart-actions .chart-help summary{width:auto;padding:0 6px;font-size:8px}
 .chart-help-content{background:#141413;border-color:#8a6b3e}
 .chart-help-content label{display:inline-flex;align-items:center;gap:3px;margin:5px 7px 3px 0}
-.ramp{background:linear-gradient(90deg,#2a1815,#b65b35,#ffd27f,#fff6d7)}
+.ramp{background:linear-gradient(90deg,#193369 16.7%,#295da9 16.7% 33.3%,#438dda 33.3% 50%,#f1cf63 50% 66.7%,#ff8f37 66.7% 83.3%,#ff4c45 83.3%)}
+.periods{order:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;width:min(100%,540px);padding:5px}
+.periods button{width:100%;padding:0 2px}
+@media(max-width:620px){
+  .periods{width:100%}
+  .periods button{height:29px;font-size:clamp(7px,2.3vw,10px)}
+}
 @media(max-width:620px){
   header{gap:5px}
   header h1{font-size:clamp(15px,4.5vw,22px)}
@@ -206,11 +212,11 @@ button:hover,select:hover,summary:hover,header a:hover{border-color:var(--gold);
     <summary aria-label="Legenda e ajuda" title="Camadas e legenda">Camadas</summary>
     <div class="chart-help-content">
       <label><input type="checkbox" id="layer-heat" checked>Mapa de calor</label>
-      <label><input type="checkbox" id="layer-cards" checked>Cartões</label>
+      <label><input type="checkbox" id="layer-levels" checked>Pontos de liquidez</label>
       <label><input type="checkbox" id="layer-events" checked>Eventos</label>
       <div id="leverage-buttons" role="group" aria-label="Alavancagem estimada"></div>
       <div class="legend">Intensidade baixa <span class="ramp"></span> alta</div>
-      <p>Cada mapa é recalculado com as velas do período selecionado. Os cartões destacam os maiores níveis estimados visíveis. Os valores usam 1% do giro de cada corretora como hipótese de modelagem. Os círculos marcam eventos reportados por Binance, Bybit e OKX. O preço e o valor dos eventos são aproximados. A razão Livro compara a profundidade à vista de Binance e Coinbase nos próximos 0,5% com o valor simulado. Ela aparece quando os dois livros cobrem toda a faixa.</p>
+      <p>Cada mapa é recalculado com as velas do período selecionado. O azul indica menor intensidade, o amarelo indica concentração maior e o vermelho marca os níveis mais fortes da janela. Toque em uma faixa para ver a estimativa. Os valores usam 1% do giro de cada corretora como hipótese de modelagem. Os círculos marcam eventos reportados por Binance, Bybit e OKX. O preço e o valor dos eventos são aproximados. A razão Livro compara a profundidade à vista de Binance e Coinbase nos próximos 0,5% com o valor simulado. Ela aparece quando os dois livros cobrem toda a faixa.</p>
       <p>Arraste o gráfico para navegar, role ou faça pinça para aproximar e arraste a escala de preço para ajustá-la. Clique na linha do tempo para centralizar um evento. Horários do Japão.</p>
     </div>
   </details>
@@ -273,14 +279,13 @@ const totalsLabels = {
   long:document.getElementById('total-long')
 };
 const layerHeat = document.getElementById('layer-heat');
-const layerCards = document.getElementById('layer-cards');
+const layerLevels = document.getElementById('layer-levels');
 const layerEvents = document.getElementById('layer-events');
 const candleMode = document.getElementById('view-candles');
 const profileMode = document.getElementById('view-profile');
 let showProfile = false;
-for (const layer of [layerHeat, layerCards, layerEvents]) layer.addEventListener('change', () => scheduleDraw());
+for (const layer of [layerHeat, layerLevels, layerEvents]) layer.addEventListener('change', () => scheduleDraw());
 const dataFont = '"Martian Mono", monospace';
-const displayFont = '"Big Shoulders Stencil Display", sans-serif';
 const marketStatus = document.getElementById('market-status');
 const eventSummary = document.getElementById('event-summary');
 const marks = new Map();
@@ -548,7 +553,7 @@ document.addEventListener('keydown', event => {
 });
 
 function plotBounds() {
-  const gutter = canvas.clientWidth < 560 ? Math.min(181, canvas.clientWidth * 0.47) : Math.min(248, canvas.clientWidth * 0.25);
+  const gutter = canvas.clientWidth < 560 ? Math.min(80, canvas.clientWidth * 0.22) : Math.min(155, canvas.clientWidth * 0.17);
   return {left:canvas.clientWidth < 560 ? 43 : 64, top:36, right:canvas.clientWidth - 10 - gutter, gutter, bottom:canvas.clientHeight - 24};
 }
 
@@ -586,6 +591,18 @@ function scheduleDraw() {
   });
 }
 
+const heatPalette = [
+  [0, 0, 0, 0], [25, 51, 105, 108], [41, 93, 169, 154], [67, 141, 218, 202],
+  [241, 207, 99, 225], [255, 143, 55, 240], [255, 76, 69, 255]
+];
+const heatThresholds = [0.025, 0.08, 0.18, 0.34, 0.57, 0.78];
+const heatFill = heatPalette.map(([r, g, b, a]) => `rgba(${r},${g},${b},${a / 255})`);
+
+function heatTier(strength) {
+  const next = heatThresholds.findIndex(threshold => strength < threshold);
+  return next < 0 ? heatThresholds.length : next;
+}
+
 function buildMap(candles, origin = map?.origin) {
   const rows = priceRange.value === 'all' ? 440 : 264;
   const current = candles.at(-1).close;
@@ -606,16 +623,11 @@ function buildMap(candles, origin = map?.origin) {
   heatmap.height = rows;
   const heatContext = heatmap.getContext('2d');
   const image = heatContext.createImageData(heatmap.width, rows);
-  const colors = Array.from({length:256}, (_, index) => {
-    const strength = Math.max(0, (index / 255 - 0.12) / 0.88);
-    return [255, Math.round(99 + 148 * strength),
-      Math.round(54 + 159 * strength), Math.round(232 * strength ** 1.2)];
-  });
   if (peak > 0) {
     for (let row = 0; row < rows; row++) {
       for (let column = 0; column < candles.length; column++) {
         const value = G[row * candles.length + column];
-        const color = colors[Math.round(Math.pow(value / peak, 0.85) * 255)];
+        const color = heatPalette[heatTier(value / peak)];
         image.data.set(color, ((rows - 1 - row) * candles.length + column) * 4);
       }
     }
@@ -666,7 +678,7 @@ function drawProfile(width, height) {
   const hits = [];
   for (const level of bands) {
     const barHeight = (bottom - top - 18) * level.weight / peak;
-    ctx.fillStyle = sideColors[level.side];
+    ctx.fillStyle = heatFill[heatTier(level.weight / peak)];
     ctx.fillRect(x(level.price) - barWidth / 2, bottom - barHeight, barWidth, barHeight);
     if (pointer && Math.abs(pointer.x - x(level.price)) <= Math.max(7, barWidth / 2) &&
         pointer.y >= bottom - barHeight - 6 && pointer.y <= bottom) hits.push(level);
@@ -712,10 +724,8 @@ function draw() {
   const fieldEnd = right + gutter;
   const liveEdge = first + count >= candles.length && first < candles.length;
   ctx.font = (width < 560 ? '8px ' : '10px ') + dataFont;
-  ctx.fillStyle = '#130e0c';
-  ctx.fillRect(left, top, fieldEnd - left, clamp(liveY, top, bottom) - top);
-  ctx.fillStyle = '#091512';
-  ctx.fillRect(left, clamp(liveY, top, bottom), fieldEnd - left, bottom - clamp(liveY, top, bottom));
+  ctx.fillStyle = '#090e17';
+  ctx.fillRect(left, top, fieldEnd - left, bottom - top);
   ctx.fillStyle = '#b3ac9f';
   for (let i = 0; i <= 5; i++) {
     const price = low + (high - low) * i / 5;
@@ -762,30 +772,34 @@ function draw() {
   ctx.globalAlpha = 1;
   ctx.restore();
 
-  const cards = [];
+  const liquidityPoints = [];
   if (liveEdge) {
-    const edge = left + (candles.length - first) * stride;
     const active = map.levels.filter(level => levelStillOpen(level, reference) &&
       y(level.price) >= top && y(level.price) <= bottom);
     const peak = Math.max(0, ...active.map(level => level.weight));
-    for (const level of layerHeat.checked ? active : []) {
-      const strength = level.weight / peak;
-      if (strength < 0.15) continue;
-      const start = Math.max(left, edge - Math.min((right - left) * 0.7, 92 + strength * 235));
-      const priceY = y(level.price);
-      const warm = level.side === 'short';
-      const beam = ctx.createLinearGradient(start, 0, fieldEnd, 0);
-      beam.addColorStop(0, 'transparent');
-      beam.addColorStop(0.55, warm ? '#b85b2e' : '#227f69');
-      beam.addColorStop(1, warm ? '#ffe2a1' : '#9affda');
-      ctx.fillStyle = beam;
-      ctx.globalAlpha = strength * 0.26;
-      ctx.fillRect(start, priceY - 5, fieldEnd - start, 10);
-      ctx.globalAlpha = Math.min(1, strength * 1.4);
-      ctx.fillRect(start, priceY - 1, fieldEnd - start,
-        Math.max(2, Math.min(5, y(level.price) - y(level.price + step))));
+    for (const level of active.slice().reverse()) {
+      const tier = heatTier(level.weight / peak);
+      if (!tier) continue;
+      const priceY = Math.round(y(level.price));
+      if (layerHeat.checked) {
+        const length = Math.min((fieldEnd - left) * 0.62, gutter + tier * 17);
+        const start = Math.round(fieldEnd - length);
+        const cell = Math.max(4, Math.round(length / (tier * 2 + 3)));
+        const bandHeight = Math.max(2, Math.min(5, Math.round(y(level.price) - y(level.price + step))));
+        for (let color = 1; color <= tier; color++) {
+          const x = start + (color - 1) * cell;
+          const inset = tier - color;
+          ctx.fillStyle = heatFill[color];
+          ctx.fillRect(x, priceY - Math.floor(bandHeight / 2) - inset,
+            fieldEnd - x, bandHeight + inset * 2);
+        }
+      }
+      if (layerLevels.checked && tier >= 3) {
+        ctx.fillStyle = heatFill[tier];
+        ctx.fillRect(fieldEnd - 5, priceY - 2, 4, 4);
+        liquidityPoints.push({level, y:priceY});
+      }
     }
-    ctx.globalAlpha = 1;
     if (liveY >= top && liveY <= bottom) {
       ctx.fillStyle = livePrice ? '#fff1cc' : '#b3ac9f';
       ctx.save();
@@ -800,63 +814,6 @@ function draw() {
       ctx.fillText(label, fieldEnd - labelWidth + 8, liveY + 5);
     }
 
-    const compact = width < 560;
-    const cardHeight = compact ? 20 : 26;
-    const cardLeft = right + (compact ? 7 : 13);
-    const proximityScore = level => level.weight / (0.008 + Math.abs(level.price / reference - 1)) ** 1.5;
-    const ranked = active.sort((a, b) => proximityScore(b) - proximityScore(a));
-    for (const side of layerCards.checked ? ['short', 'long'] : []) {
-      const from = side === 'short' ? top : Math.max(top, liveY + 15);
-      const to = side === 'short' ? Math.min(bottom, liveY - 15) : bottom;
-      const count = Math.max(0, Math.min(compact ? 4 : 5, Math.floor((to - from) / (cardHeight + 4))));
-      const selected = [];
-      for (const level of ranked) {
-        if (selected.length >= count) break;
-        if (level.side === side && !selected.some(other => Math.abs(other.row - level.row) < 3)) selected.push(level);
-      }
-      selected.sort((a, b) => b.price - a.price);
-      let next = from;
-      selected.forEach((level, index) => {
-        const target = y(level.price);
-        const cardTop = clamp(target - cardHeight / 2, next, to - (selected.length - index) * (cardHeight + 4));
-        next = cardTop + cardHeight + 4;
-        const color = sideColors[side];
-        ctx.strokeStyle = color;
-        ctx.beginPath();
-        ctx.moveTo(edge, target);
-        ctx.lineTo(cardLeft, cardTop + cardHeight / 2);
-        ctx.stroke();
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(edge, target, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-        const available = fieldEnd - cardLeft;
-        const centerY = cardTop + cardHeight / 2;
-        ctx.fillStyle = side === 'short' ? '#1b1015' : '#0b1915';
-        ctx.fillRect(cardLeft, cardTop, available, cardHeight);
-        ctx.globalAlpha = 0.45;
-        ctx.strokeRect(cardLeft + 0.5, cardTop + 0.5, available - 1, cardHeight - 1);
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = color;
-        ctx.fillRect(cardLeft, cardTop, 2, cardHeight);
-        ctx.textBaseline = 'middle';
-        ctx.font = (compact ? '800 15px ' : '800 20px ') + displayFont;
-        const amount = '≈' + bookAmount.format(level.weight);
-        ctx.fillText(amount, cardLeft + 6, centerY, available * 0.43);
-        const distance = (side === 'short' ? '+' : '−') + (Math.abs(level.price / reference - 1) * 100).toFixed(2) + '%';
-        ctx.font = (compact ? '600 8px ' : '600 10px ') + dataFont;
-        ctx.fillStyle = '#dbe3d9';
-        ctx.textAlign = 'right';
-        ctx.fillText(distance, fieldEnd - 5, centerY);
-        ctx.textAlign = 'left';
-        const coverage = depthCoverage(level);
-        const label = coverage === undefined ? '—' : coverage.toFixed(1) + '×';
-        ctx.fillStyle = coverage === undefined ? '#9aaa9f' : coverage >= 1 ? '#80e6b9' : '#ff9d9f';
-        ctx.fillText(label, cardLeft + available * 0.49, centerY, available * 0.23);
-        ctx.textBaseline = 'alphabetic';
-        cards.push({level, top:cardTop, bottom:cardTop + cardHeight, left:cardLeft});
-      });
-    }
   }
   ctx.fillStyle = '#bfb2c5';
   ctx.font = (width < 560 ? '8px ' : '10px ') + dataFont;
@@ -876,7 +833,10 @@ function draw() {
   }
   const profile = liveEdge && pointer.x >= left + (candles.length - first) * stride;
   if (pointer.x >= right && !profile) return;
-  const marker = cards.find(card => pointer.x >= card.left && pointer.y >= card.top && pointer.y <= card.bottom)?.level;
+  const marker = profile && liquidityPoints.reduce((nearest, point) => {
+    const distance = Math.abs(pointer.y - point.y);
+    return distance <= 7 && (!nearest || distance < Math.abs(pointer.y - nearest.y)) ? point : nearest;
+  }, null)?.level;
   const column = marker || profile ? candles.length - 1 : Math.floor(first + (pointer.x - left) / stride);
   if (!candles[column]) return;
   const price = high - (pointer.y - top) / (bottom - top) * (high - low);
@@ -893,7 +853,7 @@ function draw() {
     tooltip.append(range);
   }
   const context = document.createElement('span');
-  context.textContent = (marker ? marker.side.toUpperCase() + ' · última vela' : profile ? 'Perfil estimado · última vela' : 'Vela apontada') +
+  context.textContent = (marker ? marker.side.toUpperCase() + ' · estimativa atual' : profile ? 'Perfil estimado · última vela' : 'Vela apontada') +
     ' · ' + originDate.format(candles[column].time) + ' JST';
   if (marker) {
     const detail = document.createElement('small');
@@ -1260,7 +1220,6 @@ function render() {
   drawTimeline();
 }
 new ResizeObserver(render).observe(canvas);
-document.fonts?.load('800 16px ' + displayFont).then(scheduleDraw);
 document.fonts?.load('600 10px ' + dataFont).then(scheduleDraw);
 watchBtcLiquidations({
   onMark: (venue, price) => marks.set(venue, {price, time:Date.now()}),
