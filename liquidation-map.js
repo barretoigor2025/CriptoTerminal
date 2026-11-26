@@ -37,7 +37,7 @@ function calculateLiquidationGrid(candles, min, max, rows, leverages, quoteUnit)
 
   candles.forEach((candle, column) => {
     const weight = volumeMax ? 0.25 + 0.75 * candle.volume / volumeMax : 1;
-    const entry = (candle.high + candle.low + candle.close) / 3;
+    const entry = candle.entry ?? (candle.high + candle.low + candle.close) / 3;
     // Cada lado e alavancagem recebe sua parte de 1% do giro simulado.
     const share = quoteUnit ? Math.max(0, candle.volume) * entry * 0.01 / (2 * liquidationLeverages.length) : 0;
     for (const leverage of leverages) {

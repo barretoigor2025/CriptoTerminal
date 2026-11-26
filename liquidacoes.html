@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Liquidações | Cripto Terminal</title>
 <style>
-:root{color-scheme:dark;font:13px system-ui;background:#101010;color:#eee}
+:root{color-scheme:dark;font:13px system-ui;background:#0c1017;color:#e7edf5}
 *{box-sizing:border-box}
 body{max-width:1600px;height:100vh;height:100dvh;margin:auto;padding:8px 10px;display:flex;flex-direction:column;gap:7px}
 header{display:flex;align-items:center;gap:10px;min-height:24px}
 a{color:#ccc}h1{font-size:1rem;margin:0}
 .chart-panel{display:flex;flex:1;flex-direction:column;gap:6px;min-height:0}
 .controls{display:flex;flex-wrap:wrap;align-items:center;gap:5px 8px}
-.asset-buttons,.filters,#leverage-buttons,.chart-actions{display:flex;align-items:center;gap:3px;max-width:100%}
+.filters,#leverage-buttons,.chart-actions{display:flex;align-items:center;gap:3px;max-width:100%}
 .chart-actions{margin-left:auto}
 select,button,summary{height:30px;font:inherit;color:inherit;background:#212121;border:1px solid #424242;border-radius:5px}
 select{min-width:0;padding:0 3px}
@@ -23,13 +23,19 @@ button:focus-visible,select:focus-visible,summary:focus-visible{outline:2px soli
 #fullscreen[aria-pressed="true"]{border-color:#42e1cf;color:#bafff4}
 #fullscreen .collapse-icon,#fullscreen[aria-pressed="true"] .expand-icon{display:none}
 #fullscreen[aria-pressed="true"] .collapse-icon{display:block}
-figure{position:relative;display:flex;flex:1;flex-direction:column;min-height:0;margin:0;border:1px solid #3a3a3a;border-radius:7px;overflow:hidden;background:#171717}
+figure{position:relative;display:flex;flex:1;flex-direction:column;min-height:0;margin:0;border:1px solid #3a3a3a;border-radius:7px;overflow:hidden;background:#101722}
 .chart-plot{position:relative;flex:1;min-height:0}
 canvas{display:block}
 #chart{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
 #chart.dragging{cursor:grabbing}
 #chart.scaling-price{cursor:ns-resize}
-figcaption{padding:4px 7px;color:#ccc;font-size:.78rem;border-top:1px solid #333;flex:none}
+figcaption,.event-strip{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;padding:5px 8px;color:#aab9cb;font-size:.8rem;flex:none}
+figcaption{border-top:1px solid #263345}
+.symbol{color:#ffc66c;padding:0 4px}
+.event-strip{border:1px solid #263345;border-radius:6px;background:#101722}
+.event-strip strong{color:#e7edf5}
+#event-summary{font-variant-numeric:tabular-nums}
+#market-status[data-live="true"]{color:#8de1d4}
 .chart-help summary{list-style:none}
 .chart-help summary::-webkit-details-marker{display:none}
 .chart-help-content{position:absolute;z-index:12;right:8px;width:min(290px,calc(100% - 16px));padding:8px;background:#191919;border:1px solid #555;border-radius:6px;color:#ddd;font-size:.85rem}
@@ -41,7 +47,7 @@ figcaption{padding:4px 7px;color:#ccc;font-size:.78rem;border-top:1px solid #333
 .liq-tip span+span{margin-top:6px;padding-top:6px;border-top:1px solid #414141}
 .liq-tip small{margin-top:6px;color:#dedede}
 .ramp{width:75px;height:8px;background:linear-gradient(90deg,#2d1482,#d62056,#faf7be);border-radius:3px}
-.asset-buttons button[aria-pressed="true"],#leverage-buttons button[aria-pressed="true"]{background:#153c39;border-color:#317e75;color:#bafff4}
+#leverage-buttons button[aria-pressed="true"]{background:#153c39;border-color:#317e75;color:#bafff4}
 #leverage-buttons button{border-left:2px solid var(--tier,#555)}
 .chart-panel.is-expanded{width:100%;height:100%;padding:6px 8px;background:#101010}
 .chart-panel.is-overlay{position:fixed;inset:0;z-index:30;height:100dvh}
@@ -71,25 +77,18 @@ body.chart-overlay-open{overflow:hidden}
 </style>
 </head>
 <body>
-<header><a id="terminal-link" href="index.html">← Terminal</a><h1>Mapa de liquidações</h1><a id="live-link" href="liquidacoes-ao-vivo.html">Ao vivo</a></header>
+<header><a href="index.html">← Terminal</a><h1>Liquidações do BTC</h1><a href="liquidacoes-ao-vivo.html">Painel de eventos</a></header>
 <section id="chart-panel" class="chart-panel" aria-label="Mapa interativo">
 <div class="controls">
-<div class="asset-buttons" role="group" aria-label="Ativo">
-  <button type="button" data-asset="BTC" aria-pressed="true">BTC</button>
-  <button type="button" data-asset="ETH" aria-pressed="false">ETH</button>
-  <button type="button" data-asset="SOL" aria-pressed="false">SOL</button>
-  <button type="button" data-asset="XRP" aria-pressed="false">XRP</button>
-  <button type="button" data-asset="BNB" aria-pressed="false">BNB</button>
-</div>
+<strong class="symbol">BTC</strong>
 <div class="filters" role="group" aria-label="Filtros do gráfico">
-<select id="interval" aria-label="Período das velas usadas na estimativa" title="Período das velas usadas na estimativa">
-<option value="1">1 min</option><option value="3">3 min</option><option value="5">5 min</option>
-<option value="15" selected>15 min</option><option value="30">30 min</option><option value="60">1 h</option>
-<option value="120">2 h</option><option value="240">4 h</option><option value="360">6 h</option>
-<option value="720">12 h</option><option value="D">1 dia</option><option value="W">1 semana</option>
+<select id="interval" aria-label="Tempo gráfico" title="Tempo gráfico">
+<option value="15" selected>15 min</option><option value="60">1 h</option>
+<option value="240">4 h</option><option value="D">Diário</option>
+<option value="W">Semanal</option><option value="M">Mensal</option>
 </select>
 <select id="history" aria-label="Histórico" title="Histórico"><option value="120">120 velas</option><option value="250">250 velas</option><option value="500">500 velas</option><option value="1000" selected>1.000 velas</option><option value="5000">5.000 velas</option><option value="10000">10.000 velas</option></select>
-<select id="price-range" aria-label="Faixa de preço" title="Faixa de preço"><option value="3">±3%</option><option value="15" selected>±15%</option><option value="30">±30%</option><option value="50">±50%</option><option value="all">Todas as zonas</option></select>
+<select id="price-range" aria-label="Faixa de preço" title="Faixa de preço"><option value="3" selected>±3%</option><option value="15">±15%</option><option value="30">±30%</option><option value="50">±50%</option><option value="all">Todas as zonas</option></select>
 </div>
 <div id="leverage-buttons" role="group" aria-label="Alavancagem estimada"></div>
 <div class="chart-actions" role="group" aria-label="Ações do gráfico">
@@ -106,8 +105,8 @@ body.chart-overlay-open{overflow:hidden}
     <summary aria-label="Legenda e ajuda" title="Legenda e ajuda">?</summary>
     <div class="chart-help-content">
       <div class="legend">Intensidade baixa <span class="ramp"></span> alta</div>
-      <p>Cada mapa é recalculado com as velas do período selecionado. Uma faixa de preço pode aparecer em períodos diferentes. As linhas à direita mostram a zona mais forte por alavancagem e lado na última vela.</p>
-      <p>Toque ou passe o mouse para ver os valores. Arraste o eixo direito para ajustar a escala. O contorno do indicador acende a 0,5% da zona ou menos. Horários do Japão.</p>
+      <p>Cada mapa é recalculado com as velas do período selecionado. O perfil à direita mostra a intensidade das zonas estimadas da última vela. Os círculos marcam eventos reportados por Binance, Bybit e OKX. O preço e o valor dos eventos são aproximados.</p>
+      <p>Arraste o gráfico para navegar, role ou faça pinça para aproximar e arraste a escala de preço para ajustá-la. O contorno do indicador acende a 0,5% da zona ou menos. Horários do Japão.</p>
     </div>
   </details>
 </div>
@@ -127,20 +126,68 @@ body.chart-overlay-open{overflow:hidden}
 <canvas id="chart" role="img" aria-label="Gráfico de velas com intensidade estimada de liquidação por preço e horário"></canvas>
 <div id="liqTip" class="liq-tip" hidden></div>
 </div>
-<figcaption id="status" role="status">Carregando cotações…</figcaption>
+<figcaption>
+  <div id="market-status">Conectando preços de marcação…</div>
+  <div id="status" role="status">Carregando cotações…</div>
+</figcaption>
 </figure>
+<div class="event-strip">
+  <strong>Liquidações reportadas</strong>
+  <span id="event-summary">Aguardando eventos Binance, Bybit e OKX</span>
+</div>
 </section>
 <script src="liquidation-map.js"></script>
 <script src="exchange-books.js"></script>
+<script src="btc-liquidation-feed.js"></script>
 <script>
-const assetButtons = Array.from(document.querySelectorAll('[data-asset]'));
-const initialAsset = new URLSearchParams(location.search).get('asset')?.toUpperCase();
-let asset = assetButtons.find(button => button.dataset.asset === initialAsset)?.dataset.asset ?? 'BTC';
-bindExchangeBook(document.getElementById('exchange-book'), () => asset + 'USDT');
+const symbol = 'BTCUSDT';
+bindExchangeBook(document.getElementById('exchange-book'), () => symbol);
 const interval = document.getElementById('interval');
 const historySize = document.getElementById('history');
 const priceRange = document.getElementById('price-range');
 const tooltip = document.getElementById('liqTip');
+const marketStatus = document.getElementById('market-status');
+const eventSummary = document.getElementById('event-summary');
+const marks = new Map();
+const liquidations = [];
+const liquidationKeys = new Set();
+const clock = new Intl.DateTimeFormat('pt-BR', {timeZone:'Asia/Tokyo', timeStyle:'medium'});
+let livePrice, liveRange;
+const markTimeout = 15000;
+const hour = 3600000;
+
+function updateMarket() {
+  const fresh = [...marks].filter(([, mark]) => Date.now() - mark.time <= markTimeout);
+  const prices = fresh.map(([, mark]) => mark.price).sort((a, b) => a - b);
+  const middle = Math.floor(prices.length / 2);
+  livePrice = prices.length ? (prices[middle] + prices[Math.floor((prices.length - 1) / 2)]) / 2 : undefined;
+  marketStatus.dataset.live = String(Boolean(livePrice));
+  marketStatus.textContent = livePrice
+    ? 'Marcação ao vivo · ' + priceLabel(livePrice) + ' · ' + fresh.map(([venue]) => venue).join(' + ')
+    : 'Marcação ao vivo indisponível · aguardando feeds';
+  const candle = map?.candles.at(-1);
+  if (candle && livePrice) {
+    if (liveRange?.time !== candle.time) liveRange = {time:candle.time, low:livePrice, high:livePrice};
+    liveRange.low = Math.min(liveRange.low, livePrice);
+    liveRange.high = Math.max(liveRange.high, livePrice);
+  }
+  drawDial('short');
+  drawDial('long');
+  scheduleDraw();
+}
+
+function recordLiquidation(event) {
+  const key = [event.venue, event.side, event.time, event.price, event.size].join(':');
+  if (liquidationKeys.has(key) || event.time < Date.now() - hour) return;
+  liquidationKeys.add(key);
+  liquidations.push({...event, key});
+  if (liquidations.length > 1000) liquidationKeys.delete(liquidations.shift().key);
+  const latest = liquidations.reduce((a, b) => a.time >= b.time ? a : b);
+  eventSummary.textContent = clock.format(latest.time) + ' JST · ' + latest.venue + ' · ' +
+    latest.side.toUpperCase() + ' · ≈ ' + bookAmount.format(latest.price * latest.size) + ' USDT';
+  scheduleDraw();
+}
+
 const refresh = document.getElementById('refresh');
 const status = document.getElementById('status');
 const canvas = document.getElementById('chart');
@@ -152,7 +199,7 @@ const dateFormat = new Intl.DateTimeFormat('pt-BR', {
 const tierColors = ['#ffd166', '#ff9f66', '#ff778a', '#e5a3ff', '#a5b4fc', '#68cbff', '#42e1cf'];
 const selectedLeverages = new Set(liquidationLeverages);
 const tierButtons = document.getElementById('leverage-buttons');
-let controller, map, pointer, viewport, pendingDraw, feedIndex, tapStart, loading;
+let controller, map, pointer, viewport, pendingDraw, tapStart, loading;
 const bookVenues = [
   {id:'binance', label:'Binance', unit:'USDT', limit:1000},
   {id:'coinbase', label:'Coinbase', unit:'USD', limit:Infinity}
@@ -161,12 +208,11 @@ let bookRequest;
 const books = new Map();
 
 function refreshBooks() {
-  document.getElementById('live-link').href = 'liquidacoes-ao-vivo.html?asset=' + asset;
   bookRequest?.abort();
   const request = new AbortController();
   bookRequest = request;
   for (const venue of bookVenues) {
-    getExchangeBook(venue.id, asset + 'USDT', request.signal, venue.limit)
+    getExchangeBook(venue.id, symbol, request.signal, venue.limit)
       .then(book => {
         if (bookRequest !== request) return;
         books.set(venue.id, {book, ranges:new Map()});
@@ -274,11 +320,19 @@ document.addEventListener('keydown', event => {
 });
 
 function plotBounds() {
-  return {left:8, top:14, right:canvas.clientWidth - 73, bottom:canvas.clientHeight - 30};
+  const gutter = canvas.clientWidth < 560 ? 39 : 82;
+  return {left:8, top:19, right:canvas.clientWidth - 73 - gutter, gutter, bottom:canvas.clientHeight - 28};
 }
 
 function chartView() {
-  return viewport ?? {first:0, count:map.candles.length, low:map.min, high:map.max};
+  if (viewport) return viewport;
+  const candles = map.candles.slice(-160);
+  const distance = priceRange.value === 'all' ? 0 : Number(priceRange.value) / 100;
+  return {
+    first:map.candles.length - candles.length, count:candles.length,
+    low:distance ? Math.min(map.current * (1 - distance), ...candles.map(candle => candle.low * 0.995)) : map.min,
+    high:distance ? Math.max(map.current * (1 + distance), ...candles.map(candle => candle.high * 1.005)) : map.max
+  };
 }
 
 function clamp(value, min, max) {
@@ -310,7 +364,7 @@ function buildMap(candles, origin = map?.origin) {
   const distance = all ? 0 : Number(priceRange.value) / 100;
   let min = current * (1 - distance), max = current * (1 + distance);
   for (const candle of candles) {
-    const entry = (candle.high + candle.low + candle.close) / 3;
+    const entry = candle.entry;
     min = Math.min(min, candle.low * 0.995, all ? entry * 0.5075 * 0.995 : Infinity);
     max = Math.max(max, candle.high * 1.005, all ? entry * 1.4925 * 1.005 : 0);
   }
@@ -372,7 +426,9 @@ function priceLabel(price) {
 function drawDial(side) {
   const dial = document.getElementById(side + '-dial');
   const label = document.getElementById(side + '-zone');
-  const zone = map?.levels[side][0];
+  const reference = livePrice ?? map?.current;
+  const zone = map?.levels[side].find(level => side === 'short' ? level.price > reference : level.price < reference);
+  const distance = zone ? Math.abs(zone.price / reference - 1) * 100 : 0;
   const ratio = window.devicePixelRatio || 1;
   const width = dial.clientWidth, height = dial.clientHeight;
   dial.width = Math.round(width * ratio);
@@ -380,7 +436,7 @@ function drawDial(side) {
   const pen = dial.getContext('2d');
   pen.setTransform(width * ratio / 96, 0, 0, height * ratio / 62, 0, 0);
   const start = Math.PI * 0.85, sweep = Math.PI * 1.3;
-  const progress = zone ? Math.max(0, 1 - zone.distance / 5) : 0;
+  const progress = zone ? Math.max(0, 1 - distance / 5) : 0;
   const angle = start + progress * sweep;
   const x = 48, y = 43, radius = 33;
   pen.lineWidth = 5;
@@ -413,8 +469,8 @@ function drawDial(side) {
     pen.arc(x, y, 3, 0, Math.PI * 2);
     pen.fill();
   }
-  label.parentElement.parentElement.dataset.near = String(Boolean(zone && zone.distance <= 0.5));
-  label.textContent = zone ? priceLabel(zone.price) + ' USDT · ' + zone.distance.toFixed(2) + '%' :
+  label.parentElement.parentElement.dataset.near = String(Boolean(zone && distance <= 0.5));
+  label.textContent = zone ? priceLabel(zone.price) + ' USDT · ' + distance.toFixed(2) + '%' :
     map ? 'Sem zona na faixa do gráfico' : 'Aguardando dados…';
 }
 
@@ -422,13 +478,18 @@ function draw() {
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
   const ratio = window.devicePixelRatio || 1;
-  canvas.width = Math.round(width * ratio);
-  canvas.height = Math.round(height * ratio);
+  const pixelWidth = Math.round(width * ratio), pixelHeight = Math.round(height * ratio);
+  if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+    canvas.width = pixelWidth;
+    canvas.height = pixelHeight;
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   tooltip.hidden = true;
-  if (!map || width < 100) return;
+  if (!map || width < 170 || height < 60) return;
   const {min, max, step, rows, heatmap, notional, candles} = map;
-  const {top, left, right, bottom} = plotBounds();
+  const {top, left, right, gutter, bottom} = plotBounds();
   const {first, count, low, high} = chartView();
   const stride = (right - left) / count;
   const firstColumn = Math.max(0, Math.floor(first));
@@ -439,7 +500,7 @@ function draw() {
   for (let i = 0; i <= 5; i++) {
     const price = low + (high - low) * i / 5;
     ctx.fillRect(left, y(price), right - left, 0.3);
-    ctx.fillText(priceLabel(price), right + 7, y(price) + 4);
+    ctx.fillText(priceLabel(price), right + gutter + 7, y(price) + 4);
   }
   ctx.save();
   ctx.beginPath();
@@ -458,14 +519,33 @@ function draw() {
     ctx.fillRect(center - 0.4, y(candle.high), 0.8, y(candle.low) - y(candle.high));
     ctx.fillRect(center - bodyWidth / 2, bodyTop, bodyWidth, bodyHeight);
   }
-  ctx.fillStyle = '#fff';
-  for (let x = left; x < right; x += 6) ctx.fillRect(x, y(map.current), 3, 1);
+  const eventHits = [];
+  const latestVisible = candles.length > first && candles.length <= first + count;
+  const now = Date.now();
+  const visibleCandles = candles.slice(firstColumn, endColumn);
+  for (const event of liquidations) {
+    if (now - event.time > hour || event.time < candles[firstColumn]?.time) continue;
+    const offset = visibleCandles.findIndex(candle => candle.time > event.time);
+    const column = offset < 0 ? endColumn - 1 : firstColumn + offset - 1;
+    if (column < firstColumn || (offset < 0 && endColumn !== candles.length)) continue;
+    const elapsed = now - event.time;
+    ctx.globalAlpha = elapsed < 4000 ? 0.9 : 0.46;
+    ctx.strokeStyle = sideColors[event.side];
+    ctx.beginPath();
+    const x = left + (column - first + 0.5) * stride;
+    const priceY = y(event.price);
+    const radius = clamp(Math.log10(event.price * event.size) - 1, 2, 8) + (elapsed < 4000 ? Math.max(0, elapsed / 1000) : 0);
+    ctx.arc(x, priceY, radius, 0, 2 * Math.PI);
+    eventHits.push({x, y:priceY, radius, event});
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
   const occupied = [];
   const markerHits = [];
   for (const marker of map.markers) {
     const price = marker.weightedPrice / marker.weight;
     const markerY = y(price);
-    if (markerY < top || markerY > bottom || candles.length < first || candles.length > first + count) continue;
+    if (markerY < top || markerY > bottom || !latestVisible) continue;
     const edge = left + (candles.length - first) * stride;
     ctx.fillStyle = tierColors[liquidationLeverages.indexOf(marker.leverage)];
     const lineStart = Math.max(left, edge - 112);
@@ -479,19 +559,65 @@ function draw() {
     occupied.push(markerY);
   }
   ctx.restore();
+
+  const reference = livePrice ?? map.current;
+  if (latestVisible) {
+    const edge = left + (candles.length - first) * stride;
+    const profileEnd = right + gutter;
+    const column = candles.length - 1;
+    const amounts = Array.from({length:rows}, (_, row) => notional[row * candles.length + column]);
+    const peak = Math.max(...amounts);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(left, top, profileEnd - left, bottom - top);
+    ctx.clip();
+    ctx.fillStyle = '#172131';
+    ctx.fillRect(edge, top, profileEnd - edge, bottom - top);
+    amounts.forEach((amount, row) => {
+      if (amount <= 0 || !peak) return;
+      const center = min + (row + 0.5) * step;
+      const short = center >= map.current;
+      const crossed = short ? center <= (liveRange?.high ?? reference) : center >= (liveRange?.low ?? reference);
+      ctx.globalAlpha = crossed ? 0.16 : 0.30 + 0.65 * Math.sqrt(amount / peak);
+      ctx.fillStyle = short ? '#7fb7f1' : '#f9b86e';
+      ctx.fillRect(edge, y(center + step / 2), (profileEnd - edge) * Math.sqrt(amount / peak),
+        Math.max(1, y(center - step / 2) - y(center + step / 2) - 0.5));
+    });
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = livePrice ? '#b4fae9' : '#b7c4d3';
+    for (let x = left; x < profileEnd; x += 7) ctx.fillRect(x, y(reference), 4, 1);
+    ctx.restore();
+    const liveY = y(reference);
+    if (liveY >= top && liveY <= bottom) {
+      ctx.fillStyle = livePrice ? '#a6e8d8' : '#afbdd0';
+      ctx.fillRect(profileEnd + 2, liveY - 8, 69, 16);
+      ctx.fillStyle = '#101722';
+      ctx.fillText(priceLabel(reference), profileEnd + 7, liveY + 4);
+    }
+  }
   ctx.fillStyle = '#bbb';
   const tickStep = Math.max(1, Math.ceil(105 / stride));
   for (let column = firstColumn; column < endColumn; column += tickStep) {
     const x = left + (column - first + 0.5) * stride;
     if (x >= left && x + 94 <= width) ctx.fillText(dateFormat.format(candles[column].time), x, bottom + 19);
   }
-  if (!pointer || pointer.x < left || pointer.x >= right || pointer.y < top || pointer.y > bottom) return;
+  if (!pointer || pointer.x < left || pointer.x >= right + gutter || pointer.y < top || pointer.y > bottom) return;
+  const eventHit = eventHits.findLast(hit => Math.hypot(pointer.x - hit.x, pointer.y - hit.y) <= hit.radius + 4);
+  if (eventHit) {
+    const {event} = eventHit;
+    tooltip.textContent = event.venue + ' · ' + event.side.toUpperCase() + ' liquidado · ≈ ' +
+      bookAmount.format(event.price * event.size) + ' USDT · ' + clock.format(event.time) + ' JST';
+    showTooltip(left, top, width, bottom);
+    return;
+  }
+  const profile = latestVisible && pointer.x >= left + (candles.length - first) * stride;
+  if (pointer.x >= right && !profile) return;
   const hitDistance = hit => Math.abs(pointer.y - hit.y);
   const hits = markerHits.filter(hit => pointer.x < hit.right &&
     ((pointer.x >= hit.left && hitDistance(hit) <= 4) ||
     (pointer.x >= hit.labelLeft && pointer.y >= hit.y - 13 && pointer.y <= hit.y - 4)));
   const marker = hits.sort((a, b) => hitDistance(a) - hitDistance(b))[0]?.marker;
-  const column = marker ? candles.length - 1 : Math.floor(first + (pointer.x - left) / stride);
+  const column = marker || profile ? candles.length - 1 : Math.floor(first + (pointer.x - left) / stride);
   if (!candles[column]) return;
   const price = high - (pointer.y - top) / (bottom - top) * (high - low);
   const row = marker?.row ?? Math.floor((price - min) / step);
@@ -507,21 +633,25 @@ function draw() {
     tooltip.append(range);
   }
   const context = document.createElement('span');
-  context.textContent = (marker ? marker.leverage + '× ' + marker.side.toUpperCase() + ' · última vela' : 'Vela apontada') +
+  context.textContent = (marker ? marker.leverage + '× ' + marker.side.toUpperCase() + ' · última vela' : profile ? 'Perfil estimado · última vela' : 'Vela apontada') +
     ' · ' + originDate.format(candles[column].time) + ' JST';
   const source = document.createElement('small');
   source.textContent = 'Base da estimativa · ' + map.origin.period + ' · ' + map.origin.feed;
   context.append(source);
   tooltip.prepend(context);
   appendBookComparison(min + row * step, min + (row + 1) * step);
+  showTooltip(left, top, width, bottom);
+}
+
+function showTooltip(left, top, width, bottom) {
   tooltip.hidden = false;
   tooltip.style.left = Math.max(left, Math.min(pointer.x + 12, width - tooltip.offsetWidth - 4)) + 'px';
   tooltip.style.top = Math.max(top, Math.min(pointer.y + 12, bottom - tooltip.offsetHeight - 4)) + 'px';
 }
 
-const binanceIntervals = {
-  1:'1m', 3:'3m', 5:'5m', 15:'15m', 30:'30m', 60:'1h', 120:'2h', 240:'4h',
-  360:'6h', 720:'12h', D:'1d', W:'1w'
+const candlePeriods = {
+  15:['15m', '15m'], 60:['1h', '1H'], 240:['4h', '4H'],
+  D:['1d', '1Dutc'], W:['1w', '1Wutc'], M:['1M', '1Mutc']
 };
 
 const originDate = new Intl.DateTimeFormat('pt-BR', {
@@ -535,7 +665,7 @@ function bandBreakdown(column, row) {
   let low = Infinity, high = -Infinity;
   for (let index = column; index >= 0; index--) {
     const candle = candles[index];
-    const entry = (candle.high + candle.low + candle.close) / 3;
+    const entry = candle.entry;
     const share = Math.max(0, candle.volume) * entry * 0.01 / (2 * liquidationLeverages.length);
     for (const leverage of selectedLeverages) {
       const margin = 0.985 / leverage;
@@ -563,77 +693,76 @@ function bandBreakdown(column, row) {
 }
 
 const feeds = [
-  {name:'Binance perpétuos', url:'https://fapi.binance.com/fapi/v1/klines', end:'endTime'},
-  {name:'Bybit perpétuos', url:'https://api.bybit.com/v5/market/kline', end:'end', bybit:true},
-  {name:'Binance spot (estimativa por volume à vista)', url:'https://data-api.binance.vision/api/v3/klines', end:'endTime'}
+  {name:'Binance', url:'https://fapi.binance.com/fapi/v1/klines', limit:1000, history:new Map(),
+    params:(period, end) => ({symbol, interval:candlePeriods[period][0], ...(end === undefined ? {} : {endTime:end})}),
+    read:data => data, volume:5},
+  {name:'Bybit', url:'https://api.bybit.com/v5/market/kline', limit:1000, history:new Map(),
+    params:(period, end) => ({symbol, category:'linear', interval:period, ...(end === undefined ? {} : {end})}),
+    read:data => data.retCode === 0 && data.result?.list, volume:5},
+  {name:'OKX', url:'https://www.okx.com/api/v5/market/history-candles', limit:300, history:new Map(),
+    params:(period, end) => ({instId:'BTC-USDT-SWAP', bar:candlePeriods[period][1],
+      ...(end === undefined ? {} : {after:end + 1})}),
+    read:data => data.code === '0' && data.data, volume:6}
 ];
 
-async function fetchPage(feed, symbol, period, limit, end, signal) {
-  const params = new URLSearchParams({symbol, interval:feed.bybit ? period : binanceIntervals[period], limit});
-  if (feed.bybit) params.set('category', 'linear');
-  if (end !== undefined) params.set(feed.end, end);
-  if (signal.aborted) throw signal.reason;
-  const attempt = new AbortController();
-  const cancel = () => attempt.abort();
-  signal.addEventListener('abort', cancel, {once:true});
-  const timeout = setTimeout(cancel, 4500);
-  try {
-    const response = await fetch(feed.url + '?' + params, {signal:attempt.signal, cache:'no-store'});
-    if (!response.ok) throw new Error('Fonte indisponível');
-    const data = await response.json();
-    const list = feed.bybit ? data.retCode === 0 && data.result?.list : data;
-    if (!Array.isArray(list)) throw new Error('Resposta inválida');
-    const candles = list.map(row => {
-      const [time, open, high, low, close, volume] = row.slice(0, 6).map(Number);
-      return {time, open, high, low, close, volume};
-    });
-    if (!candles.every(candle => Object.values(candle).every(Number.isFinite) && candle.low > 0)) {
-      throw new Error('Velas inválidas');
-    }
-    return candles.sort((a, b) => a.time - b.time);
-  } finally {
-    clearTimeout(timeout);
-    signal.removeEventListener('abort', cancel);
-  }
+async function fetchPage(feed, period, limit, end, signal) {
+  const params = new URLSearchParams({...feed.params(period, end), limit});
+  const response = await fetch(feed.url + '?' + params, {
+    signal:AbortSignal.any([signal, AbortSignal.timeout(6500)]), cache:'no-store'
+  });
+  if (!response.ok) throw new Error('Fonte indisponível');
+  const list = feed.read(await response.json());
+  if (!Array.isArray(list)) throw new Error('Resposta inválida');
+  return list.map(row => {
+    const [time, open, high, low, close] = row.map(Number);
+    return {time, open, high, low, close, volume:Number(row[feed.volume])};
+  }).filter(candle => Object.values(candle).every(Number.isFinite) &&
+    candle.time > 0 && candle.low > 0 && candle.open > 0 && candle.close > 0 &&
+    candle.high >= candle.low && candle.volume >= 0).sort((a, b) => a.time - b.time);
 }
 
-async function fetchCandles(symbol, period, limit, signal) {
-  const order = feeds.map((_, index) => index);
-  if (feedIndex !== undefined) {
-    order.splice(feedIndex, 1);
-    order.unshift(feedIndex);
-  }
-  for (const index of order) {
-    const feed = feeds[index];
-    let candles;
+async function fetchVenue(feed, period, limit, signal) {
+  const newest = await fetchPage(feed, period, Math.min(limit, feed.limit), undefined, signal);
+  if (!newest.length) throw new Error('Sem velas');
+  const cached = feed.history.get(period);
+  const cutoff = newest[0].time;
+  let candles = [...(cached?.candles.filter(candle => candle.time < cutoff) ?? []), ...newest];
+  let exhausted = cached?.exhausted === true;
+  while (candles.length < limit && !exhausted) {
+    const end = candles[0].time - 1;
+    let older;
     try {
-      candles = await fetchPage(feed, symbol, period, Math.min(1000, limit), undefined, signal);
+      older = (await fetchPage(feed, period, Math.min(feed.limit, limit - candles.length), end, signal))
+        .filter(candle => candle.time <= end);
     } catch {
       if (signal.aborted) throw signal.reason;
-      continue;
+      break;
     }
-    if (candles.length < 2) continue;
-    if (index === feedIndex && map) {
-      const cutoff = candles[0].time;
-      candles = [...map.candles.filter(candle => candle.time < cutoff), ...candles].slice(-limit);
-    }
-    let partial = false;
-    while (candles.length < limit) {
-      const end = candles[0].time - 1;
-      try {
-        const older = (await fetchPage(feed, symbol, period, Math.min(1000, limit - candles.length), end, signal))
-          .filter(candle => candle.time <= end);
-        if (!older.length) break;
-        candles = [...older, ...candles];
-      } catch {
-        if (signal.aborted) throw signal.reason;
-        partial = true;
-        break;
-      }
-    }
-    return {candles, index, partial};
+    exhausted = !older.length;
+    candles = [...older, ...candles];
   }
-  throw new Error('Nenhuma fonte retornou velas');
+  signal.throwIfAborted();
+  feed.history.set(period, {candles, exhausted});
+  return candles.slice(-limit);
+}
+
+function mergeVenues(series, limit) {
+  const buckets = new Map();
+  for (const candles of series) {
+    for (const candle of candles) {
+      const bucket = buckets.get(candle.time) ?? [];
+      bucket.push(candle);
+      buckets.set(candle.time, bucket);
+    }
+  }
+  return [...buckets.entries()].sort(([a], [b]) => a - b).slice(-limit).map(([time, prices]) => {
+    const average = field => prices.reduce((sum, candle) => sum + candle[field], 0) / prices.length;
+    const volume = prices.reduce((sum, candle) => sum + candle.volume, 0);
+    const entry = volume
+      ? prices.reduce((sum, candle) => sum + candle.volume * (candle.high + candle.low + candle.close) / 3, 0) / volume
+      : (average('high') + average('low') + average('close')) / 3;
+    return {time, open:average('open'), high:average('high'), low:average('low'), close:average('close'), volume, entry};
+  });
 }
 
 async function load(reset = false) {
@@ -642,58 +771,53 @@ async function load(reset = false) {
   controller = request;
   loading = true;
   if (reset) {
-    map = pointer = viewport = null;
-    feedIndex = undefined;
+    map = pointer = viewport = liveRange = null;
     render();
   }
-  const symbol = asset + 'USDT';
   const period = interval.value;
   const periodLabel = interval.selectedOptions[0].textContent;
-  status.textContent = 'Carregando ' + symbol + ' · velas de ' + periodLabel + '…';
+  const limit = Number(historySize.value);
+  if (!map) status.textContent = 'Carregando BTC · ' + periodLabel + '…';
   try {
-    const {candles, index, partial} = await fetchCandles(symbol, period, Number(historySize.value), request.signal);
+    // Paint the first available page before filling long history windows.
+    const firstPages = await Promise.allSettled(feeds.map(feed =>
+      fetchVenue(feed, period, Math.min(250, limit), request.signal)));
     if (controller !== request) return;
-    if (map && viewport) {
-      const oldStart = map.candles[0].time;
-      const newStart = candles[0].time;
-      const shift = newStart <= oldStart
-        ? candles.findIndex(candle => candle.time === oldStart)
-        : -map.candles.findIndex(candle => candle.time === newStart);
-      if (index === feedIndex && (newStart <= oldStart ? shift >= 0 : shift < 0)) viewport.first += shift;
-      else viewport = null;
+    const apply = results => {
+      const available = feeds.filter((_, index) => results[index].status === 'fulfilled');
+      const candles = mergeVenues(results.filter(result => result.status === 'fulfilled').map(result => result.value), limit);
+      if (candles.length < 2) return false;
+      if (map && viewport) {
+        const anchor = Math.max(0, Math.min(map.candles.length - 1, Math.floor(viewport.first)));
+        const time = map.candles[anchor].time;
+        const index = candles.findIndex(candle => candle.time >= time);
+        if (index < 0) viewport = null;
+        else viewport.first = clamp(viewport.first + index - anchor, 1 - viewport.count, candles.length - 1);
+      }
+      map = buildMap(candles, {period:periodLabel, feed:available.map(feed => feed.name).join(' + ')});
+      if (liveRange?.time !== candles.at(-1).time) liveRange = null;
+      status.textContent = 'Faixas estimadas · ' + map.origin.feed + ' · ' + candles.length.toLocaleString('pt-BR') +
+        ' velas · ' + new Date().toLocaleTimeString('pt-BR', {timeZone:'Asia/Tokyo'}) + ' JST';
+      render();
+      return true;
+    };
+    const displayed = (!map || limit <= 250) && apply(firstPages);
+    if (limit > 250 && firstPages.some(result => result.status === 'fulfilled')) {
+      const full = await Promise.allSettled(feeds.map((feed, index) =>
+        firstPages[index].status === 'fulfilled' ? fetchVenue(feed, period, limit, request.signal) : Promise.reject()));
+      if (controller !== request) return;
+      if (apply(full.map((result, index) => result.status === 'fulfilled' ? result : firstPages[index]))) return;
     }
-    feedIndex = index;
-    map = buildMap(candles, {period:periodLabel, feed:feeds[index].name});
-    status.textContent = symbol + ' · ' + periodLabel + ' · ' + feeds[index].name + ' · ' + candles.length.toLocaleString('pt-BR') +
-      ' velas desde ' + new Date(candles[0].time).toLocaleDateString('pt-BR', {timeZone:'Asia/Tokyo'}) +
-      (partial ? ' · histórico parcial' : '') + ' · atualizado às ' +
-      new Date().toLocaleTimeString('pt-BR', {timeZone:'Asia/Tokyo'}) + ' JST';
-    render();
-  } catch (error) {
+    if (displayed) return;
+    if (!map) throw new Error('Nenhuma fonte retornou velas');
+    status.textContent = 'Estimativas mantidas · atualização indisponível';
+  } catch {
     if (controller !== request) return;
-    status.textContent = 'Falha ao carregar ' + symbol + '. Use Atualizar para tentar de novo.';
+    status.textContent = 'Falha ao carregar as velas do BTC. Use Atualizar para tentar de novo.';
   } finally {
     if (controller === request) loading = false;
   }
 }
-function markAsset() {
-  document.getElementById('terminal-link').href = 'index.html?asset=' + asset;
-  for (const button of assetButtons) button.setAttribute('aria-pressed', String(button.dataset.asset === asset));
-}
-for (const button of assetButtons) {
-  button.addEventListener('click', () => {
-    if (button.dataset.asset === asset) return;
-    asset = button.dataset.asset;
-    books.clear();
-    refreshBooks();
-    markAsset();
-    const url = new URL(location.href);
-    url.searchParams.set('asset', asset);
-    history.replaceState(null, '', url);
-    load(true);
-  });
-}
-markAsset();
 for (const control of [interval, historySize]) control.addEventListener('change', () => load(true));
 priceRange.addEventListener('change', () => {
   viewport = null;
@@ -730,8 +854,8 @@ function transformView(before, after, factor, verticalFactor) {
 }
 
 function onPriceScale(point) {
-  const {right, top, bottom} = plotBounds();
-  return point.x >= right && point.y >= top && point.y <= bottom;
+  const {right, gutter, top, bottom} = plotBounds();
+  return point.x >= right + gutter && point.y >= top && point.y <= bottom;
 }
 
 canvas.addEventListener('pointerdown', event => {
@@ -845,7 +969,14 @@ function render() {
   drawDial('long');
 }
 new ResizeObserver(render).observe(canvas);
-setInterval(() => { if (!document.hidden && !loading) load(); }, 30000);
+watchBtcLiquidations({
+  onMark: (venue, price) => marks.set(venue, {price, time:Date.now()}),
+  onLiquidation:recordLiquidation,
+  onState: (venue, connected) => { if (!connected) marks.delete(venue); }
+});
+startOkxLiquidationPolling(recordLiquidation);
+setInterval(() => { if (!document.hidden) updateMarket(); }, 1000);
+setInterval(() => { if (!document.hidden && !loading) load(); }, 15000);
 setInterval(() => { if (!document.hidden) refreshBooks(); }, 30000);
 refreshBooks();
 load();

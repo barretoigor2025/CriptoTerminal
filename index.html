@@ -798,7 +798,7 @@
     <button class="icon-btn" id="moreToolsBtn" type="button" title="Mais opções" aria-label="Mais opções" aria-controls="headerTools" aria-expanded="false">⋯</button>
     <div class="header-tools" id="headerTools">
     <a class="pool-link" href="portfolio-xstocks.html" title="Carteira de ações">STOCKS</a>
-    <a class="pool-link" id="liquidationsLink" href="liquidacoes.html" title="Mapa estimado de liquidações">LIQUIDAÇÕES</a>
+    <a class="pool-link" id="liquidationsLink" href="liquidacoes.html" title="Mapa de liquidações do BTC">LIQUIDAÇÕES</a>
     <a class="pool-link" id="liveLiquidationsLink" href="liquidacoes-ao-vivo.html">AO VIVO</a>
     <a class="pool-link" href="btc-diario.html" title="Candle diário do Bitcoin e reação em tempo real">BTC DIÁRIO</a>
     <button class="pool-link" id="binanceBook" type="button" aria-haspopup="dialog">LIVRO DE OFERTAS</button>
@@ -1715,10 +1715,9 @@ function aggregateYearly(monthly){
 async function loadData(){
   const candleSymbol = S.symbol;
   const liquidationAsset = candleSymbol.replace(/USDT$/, '');
-  $('#liquidationsLink').href = ['BTC','ETH','SOL','XRP','BNB'].includes(liquidationAsset)
-    ? 'liquidacoes.html?asset=' + liquidationAsset
-    : 'liquidacoes.html';
-  $('#liveLiquidationsLink').href = $('#liquidationsLink').href.replace('liquidacoes.html', 'liquidacoes-ao-vivo.html');
+  $('#liveLiquidationsLink').href = ['BTC','ETH','SOL','XRP','BNB'].includes(liquidationAsset)
+    ? 'liquidacoes-ao-vivo.html?asset=' + liquidationAsset
+    : 'liquidacoes-ao-vivo.html';
   pauseSingle();
   HOLDERS.refresh();
   LIQ_PROFILE.loadingChart();
