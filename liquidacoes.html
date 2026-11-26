@@ -52,28 +52,36 @@ figcaption{border-top:1px solid #263345}
 .chart-panel.is-expanded{width:100%;height:100%;padding:6px 8px;background:#101010}
 .chart-panel.is-overlay{position:fixed;inset:0;z-index:30;height:100dvh}
 body.chart-overlay-open{overflow:hidden}
-.gauges{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
-.gauge{--side:#42e1cf;display:flex;align-items:center;gap:5px;background:#181b24;border:1px solid #363b4b;border-radius:5px;padding:2px 6px;min-width:0}
-.gauge[data-side="long"]{--side:#ff778a}
-.gauge canvas{width:35px;height:23px;flex:none}
-.gauge strong{color:var(--side);font-size:.75rem}
-.gauge small{color:#c4c7d2;font-size:.76rem}
-.gauge[data-near="true"]{border-color:var(--side)}
-@media(max-width:520px){
-  body{padding:5px;gap:5px}
-  .controls{gap:4px 5px}
-  select,button,summary{height:32px;font-size:.85rem}
-  .filters{flex:1}
-  .filters select{flex:1}
-  .chart-actions button,summary{width:27px}
-  .gauge canvas{display:none}
-  .gauge strong,.gauge small{display:block}
+
+:root{background:#0a1017;color:#e1ecf7}
+body{padding:12px;gap:10px}
+header{gap:12px;min-height:30px}header h1{font-size:1.1rem}header a:last-child{margin-left:auto}
+header a{color:#9eafc3;text-decoration:none}
+.chart-panel{position:relative;gap:0;background:#0d1722;border:1px solid #284056;border-radius:12px;padding:0;overflow:hidden}
+.controls{padding:7px 9px;border-bottom:1px solid #284056;background:#111e2c;z-index:3}
+.symbol{color:#8be6ff;font:800 14px system-ui}
+.periods{display:flex;gap:2px;overflow:auto;min-width:0;max-width:100%}
+.periods button{white-space:nowrap;border-color:transparent;background:transparent;color:#99aec4;padding:0 8px}
+.periods button[aria-pressed=true]{color:#06131e;background:#8be6ff;font-weight:750}
+#interval{display:none}
+figure{border:0;border-radius:0;background:#0d1722}
+figcaption{background:#111e2c;border-color:#284056}
+select,button,summary{background:#152538;border-color:#334c65}
+.chart-help-content{background:#111e2c;border-color:#38506a}
+.ramp{background:linear-gradient(90deg,#143040,#397f94,#f6c780)}
+.event-strip{border:0;border-top:1px solid #284056;border-radius:0;background:#111e2c;padding:5px 9px}
+.recent-events{background:#0b141f;border-top:1px solid #284056;padding:4px 9px 2px}
+.recent-events label{display:flex;justify-content:space-between;gap:6px;color:#aabdd2;font:10px ui-monospace,monospace}
+#event-timeline{display:block;width:100%;height:34px;cursor:crosshair}
+#timeline-detail{color:#8be6ff}
+@media(max-width:620px){
+  body{padding:5px;gap:5px}header{padding:0 4px;gap:8px}
+  .controls{padding:4px;gap:4px}.periods{order:-1}.symbol{display:none}
+  .periods button{padding:0 6px;font-size:11px}
+  .chart-actions{margin-left:auto}.chart-actions button,summary{width:25px;height:28px}
+  figcaption,.event-strip{font-size:10px;padding:4px 6px}
 }
-@media(max-height:430px) and (orientation:landscape){
-  body,.chart-panel.is-expanded{padding:4px 6px;gap:4px}
-  select,button,summary{height:27px}
-  .gauge canvas{width:27px;height:18px}
-}
+@media(max-height:480px){body{padding:4px;gap:4px}header{min-height:20px}.controls{padding-top:3px;padding-bottom:3px}#event-timeline{height:21px}}
 </style>
 </head>
 <body>
@@ -81,6 +89,7 @@ body.chart-overlay-open{overflow:hidden}
 <section id="chart-panel" class="chart-panel" aria-label="Mapa interativo">
 <div class="controls">
 <strong class="symbol">BTC</strong>
+<div class="periods" id="periods" role="group" aria-label="Tempo gráfico"></div>
 <div class="filters" role="group" aria-label="Filtros do gráfico">
 <select id="interval" aria-label="Tempo gráfico" title="Tempo gráfico">
 <option value="15" selected>15 min</option><option value="60">1 h</option>
@@ -90,7 +99,7 @@ body.chart-overlay-open{overflow:hidden}
 <select id="history" aria-label="Histórico" title="Histórico"><option value="120">120 velas</option><option value="250">250 velas</option><option value="500">500 velas</option><option value="1000" selected>1.000 velas</option><option value="5000">5.000 velas</option><option value="10000">10.000 velas</option></select>
 <select id="price-range" aria-label="Faixa de preço" title="Faixa de preço"><option value="3" selected>±3%</option><option value="15">±15%</option><option value="30">±30%</option><option value="50">±50%</option><option value="all">Todas as zonas</option></select>
 </div>
-<div id="leverage-buttons" role="group" aria-label="Alavancagem estimada"></div>
+
 <div class="chart-actions" role="group" aria-label="Ações do gráfico">
   <button id="exchange-book" type="button" aria-label="Livros Binance e Coinbase" aria-haspopup="dialog" title="Livros Binance e Coinbase">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 9h11M4 13h8m-8 4h13m-13 4h16"/></svg>
@@ -104,23 +113,14 @@ body.chart-overlay-open{overflow:hidden}
   <details class="chart-help">
     <summary aria-label="Legenda e ajuda" title="Legenda e ajuda">?</summary>
     <div class="chart-help-content">
+      <div id="leverage-buttons" role="group" aria-label="Alavancagem estimada"></div>
       <div class="legend">Intensidade baixa <span class="ramp"></span> alta</div>
-      <p>Cada mapa é recalculado com as velas do período selecionado. O perfil à direita mostra a intensidade das zonas estimadas da última vela. Os círculos marcam eventos reportados por Binance, Bybit e OKX. O preço e o valor dos eventos são aproximados.</p>
-      <p>Arraste o gráfico para navegar, role ou faça pinça para aproximar e arraste a escala de preço para ajustá-la. O contorno do indicador acende a 0,5% da zona ou menos. Horários do Japão.</p>
+      <p>Cada mapa é recalculado com as velas do período selecionado. Os cartões destacam os maiores níveis estimados visíveis. Os valores usam 1% do giro de cada corretora como hipótese de modelagem. Os círculos marcam eventos reportados por Binance, Bybit e OKX. O preço e o valor dos eventos são aproximados. A razão Livro compara a profundidade à vista de Binance e Coinbase nos próximos 0,5% com o valor simulado. Ela aparece quando os dois livros cobrem toda a faixa.</p>
+      <p>Arraste o gráfico para navegar, role ou faça pinça para aproximar e arraste a escala de preço para ajustá-la. Clique na linha do tempo para centralizar um evento. Horários do Japão.</p>
     </div>
   </details>
 </div>
 </div>
-<section class="gauges" aria-label="Distância até as zonas de liquidação mais próximas">
-  <div class="gauge" data-side="short">
-    <canvas id="short-dial" aria-hidden="true"></canvas>
-    <div><strong>SHORT ↑</strong><small id="short-zone">Aguardando dados…</small></div>
-  </div>
-  <div class="gauge" data-side="long">
-    <canvas id="long-dial" aria-hidden="true"></canvas>
-    <div><strong>LONG ↓</strong><small id="long-zone">Aguardando dados…</small></div>
-  </div>
-</section>
 <figure>
 <div class="chart-plot">
 <canvas id="chart" role="img" aria-label="Gráfico de velas com intensidade estimada de liquidação por preço e horário"></canvas>
@@ -130,19 +130,39 @@ body.chart-overlay-open{overflow:hidden}
   <div id="market-status">Conectando preços de marcação…</div>
   <div id="status" role="status">Carregando cotações…</div>
 </figcaption>
+<div class="recent-events">
+  <label for="event-timeline"><span>EVENTOS REPORTADOS · ÚLTIMA HORA</span><span id="timeline-detail">JST</span></label>
+  <canvas id="event-timeline" tabindex="0" role="img" aria-label="Histograma de liquidações reportadas na última hora. Use as setas para navegar pelos eventos."></canvas>
+</div>
 </figure>
 <div class="event-strip">
   <strong>Liquidações reportadas</strong>
   <span id="event-summary">Aguardando eventos Binance, Bybit e OKX</span>
 </div>
 </section>
-<script src="liquidation-map.js"></script>
+<script src="liquidation-map.js?v=22"></script>
 <script src="exchange-books.js"></script>
 <script src="btc-liquidation-feed.js"></script>
 <script>
 const symbol = 'BTCUSDT';
 bindExchangeBook(document.getElementById('exchange-book'), () => symbol);
 const interval = document.getElementById('interval');
+const periodButtons = Array.from(interval.options, option => {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = option.textContent;
+  button.dataset.period = option.value;
+  button.setAttribute('aria-pressed', String(option.selected));
+  button.addEventListener('click', () => {
+    interval.value = option.value;
+    interval.dispatchEvent(new Event('change'));
+  });
+  document.getElementById('periods').append(button);
+  return button;
+});
+interval.addEventListener('change', () => {
+  for (const button of periodButtons) button.setAttribute('aria-pressed', String(button.dataset.period === interval.value));
+});
 const historySize = document.getElementById('history');
 const priceRange = document.getElementById('price-range');
 const tooltip = document.getElementById('liqTip');
@@ -171,10 +191,75 @@ function updateMarket() {
     liveRange.low = Math.min(liveRange.low, livePrice);
     liveRange.high = Math.max(liveRange.high, livePrice);
   }
-  drawDial('short');
-  drawDial('long');
+  drawTimeline();
   scheduleDraw();
 }
+
+const timeline = document.getElementById('event-timeline');
+const timelineDetail = document.getElementById('timeline-detail');
+let selectedEvent;
+let timelineEnd = Date.now();
+
+function drawTimeline() {
+  const width = timeline.clientWidth, height = timeline.clientHeight;
+  if (!width || !height) return;
+  const ratio = window.devicePixelRatio || 1;
+  if (timeline.width !== Math.round(width * ratio) || timeline.height !== Math.round(height * ratio)) {
+    timeline.width = Math.round(width * ratio);
+    timeline.height = Math.round(height * ratio);
+  }
+  const pen = timeline.getContext('2d');
+  pen.setTransform(ratio, 0, 0, ratio, 0, 0);
+  pen.clearRect(0, 0, width, height);
+  timelineEnd = Date.now();
+  const slots = Array.from({length:60}, () => ({long:0,short:0}));
+  for (const event of liquidations) {
+    const index = Math.floor((event.time - timelineEnd + hour) / 60000);
+    if (slots[index]) slots[index][event.side] += event.price * event.size;
+  }
+  const max = Math.max(1, ...slots.flatMap(slot => [slot.long, slot.short]));
+  const size = width / slots.length;
+  pen.fillStyle = '#416074';
+  pen.fillRect(0, height / 2, width, 1);
+  slots.forEach((slot, index) => {
+    for (const side of ['short','long']) {
+      pen.fillStyle = sideColors[side];
+      const bar = Math.sqrt(slot[side] / max) * (height / 2 - 2);
+      pen.fillRect(index * size, height / 2 - (side === 'short' ? bar : 0), Math.max(1, size - 1), bar);
+    }
+  });
+  if (selectedEvent && selectedEvent.time >= timelineEnd - hour) {
+    pen.fillStyle = '#e8f8ff';
+    pen.fillRect((selectedEvent.time - timelineEnd + hour) / hour * width, 0, 1, height);
+  }
+}
+
+function selectTimelineEvent(event) {
+  if (!map || !event) return;
+  selectedEvent = event;
+  timelineDetail.textContent = event.venue + ' · ' + event.side.toUpperCase() + ' · ' + clock.format(event.time) + ' JST';
+  const next = map.candles.findIndex(candle => candle.time > event.time);
+  const index = next < 0 ? map.candles.length - 1 : Math.max(0, next - 1);
+  const {count, low, high} = chartView();
+  const span = high - low;
+  setView(clamp(index + 1 - count / 2, 0, Math.max(0, map.candles.length - count)), count, event.price - span / 2, span);
+  drawTimeline();
+}
+
+timeline.addEventListener('click', event => {
+  const bounds = timeline.getBoundingClientRect();
+  const time = timelineEnd - hour + (event.clientX - bounds.left) / bounds.width * hour;
+  const nearest = liquidations.filter(item => item.time >= timelineEnd - hour).reduce((best, item) =>
+    !best || Math.abs(item.time - time) < Math.abs(best.time - time) ? item : best, null);
+  selectTimelineEvent(nearest);
+});
+timeline.addEventListener('keydown', event => {
+  if (!['ArrowLeft','ArrowRight'].includes(event.key)) return;
+  event.preventDefault();
+  const recent = liquidations.filter(item => item.time >= timelineEnd - hour).sort((a, b) => a.time - b.time);
+  const index = selectedEvent ? recent.indexOf(selectedEvent) : recent.length;
+  selectTimelineEvent(recent[clamp(index + (event.key === 'ArrowLeft' ? -1 : 1), 0, recent.length - 1)]);
+});
 
 function recordLiquidation(event) {
   const key = [event.venue, event.side, event.time, event.price, event.size].join(':');
@@ -191,7 +276,7 @@ function recordLiquidation(event) {
 const refresh = document.getElementById('refresh');
 const status = document.getElementById('status');
 const canvas = document.getElementById('chart');
-const sideColors = {short:'#42e1cf', long:'#ff778a'};
+const sideColors = {short:'#ff707d', long:'#62e1bc'};
 const ctx = canvas.getContext('2d');
 const dateFormat = new Intl.DateTimeFormat('pt-BR', {
   timeZone:'Asia/Tokyo', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'
@@ -216,12 +301,12 @@ function refreshBooks() {
       .then(book => {
         if (bookRequest !== request) return;
         books.set(venue.id, {book, ranges:new Map()});
-        if (pointer) scheduleDraw();
+        scheduleDraw();
       })
       .catch(error => {
         if (bookRequest !== request) return;
         books.set(venue.id, {error:error.status === 404 ? 'par indisponível' : 'sem dados'});
-        if (pointer) scheduleDraw();
+        scheduleDraw();
       });
   }
 }
@@ -272,6 +357,23 @@ for (const [index, leverage] of liquidationLeverages.entries()) {
 const contacts = new Map();
 let priceDrag = null;
 
+function depthCoverage(level) {
+  const isShort = level.side === 'short';
+  const end = level.price * (isShort ? 1.005 : 0.995);
+  const low = Math.min(level.price, end), high = Math.max(level.price, end);
+  let depth = 0;
+  for (const {id} of bookVenues) {
+    const book = books.get(id)?.book;
+    const orders = isShort ? book?.asks : book?.bids;
+    if (!orders?.length) return;
+    const near = orders[0][0], far = orders.at(-1)[0];
+    if (isShort ? near > low || far < high : far > low || near < high) return;
+    depth += orders.reduce((total, [price, size]) =>
+      price >= low && price <= high ? total + price * size : total, 0);
+  }
+  return depth / level.weight;
+}
+
 const chartPanel = document.getElementById('chart-panel');
 const fullscreenButton = document.getElementById('fullscreen');
 let overlayOpen = false;
@@ -320,13 +422,13 @@ document.addEventListener('keydown', event => {
 });
 
 function plotBounds() {
-  const gutter = canvas.clientWidth < 560 ? 39 : 82;
-  return {left:8, top:19, right:canvas.clientWidth - 73 - gutter, gutter, bottom:canvas.clientHeight - 28};
+  const gutter = canvas.clientWidth < 560 ? 106 : Math.min(248, canvas.clientWidth * 0.25);
+  return {left:canvas.clientWidth < 560 ? 43 : 64, top:24, right:canvas.clientWidth - 10 - gutter, gutter, bottom:canvas.clientHeight - 24};
 }
 
 function chartView() {
   if (viewport) return viewport;
-  const candles = map.candles.slice(-160);
+  const candles = map.candles.slice(-(canvas.clientWidth < 560 ? 50 : 85));
   const distance = priceRange.value === 'all' ? 0 : Number(priceRange.value) / 100;
   return {
     first:map.candles.length - candles.length, count:candles.length,
@@ -377,7 +479,11 @@ function buildMap(candles, origin = map?.origin) {
   heatmap.height = rows;
   const heatContext = heatmap.getContext('2d');
   const image = heatContext.createImageData(heatmap.width, rows);
-  const colors = Array.from({length:256}, (_, index) => heatColor(index / 255));
+  const colors = Array.from({length:256}, (_, index) => {
+    const strength = index / 255;
+    return [Math.round(40 + 215 * strength), Math.round(117 + 87 * strength),
+      Math.round(145 - 52 * strength), Math.round(215 * strength)];
+  });
   if (peak > 0) {
     for (let row = 0; row < rows; row++) {
       for (let column = 0; column < candles.length; column++) {
@@ -389,89 +495,22 @@ function buildMap(candles, origin = map?.origin) {
   }
   heatContext.putImageData(image, 0, 0);
   const groups = {short:new Map(), long:new Map()};
-  const tierGroups = new Map();
   for (const zone of active) {
     const side = zone.long ? 'long' : 'short';
-    if (zone.long ? zone.price >= current : zone.price <= current) continue;
-    if (!zone.weight) continue;
-    const group = groups[side].get(zone.row) || {weight:0, weightedPrice:0};
+    if ((zone.long ? zone.price >= current : zone.price <= current) || !zone.weight) continue;
+    const group = groups[side].get(zone.row) ?? {row:zone.row, side, weight:0, weightedPrice:0};
     group.weight += zone.weight;
     group.weightedPrice += zone.price * zone.weight;
     groups[side].set(zone.row, group);
-    const key = side + ':' + zone.leverage;
-    const bands = tierGroups.get(key) ?? new Map();
-    const band = bands.get(zone.row) ?? {weight:0, weightedPrice:0, leverage:zone.leverage, side, row:zone.row};
-    band.weight += zone.weight;
-    band.weightedPrice += zone.price * zone.weight;
-    bands.set(zone.row, band);
-    tierGroups.set(key, bands);
   }
-  const levels = {};
-  for (const side of ['short', 'long']) {
-    levels[side] = Array.from(groups[side].values(), group => {
-      const price = group.weightedPrice / group.weight;
-      return {price, weight:group.weight, distance:Math.abs(price / current - 1) * 100};
-    }).sort((a, b) => a.distance - b.distance);
-  }
-  const markers = Array.from(tierGroups.values(), bands =>
-    Array.from(bands.values()).reduce((best, band) => band.weight > best.weight ? band : best));
-  markers.sort((a, b) => b.weight - a.weight);
-  return {min, max, step, rows, heatmap, notional, candles, current, levels, markers, origin};
+  const levels = Object.values(groups).flatMap(group => [...group.values()]).map(level => ({
+    ...level, price:level.weightedPrice / level.weight
+  })).sort((a, b) => b.weight - a.weight);
+  return {min, max, step, rows, heatmap, notional, candles, current, levels, origin};
 }
 
 function priceLabel(price) {
   return price.toLocaleString('en-US', {maximumFractionDigits:price < 10 ? 4 : 2});
-}
-
-function drawDial(side) {
-  const dial = document.getElementById(side + '-dial');
-  const label = document.getElementById(side + '-zone');
-  const reference = livePrice ?? map?.current;
-  const zone = map?.levels[side].find(level => side === 'short' ? level.price > reference : level.price < reference);
-  const distance = zone ? Math.abs(zone.price / reference - 1) * 100 : 0;
-  const ratio = window.devicePixelRatio || 1;
-  const width = dial.clientWidth, height = dial.clientHeight;
-  dial.width = Math.round(width * ratio);
-  dial.height = Math.round(height * ratio);
-  const pen = dial.getContext('2d');
-  pen.setTransform(width * ratio / 96, 0, 0, height * ratio / 62, 0, 0);
-  const start = Math.PI * 0.85, sweep = Math.PI * 1.3;
-  const progress = zone ? Math.max(0, 1 - distance / 5) : 0;
-  const angle = start + progress * sweep;
-  const x = 48, y = 43, radius = 33;
-  pen.lineWidth = 5;
-  pen.beginPath();
-  pen.strokeStyle = '#414754';
-  pen.arc(x, y, radius, start, start + sweep);
-  pen.stroke();
-  pen.beginPath();
-  pen.strokeStyle = sideColors[side];
-  pen.arc(x, y, radius, start, angle);
-  pen.stroke();
-  for (let tick = 0; tick <= 10; tick++) {
-    const at = start + tick / 10 * sweep;
-    pen.beginPath();
-    pen.lineWidth = tick % 5 === 0 ? 1.5 : 0.8;
-    pen.strokeStyle = '#afb3bd';
-    pen.moveTo(x + Math.cos(at) * 24, y + Math.sin(at) * 24);
-    pen.lineTo(x + Math.cos(at) * 28, y + Math.sin(at) * 28);
-    pen.stroke();
-  }
-  if (zone) {
-    pen.beginPath();
-    pen.lineWidth = 2;
-    pen.strokeStyle = sideColors[side];
-    pen.moveTo(x, y);
-    pen.lineTo(x + Math.cos(angle) * 24, y + Math.sin(angle) * 24);
-    pen.stroke();
-    pen.fillStyle = sideColors[side];
-    pen.beginPath();
-    pen.arc(x, y, 3, 0, Math.PI * 2);
-    pen.fill();
-  }
-  label.parentElement.parentElement.dataset.near = String(Boolean(zone && distance <= 0.5));
-  label.textContent = zone ? priceLabel(zone.price) + ' USDT · ' + distance.toFixed(2) + '%' :
-    map ? 'Sem zona na faixa do gráfico' : 'Aguardando dados…';
 }
 
 function draw() {
@@ -495,18 +534,26 @@ function draw() {
   const firstColumn = Math.max(0, Math.floor(first));
   const endColumn = Math.min(candles.length, Math.ceil(first + count));
   const y = price => bottom - (price - low) / (high - low) * (bottom - top);
-  ctx.font = '11px system-ui';
-  ctx.fillStyle = '#bbb';
+  const reference = livePrice ?? map.current;
+  const liveY = y(reference);
+  const fieldEnd = right + gutter;
+  const liveEdge = first + count >= candles.length && first < candles.length;
+  ctx.font = '11px ui-monospace, monospace';
+  ctx.fillStyle = '#18202f';
+  ctx.fillRect(left, top, fieldEnd - left, clamp(liveY, top, bottom) - top);
+  ctx.fillStyle = '#10262b';
+  ctx.fillRect(left, clamp(liveY, top, bottom), fieldEnd - left, bottom - clamp(liveY, top, bottom));
+  ctx.fillStyle = '#9fb2c8';
   for (let i = 0; i <= 5; i++) {
     const price = low + (high - low) * i / 5;
-    ctx.fillRect(left, y(price), right - left, 0.3);
-    ctx.fillText(priceLabel(price), right + gutter + 7, y(price) + 4);
+    ctx.fillRect(left, y(price), fieldEnd - left, 0.28);
+    ctx.fillText(Math.round(price).toLocaleString('en-US'), 4, y(price) + 4);
   }
   ctx.save();
   ctx.beginPath();
   ctx.rect(left, top, right - left, bottom - top);
   ctx.clip();
-  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingEnabled = false;
   ctx.drawImage(heatmap, left - first * stride, y(max), candles.length * stride, y(min) - y(max));
   for (let column = firstColumn; column < endColumn; column++) {
     const candle = candles[column];
@@ -520,7 +567,7 @@ function draw() {
     ctx.fillRect(center - bodyWidth / 2, bodyTop, bodyWidth, bodyHeight);
   }
   const eventHits = [];
-  const latestVisible = candles.length > first && candles.length <= first + count;
+
   const now = Date.now();
   const visibleCandles = candles.slice(firstColumn, endColumn);
   for (const event of liquidations) {
@@ -540,59 +587,94 @@ function draw() {
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
-  const occupied = [];
-  const markerHits = [];
-  for (const marker of map.markers) {
-    const price = marker.weightedPrice / marker.weight;
-    const markerY = y(price);
-    if (markerY < top || markerY > bottom || !latestVisible) continue;
-    const edge = left + (candles.length - first) * stride;
-    ctx.fillStyle = tierColors[liquidationLeverages.indexOf(marker.leverage)];
-    const lineStart = Math.max(left, edge - 112);
-    for (let x = lineStart; x < edge; x += 6) ctx.fillRect(x, markerY, 3, 1);
-    const hit = {marker, y:markerY, left:lineStart, right:edge};
-    markerHits.push(hit);
-    if (occupied.some(other => Math.abs(markerY - other) < 13)) continue;
-    const label = marker.leverage + '× ' + marker.side.toUpperCase() + ' ' + priceLabel(price);
-    hit.labelLeft = Math.max(left, edge - ctx.measureText(label).width - 5);
-    ctx.fillText(label, hit.labelLeft, markerY - 3);
-    occupied.push(markerY);
-  }
   ctx.restore();
 
-  const reference = livePrice ?? map.current;
-  if (latestVisible) {
+  const cards = [];
+  if (liveEdge) {
     const edge = left + (candles.length - first) * stride;
-    const profileEnd = right + gutter;
-    const column = candles.length - 1;
-    const amounts = Array.from({length:rows}, (_, row) => notional[row * candles.length + column]);
-    const peak = Math.max(...amounts);
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(left, top, profileEnd - left, bottom - top);
-    ctx.clip();
-    ctx.fillStyle = '#172131';
-    ctx.fillRect(edge, top, profileEnd - edge, bottom - top);
-    amounts.forEach((amount, row) => {
-      if (amount <= 0 || !peak) return;
-      const center = min + (row + 0.5) * step;
-      const short = center >= map.current;
-      const crossed = short ? center <= (liveRange?.high ?? reference) : center >= (liveRange?.low ?? reference);
-      ctx.globalAlpha = crossed ? 0.16 : 0.30 + 0.65 * Math.sqrt(amount / peak);
-      ctx.fillStyle = short ? '#7fb7f1' : '#f9b86e';
-      ctx.fillRect(edge, y(center + step / 2), (profileEnd - edge) * Math.sqrt(amount / peak),
-        Math.max(1, y(center - step / 2) - y(center + step / 2) - 0.5));
+    const active = map.levels.filter(level => {
+      const limit = level.side === 'short' ? liveRange?.high ?? reference : liveRange?.low ?? reference;
+      return y(level.price) >= top && y(level.price) <= bottom &&
+        (level.side === 'short' ? level.price > limit : level.price < limit);
     });
+    const peak = Math.max(0, ...active.map(level => level.weight));
+    for (const level of active) {
+      const strength = Math.sqrt(level.weight / peak);
+      const beam = ctx.createLinearGradient(Math.max(left, edge - 130), 0, fieldEnd, 0);
+      beam.addColorStop(0, 'transparent');
+      beam.addColorStop(1, level.side === 'short' ? '#f5bc73' : '#66d6ce');
+      ctx.fillStyle = beam;
+      ctx.globalAlpha = strength * 0.65;
+      ctx.fillRect(Math.max(left, edge - 130), y(level.price) - 1, fieldEnd - Math.max(left, edge - 130),
+        Math.max(2, Math.min(7, y(level.price) - y(level.price + step))));
+    }
     ctx.globalAlpha = 1;
-    ctx.fillStyle = livePrice ? '#b4fae9' : '#b7c4d3';
-    for (let x = left; x < profileEnd; x += 7) ctx.fillRect(x, y(reference), 4, 1);
-    ctx.restore();
-    const liveY = y(reference);
     if (liveY >= top && liveY <= bottom) {
-      ctx.fillStyle = livePrice ? '#a6e8d8' : '#afbdd0';
-      ctx.fillRect(profileEnd + 2, liveY - 8, 69, 16);
-      ctx.fillStyle = '#101722';
-      ctx.fillText(priceLabel(reference), profileEnd + 7, liveY + 4);
+      ctx.fillStyle = livePrice ? '#a7eaff' : '#92a9bb';
+      ctx.fillRect(left, liveY, fieldEnd - left, 1.5);
+      ctx.font = 'bold 14px ui-monospace, monospace';
+      const label = priceLabel(reference);
+      const labelWidth = ctx.measureText(label).width + 16;
+      ctx.fillRect(fieldEnd - labelWidth, liveY - 12, labelWidth, 24);
+      ctx.fillStyle = '#071824';
+      ctx.fillText(label, fieldEnd - labelWidth + 8, liveY + 5);
+    }
+
+    const compact = width < 560;
+    const cardHeight = compact ? 32 : 38;
+    const cardLeft = right + 13;
+    for (const side of ['short', 'long']) {
+      const from = side === 'short' ? top : Math.max(top, liveY + 15);
+      const to = side === 'short' ? Math.min(bottom, liveY - 15) : bottom;
+      const count = Math.max(0, Math.min(compact ? 2 : 3, Math.floor((to - from) / (cardHeight + 4))));
+      const selected = [];
+      for (const level of active) {
+        if (selected.length >= count) break;
+        if (level.side === side && !selected.some(other => Math.abs(other.row - level.row) < 3)) selected.push(level);
+      }
+      selected.sort((a, b) => b.price - a.price);
+      let next = from;
+      selected.forEach((level, index) => {
+        const target = y(level.price);
+        const cardTop = clamp(target - cardHeight / 2, next, to - (selected.length - index) * (cardHeight + 4));
+        next = cardTop + cardHeight + 4;
+        const color = sideColors[side];
+        ctx.strokeStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(edge, target);
+        ctx.lineTo(cardLeft, cardTop + cardHeight / 2);
+        ctx.stroke();
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(edge, target, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#0b1825';
+        ctx.fillRect(cardLeft, cardTop, fieldEnd - cardLeft, cardHeight);
+        ctx.strokeStyle = '#365268';
+        ctx.strokeRect(cardLeft + 0.5, cardTop + 0.5, fieldEnd - cardLeft - 1, cardHeight - 1);
+        ctx.fillStyle = color;
+        ctx.fillRect(cardLeft, cardTop, 2, cardHeight);
+        ctx.font = (compact ? 'bold 11px' : 'bold 16px') + ' ui-monospace, monospace';
+        ctx.fillText('≈ ' + bookAmount.format(level.weight), cardLeft + 7, cardTop + (compact ? 13 : 17));
+        const distance = (Math.abs(level.price / reference - 1) * 100).toFixed(2) + '%';
+        if (!compact) ctx.fillText(distance, fieldEnd - ctx.measureText(distance).width - 7, cardTop + 17);
+        ctx.font = (compact ? '9px' : '11px') + ' ui-monospace, monospace';
+        ctx.fillStyle = '#b3c7d9';
+        const range = compact ? Math.round(level.price).toLocaleString('en-US') :
+          Math.round(min + level.row * step).toLocaleString('en-US') + '–' +
+          Math.round(min + (level.row + 1) * step).toLocaleString('en-US');
+        ctx.fillText(side.toUpperCase() + ' ' + range, cardLeft + 7, cardTop + cardHeight - 6);
+        const coverage = !compact ? depthCoverage(level) : undefined;
+        if (coverage !== undefined) {
+          const label = 'Livro ' + coverage.toFixed(1) + '×';
+          const labelX = fieldEnd - ctx.measureText(label).width - 7;
+          if (labelX > cardLeft + 13 + ctx.measureText(side.toUpperCase() + ' ' + range).width) {
+            ctx.fillStyle = coverage >= 1 ? '#72e7bd' : '#ff9c9e';
+            ctx.fillText(label, labelX, cardTop + cardHeight - 6);
+          }
+        }
+        cards.push({level, top:cardTop, bottom:cardTop + cardHeight, left:cardLeft});
+      });
     }
   }
   ctx.fillStyle = '#bbb';
@@ -610,20 +692,16 @@ function draw() {
     showTooltip(left, top, width, bottom);
     return;
   }
-  const profile = latestVisible && pointer.x >= left + (candles.length - first) * stride;
+  const profile = liveEdge && pointer.x >= left + (candles.length - first) * stride;
   if (pointer.x >= right && !profile) return;
-  const hitDistance = hit => Math.abs(pointer.y - hit.y);
-  const hits = markerHits.filter(hit => pointer.x < hit.right &&
-    ((pointer.x >= hit.left && hitDistance(hit) <= 4) ||
-    (pointer.x >= hit.labelLeft && pointer.y >= hit.y - 13 && pointer.y <= hit.y - 4)));
-  const marker = hits.sort((a, b) => hitDistance(a) - hitDistance(b))[0]?.marker;
+  const marker = cards.find(card => pointer.x >= card.left && pointer.y >= card.top && pointer.y <= card.bottom)?.level;
   const column = marker || profile ? candles.length - 1 : Math.floor(first + (pointer.x - left) / stride);
   if (!candles[column]) return;
   const price = high - (pointer.y - top) / (bottom - top) * (high - low);
   const row = marker?.row ?? Math.floor((price - min) / step);
   ctx.fillStyle = '#aaa';
   ctx.fillRect(pointer.x, top, 1, bottom - top);
-  ctx.fillRect(left, pointer.y, right - left, 1);
+  ctx.fillRect(left, pointer.y, fieldEnd - left, 1);
   if (row < 0 || row >= rows) return;
   const hasEstimate = renderLiquidationTip(tooltip, notional, rows, candles.length, min, step, column, row, candles[column].close, 'USDT', bandBreakdown(column, row));
   if (!hasEstimate) {
@@ -633,7 +711,7 @@ function draw() {
     tooltip.append(range);
   }
   const context = document.createElement('span');
-  context.textContent = (marker ? marker.leverage + '× ' + marker.side.toUpperCase() + ' · última vela' : profile ? 'Perfil estimado · última vela' : 'Vela apontada') +
+  context.textContent = (marker ? marker.side.toUpperCase() + ' · última vela' : profile ? 'Perfil estimado · última vela' : 'Vela apontada') +
     ' · ' + originDate.format(candles[column].time) + ' JST';
   const source = document.createElement('small');
   source.textContent = 'Base da estimativa · ' + map.origin.period + ' · ' + map.origin.feed;
@@ -665,19 +743,20 @@ function bandBreakdown(column, row) {
   let low = Infinity, high = -Infinity;
   for (let index = column; index >= 0; index--) {
     const candle = candles[index];
-    const entry = candle.entry;
-    const share = Math.max(0, candle.volume) * entry * 0.01 / (2 * liquidationLeverages.length);
-    for (const leverage of selectedLeverages) {
-      const margin = 0.985 / leverage;
-      for (const side of ['LONG', 'SHORT']) {
-        const price = entry * (1 + (side === 'LONG' ? -margin : margin));
-        const intact = side === 'LONG' ? low > price : high < price;
-        if (!share || !intact || Math.floor((price - min) / step) !== row) continue;
-        const key = leverage + side;
-        const group = values.get(key) ?? {leverage, side, value:0, newest:candle.time};
-        group.value += share;
-        group.oldest = candle.time;
-        values.set(key, group);
+    for (const {entry, volume} of candle.components) {
+      const share = Math.max(0, volume) * entry * 0.01 / (2 * liquidationLeverages.length);
+      for (const leverage of selectedLeverages) {
+        const margin = 0.985 / leverage;
+        for (const side of ['LONG', 'SHORT']) {
+          const price = entry * (1 + (side === 'LONG' ? -margin : margin));
+          const intact = side === 'LONG' ? low > price : high < price;
+          if (!share || !intact || Math.floor((price - min) / step) !== row) continue;
+          const key = leverage + side;
+          const group = values.get(key) ?? {leverage, side, value:0, newest:candle.time};
+          group.value += share;
+          group.oldest = candle.time;
+          values.set(key, group);
+        }
       }
     }
     if (index < column) {
@@ -761,7 +840,10 @@ function mergeVenues(series, limit) {
     const entry = volume
       ? prices.reduce((sum, candle) => sum + candle.volume * (candle.high + candle.low + candle.close) / 3, 0) / volume
       : (average('high') + average('low') + average('close')) / 3;
-    return {time, open:average('open'), high:average('high'), low:average('low'), close:average('close'), volume, entry};
+    return {time, open:average('open'), high:average('high'), low:average('low'), close:average('close'), volume, entry,
+      components:prices.map(candle => ({
+        entry:(candle.high + candle.low + candle.close) / 3, volume:candle.volume
+      }))};
   });
 }
 
@@ -854,8 +936,8 @@ function transformView(before, after, factor, verticalFactor) {
 }
 
 function onPriceScale(point) {
-  const {right, gutter, top, bottom} = plotBounds();
-  return point.x >= right + gutter && point.y >= top && point.y <= bottom;
+  const {left, top, bottom} = plotBounds();
+  return point.x < left && point.y >= top && point.y <= bottom;
 }
 
 canvas.addEventListener('pointerdown', event => {
@@ -965,8 +1047,7 @@ canvas.addEventListener('dblclick', event => {
 });
 function render() {
   draw();
-  drawDial('short');
-  drawDial('long');
+  drawTimeline();
 }
 new ResizeObserver(render).observe(canvas);
 watchBtcLiquidations({

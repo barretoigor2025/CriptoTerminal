@@ -36,34 +36,38 @@ function calculateLiquidationGrid(candles, min, max, rows, leverages, quoteUnit)
   });
 
   candles.forEach((candle, column) => {
-    const weight = volumeMax ? 0.25 + 0.75 * candle.volume / volumeMax : 1;
-    const entry = candle.entry ?? (candle.high + candle.low + candle.close) / 3;
-    // Cada lado e alavancagem recebe sua parte de 1% do giro simulado.
-    const share = quoteUnit ? Math.max(0, candle.volume) * entry * 0.01 / (2 * liquidationLeverages.length) : 0;
-    for (const leverage of leverages) {
-      const margin = 0.985 / leverage;
-      for (const long of [true, false]) {
-        const price = entry * (1 + (long ? -margin : margin));
-        if (price <= min || price >= max) continue;
-        const row = Math.min(rows - 1, Math.floor((price - min) / step));
-        let next = column + 1;
-        while (next < columns) {
-          const block = Math.floor(next / blockSize);
-          if (next % blockSize === 0 && (long ? lows[block] > price : highs[block] < price)) {
-            next += blockSize;
-            continue;
+    const components = candle.components ?? [{
+      entry:candle.entry ?? (candle.high + candle.low + candle.close) / 3, volume:candle.volume
+    }];
+    for (const {entry, volume} of components) {
+      const weight = volumeMax ? (0.25 / components.length) + 0.75 * volume / volumeMax : 1 / components.length;
+      // Cada lado e alavancagem recebe sua parte de 1% do giro simulado.
+      const share = quoteUnit ? Math.max(0, volume) * entry * 0.01 / (2 * liquidationLeverages.length) : 0;
+      for (const leverage of leverages) {
+        const margin = 0.985 / leverage;
+        for (const long of [true, false]) {
+          const price = entry * (1 + (long ? -margin : margin));
+          if (price <= min || price >= max) continue;
+          const row = Math.min(rows - 1, Math.floor((price - min) / step));
+          let next = column + 1;
+          while (next < columns) {
+            const block = Math.floor(next / blockSize);
+            if (next % blockSize === 0 && (long ? lows[block] > price : highs[block] < price)) {
+              next += blockSize;
+              continue;
+            }
+            if (long ? candles[next].low <= price : candles[next].high >= price) break;
+            next++;
           }
-          if (long ? candles[next].low <= price : candles[next].high >= price) break;
-          next++;
-        }
-        const offset = row * columns;
-        G[offset + column] += weight;
-        notional[offset + column] += share;
-        if (next < last) {
-          G[offset + next + 1] -= weight;
-          notional[offset + next + 1] -= share;
-        } else if (next > last) {
-          active.push({price, row, long, weight:share, leverage});
+          const offset = row * columns;
+          G[offset + column] += weight;
+          notional[offset + column] += share;
+          if (next < last) {
+            G[offset + next + 1] -= weight;
+            notional[offset + next + 1] -= share;
+          } else if (next > last) {
+            active.push({price, row, long, weight:share, leverage});
+          }
         }
       }
     }
